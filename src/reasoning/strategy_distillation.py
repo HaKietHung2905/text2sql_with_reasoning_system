@@ -307,4 +307,5 @@ class StrategyDistillation:
             hints['example'] = "SELECT d.name, AVG(e.salary) AS avg_sal FROM employees e JOIN departments d ON e.dept_id = d.id GROUP BY d.name ORDER BY avg_sal DESC LIMIT 3"
         
         elif pattern == 'JOIN_FILTERING':
-            hints['structure'] = "SELECT [cols] FROM [table1] [alias1] JOIN [table2] [alias2
+            hints['structure'] = "SELECT [cols] FROM [table1] [alias1] JOIN [table2] [alias2] ON [cond] WHERE [cond]"
+            hints['example'] = "SELECT e.name, d.name FROM employees e JOIN departments d ON e.dept_id = d.id WHERE e.salary > 50000"

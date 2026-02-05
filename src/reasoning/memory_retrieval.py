@@ -228,29 +228,47 @@ class MemoryRetrieval:
         return candidates[:max_candidates]
     
     def _build_search_query(self, context: RetrievalContext) -> str:
-        """Build enhanced search query from context"""
-        
+        "Build search query from context"
+    
         parts = [context.query]
         
-        # Add semantic analysis context
+        # Add semantic analysis if available
         if context.semantic_analysis:
-            intent = context.semantic_analysis.get('intent', '')
-            if intent:
-                parts.append(f"Intent: {intent}")
-            
-            metrics = context.semantic_analysis.get('metrics', [])
+            # Handle metrics (can be list of dicts or list of strings)
+            metrics = context.semantic_analysis.get('relevant_metrics', [])
             if metrics:
-                parts.append(f"Metrics: {', '.join(metrics)}")
+                # Convert dicts to strings if needed
+                metric_strs = []
+                for m in metrics:
+                    if isinstance(m, dict):
+                        metric_strs.append(m.get('name', str(m)))
+                    else:
+                        metric_strs.append(str(m))
+                
+                if metric_strs:
+                    parts.append(f"Metrics: {', '.join(metric_strs)}")
             
-            dimensions = context.semantic_analysis.get('dimensions', [])
+            # Handle dimensions (can be list of dicts or list of strings)
+            dimensions = context.semantic_analysis.get('relevant_dimensions', [])
             if dimensions:
-                parts.append(f"Dimensions: {', '.join(dimensions)}")
+                # Convert dicts to strings if needed
+                dim_strs = []
+                for d in dimensions:
+                    if isinstance(d, dict):
+                        dim_strs.append(d.get('name', str(d)))
+                    else:
+                        dim_strs.append(str(d))
+                
+                if dim_strs:
+                    parts.append(f"Dimensions: {', '.join(dim_strs)}")
         
-        # Add schema context
-        if context.schema:
-            tables = context.schema.get('tables', [])
-            if tables:
-                parts.append(f"Tables: {', '.join(tables[:3])}")  # Limit to 3
+        # Add database context
+        if context.database:
+            parts.append(f"Database: {context.database}")
+        
+        # Add difficulty if available
+        if context.difficulty:
+            parts.append(f"Difficulty: {context.difficulty}")
         
         return " | ".join(parts)
     

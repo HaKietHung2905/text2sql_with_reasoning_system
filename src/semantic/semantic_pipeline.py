@@ -10,6 +10,11 @@ from pathlib import Path
 # Import semantic layer core
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+project_root = Path(__file__).parent.parent.parent
+if str(project_root) not in sys.path:
+    sys.path.insert(0, str(project_root))
+
+
 try:
     from semantic_layer.core import SimpleSemanticLayer, create_semantic_layer
     SEMANTIC_CORE_AVAILABLE = True
@@ -17,9 +22,12 @@ except ImportError:
     SEMANTIC_CORE_AVAILABLE = False
     print("Warning: semantic_layer.core not available")
 
-from utils.logging_utils import get_logger
-
-logger = get_logger(__name__)
+try:
+    from utils.logging_utils import get_logger
+    logger = get_logger(__name__)
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
 
 
 class SemanticPipeline:
@@ -31,155 +39,150 @@ class SemanticPipeline:
     """
     
     def __init__(self, config: Optional[Dict] = None):
-        """Initialize semantic pipeline"""
-        self.config = config or {}
-        self.enabled = self.config.get('enabled', False)
+        """
+        Initialize semantic pipeline
         
-        if not self.enabled or not SEMANTIC_CORE_AVAILABLE:
-            logger.info("Semantic Pipeline disabled")
-            self.semantic_layer = None
-            return
+        Args:
+            config: Configuration dictionary
+        """
+        self.config = config or {'enabled': True}
+        self.enabled = self.config.get('enabled', True)
         
         # Initialize semantic layer
-        config_path = self.config.get('config_path')
-        if config_path and Path(config_path).exists():
-            self.semantic_layer = SimpleSemanticLayer(config_path)
+        if SEMANTIC_CORE_AVAILABLE and self.enabled:
+            try:
+                self.semantic_layer = create_semantic_layer()
+                logger.info("✓ Semantic Pipeline initialized")
+            except Exception as e:
+                logger.warning(f"Failed to create semantic layer: {e}")
+                self.semantic_layer = None
+                self.enabled = False
         else:
-            self.semantic_layer = create_semantic_layer()
-        
+            self.semantic_layer = None
+            self.enabled = False
+            
         # Statistics
         self.stats = {
             'queries_analyzed': 0,
-            'queries_enhanced': 0,
-            'intents_detected': {},
-            'metrics_detected': 0,
-            'dimensions_detected': 0,
-            'entities_detected': 0
+            'intents_detected': 0,
+            'entities_mapped': 0,
+            'enhanced_queries': 0
         }
-        
-        logger.info("✓ Semantic Pipeline initialized")
     
-    def enhance_question(
-        self,
-        question: str,
-        database: str,
-        schema: Optional[Dict] = None
-    ) -> Dict:
+    def enhance_question(self, question: str, schema: Optional[Dict] = None) -> Dict:
         """
-        Main enhancement method - called BEFORE SQL generation
+        Original method name - enhance a question with semantic understanding
         
-        Returns dict with:
-            - enhanced_question: Enhanced question text
-            - suggestions: SQL generation suggestions
-            - intent: Detected intent
-            - metrics/dimensions/entities: Detected components
-            - enhanced: Whether enhancement was applied
+        Args:
+            question: Natural language query
+            schema: Database schema (optional)
+            
+        Returns:
+            Dictionary with enhanced question and analysis
         """
         if not self.enabled or not self.semantic_layer:
-            return self._no_enhancement(question)
-        
-        self.stats['queries_analyzed'] += 1
+            return {
+                'original_question': question,
+                'enhanced_question': question,
+                'analysis': {},
+                'enhanced': False
+            }
         
         try:
-            # Analyze intent
+            # Analyze query intent
             analysis = self.semantic_layer.analyze_query_intent(question)
-            context = self.semantic_layer.get_semantic_context(question, schema)
             
-            # Generate suggestions
-            suggestions = self._generate_suggestions(analysis, context)
+            # Track statistics
+            self.stats['queries_analyzed'] += 1
+            if analysis.get('relevant_metrics'):
+                self.stats['intents_detected'] += 1
+            if analysis.get('relevant_dimensions'):
+                self.stats['entities_mapped'] += 1
             
-            # Update stats
-            self._update_stats(analysis)
-            
-            # Check if enhanced
-            enhanced = (
-                len(analysis['relevant_metrics']) > 0 or
-                len(analysis['relevant_dimensions']) > 0
-            )
-            
-            if enhanced:
-                self.stats['queries_enhanced'] += 1
+            # Enhance question (placeholder - implement your enhancement logic)
+            enhanced_question = question
+            enhanced = False
             
             return {
-                'enhanced_question': question,  # Could add semantic hints here
                 'original_question': question,
-                'suggestions': suggestions,
-                'intent': context.get('intent'),
-                'metrics': analysis['relevant_metrics'],
-                'dimensions': analysis['relevant_dimensions'],
-                'entities': analysis['relevant_entities'],
-                'complexity': context.get('complexity'),
-                'enhanced': enhanced
+                'enhanced_question': enhanced_question,
+                'analysis': analysis,
+                'enhanced': enhanced,
+                'complexity': self._assess_complexity(analysis)
             }
             
         except Exception as e:
-            logger.error(f"Semantic enhancement failed: {e}")
-            return self._no_enhancement(question)
+            logger.warning(f"Question enhancement failed: {e}")
+            return {
+                'original_question': question,
+                'enhanced_question': question,
+                'analysis': {},
+                'enhanced': False
+            }
     
-    def _no_enhancement(self, question: str) -> Dict:
-        """Return when enhancement disabled/fails"""
+    def analyze(self, question: str, schema: Optional[Dict] = None) -> Dict:
+        """
+        Alias for enhance_question - analyze a question
+        
+        This is the method expected by the integration test and other components.
+        
+        Args:
+            question: Natural language query
+            schema: Database schema (optional)
+            
+        Returns:
+            Dictionary with analysis and complexity assessment
+        """
+        result = self.enhance_question(question, schema)
+        
+        # Return simplified format for analysis
         return {
-            'enhanced_question': question,
-            'original_question': question,
-            'suggestions': [],
-            'intent': None,
-            'metrics': [],
-            'dimensions': [],
-            'entities': [],
-            'complexity': 'unknown',
-            'enhanced': False
+            'original_question': result['original_question'],
+            'enhanced_question': result['enhanced_question'],
+            'complexity': result.get('complexity', 'medium'),
+            'metrics': result.get('analysis', {}).get('relevant_metrics', []),
+            'dimensions': result.get('analysis', {}).get('relevant_dimensions', []),
+            'enhanced': result.get('enhanced', False)
         }
     
-    def _generate_suggestions(self, analysis: Dict, context: Dict) -> List[Dict]:
-        """Generate SQL suggestions"""
-        suggestions = []
+    def _assess_complexity(self, analysis: Dict) -> str:
+        """
+        Assess query complexity based on analysis
         
-        # From SQL patterns
-        for pattern in analysis.get('suggested_sql_patterns', [])[:3]:
-            suggestions.append({
-                'type': 'pattern',
-                'content': pattern,
-                'priority': 'medium'
-            })
+        Args:
+            analysis: Query intent analysis
+            
+        Returns:
+            Complexity level: 'easy', 'medium', or 'hard'
+        """
+        if not analysis:
+            return 'medium'
         
-        # From intent
-        for intent in analysis.get('intent_categories', []):
-            if intent == 'aggregation':
-                suggestions.append({
-                    'type': 'aggregation',
-                    'content': 'Use COUNT/SUM/AVG/MAX/MIN',
-                    'priority': 'high'
-                })
-            elif intent == 'grouping':
-                suggestions.append({
-                    'type': 'grouping',
-                    'content': 'Add GROUP BY clause',
-                    'priority': 'high'
-                })
+        # Count complexity indicators
+        num_metrics = len(analysis.get('relevant_metrics', []))
+        num_dimensions = len(analysis.get('relevant_dimensions', []))
+        has_aggregation = any(
+            m.get('type') == 'AGGREGATION' 
+            for m in analysis.get('relevant_metrics', [])
+        )
         
-        return suggestions
-    
-    def _update_stats(self, analysis: Dict):
-        """Update statistics"""
-        for intent in analysis.get('intent_categories', []):
-            self.stats['intents_detected'][intent] = \
-                self.stats['intents_detected'].get(intent, 0) + 1
-        
-        self.stats['metrics_detected'] += len(analysis.get('relevant_metrics', []))
-        self.stats['dimensions_detected'] += len(analysis.get('relevant_dimensions', []))
-        self.stats['entities_detected'] += len(analysis.get('relevant_entities', []))
+        # Determine complexity
+        if num_metrics == 0 and num_dimensions <= 1:
+            return 'easy'
+        elif num_metrics > 2 or num_dimensions > 3 or has_aggregation:
+            return 'hard'
+        else:
+            return 'medium'
     
     def get_statistics(self) -> Dict:
-        """Get statistics"""
-        if not self.enabled:
-            return {'enabled': False}
-        
-        stats = {'enabled': True, **self.stats}
-        
-        if stats['queries_analyzed'] > 0:
-            stats['enhancement_rate'] = \
-                stats['queries_enhanced'] / stats['queries_analyzed'] * 100
-        else:
-            stats['enhancement_rate'] = 0
-        
-        return stats
+        """Get pipeline statistics"""
+        return self.stats.copy()
+    
+    def reset_statistics(self):
+        """Reset statistics"""
+        self.stats = {
+            'queries_analyzed': 0,
+            'intents_detected': 0,
+            'entities_mapped': 0,
+            'enhanced_queries': 0
+        }

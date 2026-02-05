@@ -5,7 +5,7 @@
 # Project Information
 # ============================================================================
 project:
-  name: "text-to-sql-eval"
+  name: "text2sql_with_reasoning_system"
   version: "0.1.0"
   description: "Text-to-SQL evaluation system with RAG and semantic enhancement"
   author: "Hung"

@@ -23,6 +23,7 @@ from utils.sql_schema import Schema, load_schema
 from pathlib import Path
 from utils.eval_utils import normalize_sql_for_evaluation
 
+
 try:
     from src.semantic.semantic_pipeline import SemanticPipeline
     SEMANTIC_PIPELINE_AVAILABLE = True

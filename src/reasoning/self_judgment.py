@@ -231,7 +231,7 @@ class SelfJudgment:
                 key_elements=[
                     f"Query type: {query_type}",
                     f"Database: {trajectory.database}",
-                    f"Execution time: {trajectory.execution_time:.3f}s"
+                    f"Execution time: {trajectory.execution_time:.3f}s" if trajectory.execution_time else "Execution time: N/A"
                 ],
                 lesson=f"Effective pattern for {query_type} queries",
                 confidence=1.0
@@ -266,8 +266,9 @@ class SelfJudgment:
             ))
         
         # Insight 4: Example retrieval effectiveness
-        if trajectory.retrieved_examples and len(trajectory.retrieved_examples) > 0:
-            top_example = trajectory.retrieved_examples[0]
+        retrieved_examples = getattr(trajectory, 'retrieved_examples', None)
+        if retrieved_examples and len(retrieved_examples) > 0:
+            top_example = retrieved_examples[0]
             similarity = top_example.get('similarity', 0)
             if similarity > 0.8:
                 insights.append(Insight(
@@ -412,7 +413,7 @@ class SelfJudgment:
                         ))
         
         # Insight 2: Missing critical SQL components
-        query_lower = trajectory.query.lower()
+        query_lower = trajectory.question.lower()
         
         # Missing GROUP BY for aggregation
         if any(agg in sql_upper for agg in ['AVG', 'SUM', 'COUNT', 'MAX', 'MIN']):
@@ -566,16 +567,16 @@ class SelfJudgment:
         
         factors = {
             # Input characteristics
-            'query_difficulty': trajectory.difficulty,
-            'query_length': len(trajectory.query.split()),
+            'query_difficulty': getattr(trajectory, 'difficulty', None),
+            'query_length': len(trajectory.question.split()),
             'database': trajectory.database,
             'num_tables_in_schema': len(trajectory.schema.get('tables', [])) if trajectory.schema else 0,
             
             # Processing characteristics
             'has_semantic_analysis': trajectory.semantic_analysis is not None,
-            'num_retrieved_examples': len(trajectory.retrieved_examples or []),
-            'num_retrieved_strategies': len(trajectory.retrieved_strategies or []),
-            'prompt_length': len(trajectory.prompt_used) if trajectory.prompt_used else 0,
+            'num_retrieved_examples': len(getattr(trajectory, 'retrieved_examples', None) or []),
+            'num_retrieved_strategies': len(getattr(trajectory, 'retrieved_strategies', None) or []),
+            'prompt_length': len(getattr(trajectory, 'prompt_used', None) or ''),
             
             # Output characteristics
             'generation_time': trajectory.generation_time,
@@ -595,9 +596,9 @@ class SelfJudgment:
             'has_distinct': 'DISTINCT' in sql_upper,
             
             # Execution characteristics
-            'execution_time': trajectory.execution_time,
-            'has_errors': bool(trajectory.errors and len(trajectory.errors) > 0),
-            'num_errors': len(trajectory.errors) if trajectory.errors else 0,
+            'execution_time': getattr(trajectory, 'execution_time', None) or 0.0,
+            'has_errors': bool(getattr(trajectory, 'errors', None) and len(trajectory.errors) > 0),
+            'num_errors': len(getattr(trajectory, 'errors', None) or []),
         }
         
         return factors

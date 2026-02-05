@@ -1,241 +1,265 @@
 """
-Experience Collector: Captures complete interaction trajectories
+Experience Collector: Captures SQL generation trajectories for learning
+
+This module collects complete interaction trajectories including questions,
+generated SQL, strategies used, and evaluation results.
+
+COMPLETE FILE - Replace entire src/reasoning/experience_collector.py with this
 """
 
-import json
-import uuid
-from datetime import datetime
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, asdict
-from pathlib import Path
+from dataclasses import dataclass, field  # ← IMPORTANT: field must be imported!
+from typing import Dict, List, Optional
+import time
 
-from utils.logging_utils import get_logger
-
-logger = get_logger(__name__)
+# Logger
+try:
+    from utils.logging_utils import get_logger
+    logger = get_logger(__name__)
+except ImportError:
+    import logging
+    logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Trajectory:
-    """Complete interaction trajectory"""
+    """
+    A single interaction trajectory capturing the SQL generation process
     
-    # Identifiers
+    Fixed: All non-default arguments come BEFORE default arguments
+    """
+    # ========================================
+    # REQUIRED FIELDS (no defaults) - MUST BE FIRST
+    # ========================================
     trajectory_id: str
-    timestamp: str
-    
-    # Input
-    query: str
+    question: str
     database: str
-    schema: Dict
-    difficulty: Optional[str] = None
+    generated_sql: str
     
-    # Processing
-    semantic_analysis: Optional[Dict] = None
-    retrieved_examples: Optional[List[Dict]] = None
+    # ========================================
+    # OPTIONAL FIELDS (with defaults) - MUST BE AFTER required fields
+    # ========================================
+    schema: Optional[Dict] = None
+    gold_sql: Optional[str] = None
+    strategies_used: List[str] = field(default_factory=list)
+    reasoning_steps: List[str] = field(default_factory=list)
+    generation_time: float = 0.0
+    timestamp: float = field(default_factory=time.time)
+    
+    # Evaluation results (filled after evaluation)
+    exact_match: Optional[float] = None
+    execution_match: Optional[bool] = None
+    component_scores: Optional[Dict] = None
+    
+    # Additional fields for SelfJudgment
+    errors: Optional[List[str]] = None
+    execution_time: Optional[float] = None
     retrieved_strategies: Optional[List[Dict]] = None
     prompt_used: Optional[str] = None
+    semantic_analysis: Optional[Dict] = None
+    difficulty: Optional[str] = None
     
-    # Output
-    generated_sql: str
-    generation_time: float = 0.0
-    
-    # Evaluation
-    exact_match: bool = False
-    execution_match: bool = False
-    component_scores: Optional[Dict] = None
-    execution_time: float = 0.0
-    
-    # Metadata
-    errors: List[str] = None
+    # Additional metadata
+    metadata: Dict = field(default_factory=dict)
     
     def to_dict(self) -> Dict:
-        """Convert to dictionary"""
-        return asdict(self)
+        """Convert trajectory to dictionary"""
+        return {
+            'trajectory_id': self.trajectory_id,
+            'question': self.question,
+            'database': self.database,
+            'schema': self.schema,
+            'generated_sql': self.generated_sql,
+            'gold_sql': self.gold_sql,
+            'strategies_used': self.strategies_used,
+            'reasoning_steps': self.reasoning_steps,
+            'generation_time': self.generation_time,
+            'timestamp': self.timestamp,
+            'exact_match': self.exact_match,
+            'execution_match': self.execution_match,
+            'component_scores': self.component_scores,
+            'metadata': self.metadata
+        }
     
-    def to_json(self) -> str:
-        """Convert to JSON string"""
-        return json.dumps(self.to_dict(), indent=2, default=str)
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'Trajectory':
+        """Create trajectory from dictionary"""
+        return cls(**data)
 
 
 class ExperienceCollector:
-    """Collects and stores interaction trajectories"""
+    """
+    Collects and manages interaction trajectories
     
-    def __init__(self, storage_path: str = "./memory/trajectories"):
+    This module captures the complete generation process for each query,
+    including the question, generated SQL, strategies used, and results.
+    """
+    
+    def __init__(self):
+        """Initialize experience collector"""
+        self.trajectories: Dict[str, Trajectory] = {}
+        self.judgments: Dict[str, 'JudgmentResult'] = {}
+        
+        logger.info("ExperienceCollector initialized")
+    
+    def add_trajectory(self, trajectory: Trajectory):
         """
-        Initialize experience collector
+        Add a trajectory to the collection
         
         Args:
-            storage_path: Path to store trajectory files
+            trajectory: Trajectory object to add
         """
-        self.storage_path = Path(storage_path)
-        self.storage_path.mkdir(parents=True, exist_ok=True)
-        
-        self.trajectories = []
-        self.current_trajectory = None
-        
-        logger.info(f"ExperienceCollector initialized: {storage_path}")
+        self.trajectories[trajectory.trajectory_id] = trajectory
+        logger.debug(f"Added trajectory: {trajectory.trajectory_id}")
     
-    def start_trajectory(
-        self,
-        query: str,
-        database: str,
-        schema: Dict,
-        difficulty: Optional[str] = None
-    ) -> str:
+    def get_trajectory(self, trajectory_id: str) -> Optional[Trajectory]:
         """
-        Start a new trajectory
+        Get a trajectory by ID
         
         Args:
-            query: Natural language question
-            database: Database name
-            schema: Database schema
-            difficulty: Query difficulty level
+            trajectory_id: Trajectory identifier
             
         Returns:
-            Trajectory ID
+            Trajectory object or None if not found
         """
-        trajectory_id = f"traj_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
-        
-        self.current_trajectory = Trajectory(
-            trajectory_id=trajectory_id,
-            timestamp=datetime.now().isoformat(),
-            query=query,
-            database=database,
-            schema=schema,
-            difficulty=difficulty,
-            generated_sql="",
-            errors=[]
-        )
-        
-        logger.debug(f"Started trajectory: {trajectory_id}")
-        return trajectory_id
+        return self.trajectories.get(trajectory_id)
     
-    def add_semantic_analysis(self, analysis: Dict):
-        """Add semantic analysis results"""
-        if self.current_trajectory:
-            self.current_trajectory.semantic_analysis = analysis
-    
-    def add_retrieved_examples(self, examples: List[Dict]):
-        """Add retrieved examples from ChromaDB"""
-        if self.current_trajectory:
-            self.current_trajectory.retrieved_examples = examples
-    
-    def add_retrieved_strategies(self, strategies: List[Dict]):
-        """Add retrieved strategies from ReasoningBank"""
-        if self.current_trajectory:
-            self.current_trajectory.retrieved_strategies = strategies
-    
-    def add_prompt(self, prompt: str):
-        """Add the complete prompt used"""
-        if self.current_trajectory:
-            self.current_trajectory.prompt_used = prompt
-    
-    def add_generation_result(
-        self,
-        generated_sql: str,
-        generation_time: float
-    ):
-        """Add SQL generation results"""
-        if self.current_trajectory:
-            self.current_trajectory.generated_sql = generated_sql
-            self.current_trajectory.generation_time = generation_time
-    
-    def add_evaluation_results(
-        self,
-        exact_match: bool,
-        execution_match: bool,
-        component_scores: Dict,
-        execution_time: float
-    ):
-        """Add evaluation results"""
-        if self.current_trajectory:
-            self.current_trajectory.exact_match = exact_match
-            self.current_trajectory.execution_match = execution_match
-            self.current_trajectory.component_scores = component_scores
-            self.current_trajectory.execution_time = execution_time
-    
-    def add_error(self, error: str):
-        """Add error message"""
-        if self.current_trajectory:
-            if self.current_trajectory.errors is None:
-                self.current_trajectory.errors = []
-            self.current_trajectory.errors.append(error)
-    
-    def finish_trajectory(self) -> Trajectory:
+    def get_all_trajectories(self) -> List[Trajectory]:
         """
-        Finish and save current trajectory
+        Get all trajectories
         
         Returns:
-            Completed trajectory
+            List of all Trajectory objects
         """
-        if not self.current_trajectory:
-            raise ValueError("No active trajectory")
-        
-        # Save to memory
-        self.trajectories.append(self.current_trajectory)
-        
-        # Save to disk
-        self._save_trajectory(self.current_trajectory)
-        
-        completed = self.current_trajectory
-        self.current_trajectory = None
-        
-        logger.info(f"Completed trajectory: {completed.trajectory_id}")
-        return completed
+        return list(self.trajectories.values())
     
-    def _save_trajectory(self, trajectory: Trajectory):
-        """Save trajectory to disk"""
-        file_path = self.storage_path / f"{trajectory.trajectory_id}.json"
+    def get_recent_trajectories(self, limit: int = 100) -> List[Trajectory]:
+        """
+        Get most recent trajectories
         
-        try:
-            with open(file_path, 'w') as f:
-                f.write(trajectory.to_json())
-            logger.debug(f"Saved trajectory to: {file_path}")
-        except Exception as e:
-            logger.error(f"Failed to save trajectory: {e}")
+        Args:
+            limit: Maximum number of trajectories to return
+            
+        Returns:
+            List of recent Trajectory objects
+        """
+        trajectories = sorted(
+            self.trajectories.values(),
+            key=lambda t: t.timestamp,
+            reverse=True
+        )
+        return trajectories[:limit]
     
-    def get_recent_trajectories(self, n: int = 10) -> List[Trajectory]:
-        """Get N most recent trajectories"""
-        return self.trajectories[-n:]
+    def add_judgment(self, trajectory_id: str, judgment: 'JudgmentResult'):
+        """
+        Add judgment result for a trajectory
+        
+        Args:
+            trajectory_id: Trajectory identifier
+            judgment: JudgmentResult object
+        """
+        self.judgments[trajectory_id] = judgment
+        logger.debug(f"Added judgment for trajectory: {trajectory_id}")
     
-    def get_trajectories_by_success(self, success: bool) -> List[Trajectory]:
-        """Get trajectories by success status"""
-        return [
-            t for t in self.trajectories
-            if t.exact_match == success
-        ]
+    def get_judgment(self, trajectory_id: str) -> Optional['JudgmentResult']:
+        """
+        Get judgment for a trajectory
+        
+        Args:
+            trajectory_id: Trajectory identifier
+            
+        Returns:
+            JudgmentResult object or None if not found
+        """
+        return self.judgments.get(trajectory_id)
+    
+    def create_trajectory(
+        self,
+        trajectory_id: str,
+        question: str,
+        database: str,
+        generated_sql: str,
+        schema: Optional[Dict] = None,
+        gold_sql: Optional[str] = None,
+        strategies_used: Optional[List[str]] = None,
+        reasoning_steps: Optional[List[str]] = None,
+        generation_time: float = 0.0,
+        metadata: Optional[Dict] = None
+    ) -> Trajectory:
+        """
+        Convenience method to create and add a trajectory
+        
+        Args:
+            trajectory_id: Unique identifier
+            question: Natural language query
+            database: Database name
+            generated_sql: Generated SQL query
+            schema: Database schema
+            gold_sql: Gold standard SQL
+            strategies_used: List of strategy IDs used
+            reasoning_steps: Reasoning steps taken
+            generation_time: Time taken to generate
+            metadata: Additional metadata
+            
+        Returns:
+            Created Trajectory object
+        """
+        trajectory = Trajectory(
+            trajectory_id=trajectory_id,
+            question=question,
+            database=database,
+            generated_sql=generated_sql,
+            schema=schema,
+            gold_sql=gold_sql,
+            strategies_used=strategies_used or [],
+            reasoning_steps=reasoning_steps or [],
+            generation_time=generation_time,
+            metadata=metadata or {}
+        )
+        
+        self.add_trajectory(trajectory)
+        return trajectory
+    
+    def clear(self):
+        """Clear all trajectories and judgments"""
+        self.trajectories.clear()
+        self.judgments.clear()
+        logger.info("Cleared all trajectories and judgments")
     
     def get_statistics(self) -> Dict:
-        """Get trajectory statistics"""
-        if not self.trajectories:
-            return {}
+        """
+        Get statistics about collected trajectories
         
+        Returns:
+            Dictionary with statistics
+        """
         total = len(self.trajectories)
-        exact_match = sum(1 for t in self.trajectories if t.exact_match)
-        execution_match = sum(1 for t in self.trajectories if t.execution_match)
+        judged = len(self.judgments)
+        
+        if judged > 0:
+            successful = sum(
+                1 for j in self.judgments.values()
+                if j.is_success()
+            )
+            success_rate = successful / judged
+        else:
+            success_rate = 0.0
+        
+        avg_time = (
+            sum(t.generation_time for t in self.trajectories.values()) / total
+            if total > 0 else 0.0
+        )
         
         return {
             'total_trajectories': total,
-            'exact_match_count': exact_match,
-            'exact_match_rate': exact_match / total if total > 0 else 0,
-            'execution_match_count': execution_match,
-            'execution_match_rate': execution_match / total if total > 0 else 0,
-            'avg_generation_time': sum(t.generation_time for t in self.trajectories) / total,
-            'avg_execution_time': sum(t.execution_time for t in self.trajectories) / total
+            'judged_trajectories': judged,
+            'success_rate': success_rate,
+            'avg_generation_time': avg_time
         }
     
-    def load_trajectories_from_disk(self) -> int:
-        """Load all trajectories from disk"""
-        count = 0
-        
-        for file_path in self.storage_path.glob("traj_*.json"):
-            try:
-                with open(file_path, 'r') as f:
-                    data = json.load(f)
-                    trajectory = Trajectory(**data)
-                    self.trajectories.append(trajectory)
-                    count += 1
-            except Exception as e:
-                logger.warning(f"Failed to load {file_path}: {e}")
-        
-        logger.info(f"Loaded {count} trajectories from disk")
-        return count
+    def __len__(self) -> int:
+        """Return number of trajectories"""
+        return len(self.trajectories)
+    
+    def __repr__(self) -> str:
+        """String representation"""
+        return f"ExperienceCollector(trajectories={len(self.trajectories)}, judgments={len(self.judgments)})"

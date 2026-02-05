@@ -1,373 +1,343 @@
-# Reasoning Configuration for Text-to-SQL System
-# Chain-of-Thought, semantic enhancement, and reasoning strategies
+# ============================================================================
+# ReasoningBank Configuration
+# Complete configuration for self-evolving memory system
+# ============================================================================
 
 # ============================================================================
-# Chain-of-Thought (CoT) Configuration
+# Core Pipeline Settings
 # ============================================================================
-chain_of_thought:
+pipeline:
   enabled: true
   
-  # CoT strategies
-  strategy: "multi_step"  # Options: "zero_shot", "few_shot", "multi_step", "tree_of_thought"
+  # Component enablement
+  enable_retrieval: true
+  enable_distillation: true
+  enable_consolidation: true
+  enable_test_time_scaling: false
   
-  # Zero-shot CoT
-  zero_shot:
-    trigger_phrase: "Let's think step by step."
-    max_reasoning_tokens: 500
-    
-  # Few-shot CoT with examples
-  few_shot:
-    num_examples: 3
-    example_selection: "similarity"  # Options: "similarity", "difficulty", "random"
-    include_reasoning: true
-    
-  # Multi-step reasoning
-  multi_step:
-    steps:
-      - name: "understand_question"
-        prompt: "First, let's understand what the question is asking:"
-        
-      - name: "identify_tables"
-        prompt: "Next, identify which tables are relevant:"
-        
-      - name: "identify_columns"
-        prompt: "Now, determine which columns we need:"
-        
-      - name: "determine_joins"
-        prompt: "If multiple tables are needed, how should they be joined:"
-        
-      - name: "apply_filters"
-        prompt: "What filtering conditions are required:"
-        
-      - name: "add_aggregations"
-        prompt: "Does this require any aggregations or grouping:"
-        
-      - name: "construct_query"
-        prompt: "Finally, construct the complete SQL query:"
-        
-  # Tree of Thought (ToT)
-  tree_of_thought:
-    enabled: false
-    branching_factor: 3
-    max_depth: 3
-    evaluation_strategy: "vote"  # Options: "vote", "value"
+  # Memory paths
+  db_path: "./memory/reasoning_bank.db"
+  chromadb_path: "./memory/chromadb"
+  
+  # Learning parameters
+  consolidation_frequency: 50  # Consolidate every N queries
+  min_trajectories_for_distillation: 10
+  
+  # Test-time scaling
+  use_parallel_scaling_for_hard_queries: true
+  parallel_scaling_candidates: 5
+  sequential_scaling_max_iterations: 3
 
 # ============================================================================
-# Semantic Layer Enhancement
+# Experience Collection
 # ============================================================================
-semantic_layer:
+experience_collection:
   enabled: true
   
-  # Intent recognition
-  intent_recognition:
-    enabled: true
-    
-    # Question patterns
-    patterns:
-      count:
-        keywords: ["how many", "count", "number of", "total"]
-        sql_hints: ["COUNT(*)", "COUNT(DISTINCT)"]
-        
-      aggregation:
-        keywords: ["average", "mean", "sum", "total", "maximum", "minimum", "avg", "max", "min"]
-        sql_hints: ["AVG()", "SUM()", "MAX()", "MIN()"]
-        
-      grouping:
-        keywords: ["each", "every", "per", "by", "for each"]
-        sql_hints: ["GROUP BY"]
-        
-      ordering:
-        keywords: ["highest", "lowest", "top", "bottom", "most", "least", "first", "last"]
-        sql_hints: ["ORDER BY ... DESC", "ORDER BY ... ASC", "LIMIT"]
-        
-      filtering:
-        keywords: ["where", "that", "with", "having", "which"]
-        sql_hints: ["WHERE", "HAVING"]
-        
-      comparison:
-        keywords: ["more than", "less than", "greater than", "at least", "at most", "between"]
-        sql_hints: [">", "<", ">=", "<=", "BETWEEN"]
-        
-      temporal:
-        keywords: ["before", "after", "during", "since", "until", "between"]
-        sql_hints: ["WHERE date", "BETWEEN ... AND"]
-        
-      negation:
-        keywords: ["not", "without", "except", "excluding", "neither", "none"]
-        sql_hints: ["NOT", "NOT IN", "NOT EXISTS", "!="]
+  # Trajectory storage
+  max_trajectories_in_memory: 1000
+  persist_trajectories: true
   
-  # Schema understanding
-  schema_understanding:
-    enabled: true
-    
-    # Relationship inference
-    relationship_inference:
-      use_foreign_keys: true
-      infer_implicit_joins: true
-      detect_many_to_many: true
-      
-    # Column semantics
-    column_semantics:
-      detect_temporal_columns: true
-      detect_numeric_columns: true
-      detect_categorical_columns: true
-      detect_identifier_columns: true
-      
-    # Value understanding
-    value_understanding:
-      sample_values: false
-      value_range_analysis: false
+  # Trajectory metadata
+  collect_reasoning_steps: true
+  collect_intermediate_results: true
+  collect_error_messages: true
   
-  # Query enhancement
-  query_enhancement:
-    enabled: true
-    
-    enhancements:
-      # Add DISTINCT when needed
-      auto_distinct:
-        enabled: true
-        trigger_patterns: ["unique", "different", "distinct"]
-        
-      # Add LIMIT for top-k queries
-      auto_limit:
-        enabled: true
-        trigger_patterns: ["top", "first", "last"]
-        default_limit: 1
-        
-      # Add ORDER BY for superlatives
-      auto_order:
-        enabled: true
-        trigger_patterns: ["highest", "lowest", "maximum", "minimum"]
-        
-      # Add GROUP BY for aggregations
-      auto_group:
-        enabled: true
-        trigger_patterns: ["each", "every", "per"]
-        
-      # Implicit join detection
-      implicit_joins:
-        enabled: true
-        confidence_threshold: 0.8
+  # Filtering
+  min_generation_time: 0.0  # seconds
+  max_generation_time: 300.0  # seconds
 
 # ============================================================================
-# Decomposition Strategy
+# Self-Judgment
 # ============================================================================
-decomposition:
+self_judgment:
   enabled: true
   
-  # Complex query decomposition
-  complex_query:
+  # Success classification
+  success_thresholds:
+    complete_success: 1.0  # exact_match = 1.0
+    partial_success: 0.0   # execution_match but not exact
+  
+  # Insight extraction
+  extract_insights: true
+  min_insight_confidence: 0.6
+  
+  # Pattern recognition
+  pattern_detection:
     enabled: true
-    max_subqueries: 3
+    min_pattern_frequency: 3
     
-    # Decomposition triggers
-    triggers:
-      - "multiple aggregations"
-      - "nested conditions"
-      - "multiple table joins"
-      - "subqueries required"
-      
-  # Question decomposition
-  question_decomposition:
-    enabled: false
-    strategy: "recursive"  # Options: "recursive", "parallel"
-    max_depth: 2
+  # Component analysis
+  component_analysis:
+    enabled: true
+    analyze_select: true
+    analyze_from: true
+    analyze_where: true
+    analyze_groupby: true
+    analyze_orderby: true
+    analyze_having: true
+    analyze_keywords: true
 
 # ============================================================================
-# Self-Consistency
+# Strategy Distillation
 # ============================================================================
-self_consistency:
+strategy_distillation:
   enabled: true
   
-  # Generate multiple reasoning paths
-  num_paths: 3
-  temperature: 0.7
+  # Distillation parameters
+  min_sample_count: 5
+  min_success_rate: 0.6
   
-  # Voting strategy
-  voting:
-    strategy: "majority"  # Options: "majority", "weighted", "ensemble"
-    min_agreement: 0.6
-    
-  # Consistency checking
-  consistency_checks:
-    syntax_consistency: true
-    semantic_consistency: true
-    result_consistency: true
+  # Pattern extraction
+  pattern_extraction:
+    method: "frequency_based"  # Options: "frequency_based", "clustering", "llm"
+    min_pattern_frequency: 3
+    max_patterns_per_category: 10
+  
+  # Strategy refinement
+  refinement:
+    enabled: true
+    min_improvement: 0.05  # 5% improvement required
+  
+  # Strategy merging
+  merging:
+    enabled: true
+    similarity_threshold: 0.85
+  
+  # Strategy versioning
+  versioning:
+    enabled: true
+    keep_old_versions: true
+    max_versions_per_strategy: 5
 
 # ============================================================================
-# Retrieval-Augmented Generation (RAG)
+# Memory Storage
 # ============================================================================
-rag:
+memory_storage:
+  # SQLite configuration
+  sqlite:
+    db_path: "./memory/reasoning_bank.db"
+    connection_pool_size: 5
+    enable_wal: true  # Write-Ahead Logging for better concurrency
+  
+  # ChromaDB configuration
+  chromadb:
+    path: "./memory/chromadb"
+    collection_name: "reasoning_strategies"
+    embedding_model: "all-MiniLM-L6-v2"
+    distance_metric: "cosine"
+  
+  # Backup
+  backup:
+    enabled: true
+    backup_frequency: 100  # Every N strategy updates
+    backup_dir: "./memory/backups"
+    max_backups: 10
+
+# ============================================================================
+# Memory Retrieval
+# ============================================================================
+memory_retrieval:
   enabled: true
   
   # Retrieval strategy
-  retrieval:
-    strategy: "hybrid"  # Options: "semantic", "keyword", "hybrid"
-    num_examples: 5
-    
-    # Semantic retrieval
-    semantic:
-      embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
-      similarity_metric: "cosine"
-      min_similarity: 0.5
-      
-    # Keyword retrieval
-    keyword:
-      method: "bm25"
-      top_k: 10
-      
-    # Hybrid retrieval
-    hybrid:
-      semantic_weight: 0.7
-      keyword_weight: 0.3
-      
-  # Reranking
-  reranking:
+  strategy: "hybrid"  # Options: "semantic", "keyword", "hybrid"
+  
+  # Number of results
+  default_k: 5
+  max_k: 20
+  
+  # Relevance scoring weights
+  weights:
+    similarity: 0.35
+    intent_match: 0.25
+    performance: 0.25
+    recency: 0.15
+  
+  # Filtering
+  filters:
+    min_similarity: 0.3
+    min_success_rate: 0.5
+    only_active_strategies: true
+  
+  # Diversity
+  diversity:
     enabled: true
-    strategy: "cross_encoder"  # Options: "cross_encoder", "llm", "rule_based"
-    model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
-    
-  # Context augmentation
+    diversity_threshold: 0.85  # Don't return very similar strategies
+  
+  # Context enhancement
   context:
-    include_similar_questions: true
-    include_schema_context: true
-    include_execution_results: false
-    max_context_length: 2048
+    use_semantic_analysis: true
+    use_schema_context: true
+    use_difficulty_estimate: true
+    use_database_stats: false
 
 # ============================================================================
-# Error Detection and Recovery
+# Memory Consolidation
 # ============================================================================
-error_detection:
+memory_consolidation:
   enabled: true
   
-  # Syntax checking
-  syntax_check:
-    enabled: true
-    use_sql_parser: true
-    parser: "sqlparse"  # Options: "sqlparse", "sqlglot"
-    
-  # Semantic checking
-  semantic_check:
-    enabled: true
-    
-    checks:
-      - name: "table_existence"
-        enabled: true
-      - name: "column_existence"
-        enabled: true
-      - name: "join_validity"
-        enabled: true
-      - name: "type_compatibility"
-        enabled: true
-      - name: "aggregation_validity"
-        enabled: true
-        
-  # Self-correction
-  self_correction:
-    enabled: true
-    max_attempts: 3
-    
-    strategies:
-      - "regenerate_with_feedback"
-      - "modify_with_hints"
-      - "decompose_and_retry"
-
-# ============================================================================
-# Reasoning Verification
-# ============================================================================
-verification:
-  enabled: true
+  # Consolidation triggers
+  triggers:
+    min_applications: 10
+    performance_drop_threshold: 0.10  # 10% drop
+    refinement_frequency: 20  # applications
   
-  # SQL execution verification
-  execution:
-    enabled: true
-    timeout: 10.0
-    sandbox_mode: true
-    
-  # Result verification
-  result_check:
-    enabled: true
-    
-    checks:
-      - name: "non_empty_result"
-        critical: false
-      - name: "result_format"
-        critical: true
-      - name: "expected_columns"
-        critical: true
-        
-  # Explainability
-  explainability:
-    enabled: true
-    explain_query: true
-    explain_reasoning: true
+  # Decision thresholds
+  thresholds:
+    keep_threshold: 0.6  # success_rate >= 0.6
+    refine_threshold: 0.5  # 0.5 <= success_rate < 0.6
+    deprecate_threshold: 0.4  # success_rate < 0.4
+    delete_threshold: 0.2  # success_rate < 0.2
+    merge_similarity: 0.90
+    split_variance: 0.15
+  
+  # Evolution tracking
+  evolution:
+    track_evolution: true
+    max_evolution_history: 100
+  
+  # Strategy lifecycle
+  lifecycle:
+    min_sample_count: 5
+    deprecation_grace_period: 50  # applications before deletion
 
 # ============================================================================
-# Progressive Reasoning
+# Test-Time Scaling
 # ============================================================================
-progressive_reasoning:
+test_time_scaling:
   enabled: false
   
-  # Start simple, then enhance
-  progression:
-    - level: "basic"
-      description: "Generate basic SQL structure"
-      
-    - level: "enhanced"
-      description: "Add filtering and conditions"
-      
-    - level: "optimized"
-      description: "Add aggregations and grouping"
-      
-    - level: "refined"
-      description: "Optimize and finalize query"
+  # Parallel scaling
+  parallel:
+    enabled: true
+    max_workers: 5
+    timeout: 60.0  # seconds
+    
+    # Candidate generation
+    num_candidates: 5
+    temperature_range: [0.3, 0.9]
+    use_diverse_strategies: true
+    
+    # Selection
+    selection_method: "best_score"  # Options: "best_score", "voting", "ensemble"
+  
+  # Sequential scaling
+  sequential:
+    enabled: false
+    max_iterations: 3
+    improvement_threshold: 0.05
+    
+    # Refinement
+    use_feedback: true
+    feedback_type: "error_message"  # Options: "error_message", "execution_result"
+  
+  # Triggers for scaling
+  triggers:
+    use_for_hard_queries: true
+    use_when_no_strategies: true
+    use_when_low_confidence: true
+    confidence_threshold: 0.6
 
 # ============================================================================
-# Knowledge Integration
+# Integration with Semantic Layer
 # ============================================================================
-knowledge:
-  # SQL best practices
-  best_practices:
+semantic_integration:
+  enabled: true
+  
+  # Use semantic analysis in retrieval
+  use_in_retrieval: true
+  
+  # Use semantic complexity for scaling decisions
+  use_complexity_for_scaling: true
+  complexity_threshold: "hard"  # Use scaling for "hard" queries
+  
+  # Map semantic patterns to strategies
+  pattern_mapping:
     enabled: true
-    rules:
-      - "Use explicit JOIN syntax"
-      - "Avoid SELECT *"
-      - "Use appropriate indexes"
-      - "Consider NULL handling"
-      - "Use table aliases"
-      
-  # Database-specific knowledge
-  database_specific:
-    enabled: true
-    sqlite_optimizations: true
     
-  # Common patterns
-  pattern_library:
-    enabled: true
-    patterns:
-      - name: "top_n"
-        template: "SELECT ... ORDER BY ... LIMIT N"
-      - name: "count_by_group"
-        template: "SELECT ..., COUNT(*) FROM ... GROUP BY ..."
-      - name: "exists_check"
-        template: "SELECT ... WHERE EXISTS (SELECT ...)"
+  # Enhance strategies with semantic info
+  enhance_strategies: true
 
 # ============================================================================
-# Reasoning Metrics
+# Logging and Monitoring
 # ============================================================================
-metrics:
-  # Track reasoning quality
-  track_reasoning:
+logging:
+  enabled: true
+  
+  # Log levels
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  
+  # Log files
+  log_file: "./logs/reasoning_bank.log"
+  rotate_logs: true
+  max_log_size: 10485760  # 10 MB
+  backup_count: 5
+  
+  # What to log
+  log_trajectories: true
+  log_judgments: true
+  log_strategies: true
+  log_retrievals: true
+  log_consolidations: true
+  
+  # Performance monitoring
+  performance:
     enabled: true
+    log_timing: true
+    log_memory_usage: false
+
+# ============================================================================
+# Statistics and Reporting
+# ============================================================================
+statistics:
+  enabled: true
+  
+  # Track statistics
+  track_generation_time: true
+  track_strategy_usage: true
+  track_success_rates: true
+  track_consolidation_events: true
+  
+  # Periodic reporting
+  reporting:
+    enabled: true
+    report_frequency: 100  # Every N queries
+    report_file: "./results/reasoning_stats.json"
     
-    metrics:
-      - "reasoning_steps"
-      - "reasoning_tokens"
-      - "retrieval_quality"
-      - "consistency_score"
-      - "correction_attempts"
-      
-  # Intermediate results
-  save_intermediate:
+  # Metrics to track
+  metrics:
+    - trajectories_collected
+    - strategies_distilled
+    - strategies_used
+    - memory_consolidations
+    - test_time_scaling_used
+    - average_generation_time
+    - average_exact_match
+    - average_execution_match
+
+# ============================================================================
+# Experimental Features
+# ============================================================================
+experimental:
+  # LLM-based strategy distillation
+  llm_distillation:
+    enabled: false
+    model: "claude-sonnet-4-20250514"
+    max_tokens: 2000
+  
+  # Collaborative learning
+  collaborative_learning:
+    enabled: false
+    share_strategies: false
+    
+  # Online learning
+  online_learning:
     enabled: true
-    path: "output/reasoning"
+    update_frequency: 10  # Update strategies every N applications
+    
+  # Adaptive consolidation
+  adaptive_consolidation:
+    enabled: false
+    adjust_frequency_based_on_performance: false
