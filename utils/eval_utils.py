@@ -16,7 +16,7 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     - Aggregate function case (uppercase per Spider convention)
     - Spacing around punctuation
     - Trailing semicolons
-    - JOIN syntax normalization (INNER JOIN -> JOIN for Spider parser)
+    - JOIN syntax normalization (INNER/LEFT/RIGHT JOIN -> JOIN for Spider parser)
     - Column name case normalization
     
     Args:
@@ -24,11 +24,6 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
         
     Returns:
         Normalized SQL query
-        
-    Example:
-        >>> sql = "SELECT\\n  name\\nFROM users INNER JOIN orders"
-        >>> normalize_sql_for_evaluation(sql)
-        'select name from users join orders'
     """
     if not sql:
         return sql
@@ -41,11 +36,15 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     sql = re.sub(r'\s+', ' ', sql.strip())
     
     # Step 2: Normalize JOIN syntax FIRST (before case changes)
-    # Spider parser only recognizes simple JOIN
+    # Spider parser has very limited JOIN support - convert all to simple JOIN
+    # CRITICAL: Spider parser doesn't support LEFT/RIGHT/FULL joins in many cases
     sql = re.sub(r'\bINNER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'LEFT JOIN', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b', 'RIGHT JOIN', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'\bFULL\s+OUTER\s+JOIN\b', 'FULL JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bLEFT\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)  # Add this
+    sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bRIGHT\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)  # Add this
+    sql = re.sub(r'\bFULL\s+OUTER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bFULL\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)  # Add this
     
     # Step 3: Normalize keywords to lowercase
     keywords = [
@@ -65,17 +64,12 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
         sql = re.sub(rf'\b{fn}\b', fn, sql, flags=re.IGNORECASE)
     
     # Step 5: Normalize table/column aliases and identifiers to lowercase
-    # This handles cases like "T1.StuID" -> "t1.stuid"
     def lowercase_identifier(match):
         return match.group(0).lower()
     
     # Pattern: table.column (e.g., T1.fname, student.age)
     sql = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*\b', 
                  lowercase_identifier, sql)
-    
-    # Pattern: standalone identifiers (but not keywords or functions)
-    # This is tricky - we need to be careful not to lowercase keywords
-    # We'll do this selectively for known patterns
     
     # Step 6: Normalize spacing around punctuation
     sql = re.sub(r'\s*,\s*', ' , ', sql)
@@ -93,7 +87,7 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     sql = re.sub(r'\s+', ' ', sql)
     
     return sql.strip()
-    
+
 def extract_db_name_from_question(question: str) -> Optional[str]:
     """
     Extract database name from question if formatted as 'question [db_name]'

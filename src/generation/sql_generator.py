@@ -52,7 +52,7 @@ class SQLGenerator:
         """
         if not os.path.exists(db_path):
             logger.error(f"Database not found at {db_path}")
-            return "SELECT 1"
+            return ""  # Changed from "SELECT 1" to empty string
             
         # Load schema
         schema_str = self._get_schema_string(db_path)
@@ -64,11 +64,38 @@ class SQLGenerator:
         try:
             response = self.model.generate(prompt)
             sql = self._clean_sql(response)
+            
+            # Validate SQL
+            if not sql or sql.strip().upper() == "SELECT 1":
+                logger.error(f"Invalid SQL generated for: {question}")
+                return ""
+            
+            # Apply Spider normalization
+            sql = self._normalize_for_spider(sql)
+            
             return sql
         except Exception as e:
             logger.error(f"Generation failed: {e}")
-            return "SELECT 1"
-    
+            return ""  
+
+    def _normalize_for_spider(self, sql: str) -> str:
+        """Normalize SQL to Spider format before returning"""
+        if not sql:
+            return sql
+        
+        # Remove INNER/LEFT/RIGHT from JOIN
+        sql = re.sub(r'\bINNER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'LEFT JOIN', sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b', 'RIGHT JOIN', sql, flags=re.IGNORECASE)
+        
+        # Remove trailing semicolon
+        sql = sql.rstrip(';').strip()
+        
+        # Normalize whitespace
+        sql = ' '.join(sql.split())
+        
+        return sql
+
     def _get_schema_string(self, db_path: str) -> str:
         """From utils.sql_schema.Schema, create a string representation"""
         try:
@@ -90,20 +117,47 @@ class SQLGenerator:
             return ""
 
     def _construct_prompt(self, question: str, schema_str: str) -> str:
-        """Construct prompt for Text-to-SQL"""
-        return f"""You are an expert SQL assistant. generate a SQL query to answer the user's question based on the provided database schema.
+        """Construct prompt for Text-to-SQL with Spider format rules"""
+        return f"""You are an expert SQL assistant. Generate a SQL query following Spider benchmark format.
 
-Database Schema:
-{schema_str}
+    Database Schema:
+    {schema_str}
 
-Rules:
-1. Return ONLY the SQL query. No markdown, no explanation.
-2. Use standard SQLite syntax.
-3. If you cannot answer, return SELECT 1.
+    CRITICAL SPIDER FORMAT RULES (MUST FOLLOW):
+    1. Use ONLY 'JOIN' - NEVER use INNER JOIN, LEFT JOIN, RIGHT JOIN, or FULL JOIN
+    2. DO NOT use CASE statements (not supported by Spider parser)
+    3. Use WHERE with AND/OR instead of HAVING with CASE
+    4. Use simple aggregate functions: COUNT(*), SUM(), AVG(), MIN(), MAX()
+    5. Use lowercase for all identifiers (table names, columns, aliases)
+    6. Do not include trailing semicolons
+    7. For single table queries: NEVER use table aliases
+    8. For multi-table queries: Use simple lowercase aliases like t1, t2
+    9. For "NOT EXISTS" queries: Use NOT IN with subquery, NOT LEFT JOIN with IS NULL
+    10. For "EXISTS in both" queries: Use INTERSECT, NOT GROUP BY with HAVING COUNT
 
-Question: {question}
+    CORRECT PATTERNS:
+    ✓ NOT IN pattern: SELECT name FROM table1 WHERE id NOT IN (SELECT id FROM table2)
+    ✓ INTERSECT pattern: SELECT col FROM t1 WHERE x = 'a' INTERSECT SELECT col FROM t1 WHERE x = 'b'
+    ✓ Simple JOIN: SELECT t1.name FROM table1 AS t1 JOIN table2 AS t2 ON t1.id = t2.id
 
-SQL Query:"""
+    INCORRECT PATTERNS (will cause parse errors):
+    ✗ LEFT JOIN for NOT EXISTS: SELECT t1.name FROM table1 AS t1 LEFT JOIN table2 AS t2 ... WHERE t2.id IS NULL
+    ✗ GROUP BY HAVING COUNT for INTERSECT: SELECT ... GROUP BY ... HAVING COUNT(DISTINCT ...) = 2
+    ✗ CASE statements: SELECT CASE WHEN condition THEN 1 ELSE 0 END
+    ✗ Mixed case: SELECT T1.Name FROM Student AS T1
+
+    EXAMPLES:
+    Question: "Find stadiums that have never hosted a concert"
+    ✓ CORRECT: SELECT name FROM stadium WHERE stadium_id NOT IN (SELECT stadium_id FROM concert)
+    ✗ WRONG: SELECT t1.name FROM stadium AS t1 LEFT JOIN concert AS t2 ON t1.id = t2.id WHERE t2.id IS NULL
+
+    Question: "Find items in both categories A and B"  
+    ✓ CORRECT: SELECT item FROM items WHERE category = 'A' INTERSECT SELECT item FROM items WHERE category = 'B'
+    ✗ WRONG: SELECT item FROM items WHERE category IN ('A', 'B') GROUP BY item HAVING COUNT(DISTINCT category) = 2
+
+    Question: {question}
+
+    SQL Query:"""
 
     def _clean_sql(self, text: str) -> str:
         """Clean generated text to extract SQL and normalize whitespace"""
