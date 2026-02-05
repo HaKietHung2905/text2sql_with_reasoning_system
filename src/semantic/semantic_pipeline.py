@@ -29,6 +29,17 @@ except ImportError:
     import logging
     logger = logging.getLogger(__name__)
 
+def __init__(self):
+    self.analysis_cache = {} 
+
+def analyze(self, question: str) -> Dict:
+    cache_key = question.lower().strip()
+    if cache_key in self.analysis_cache:
+        return self.analysis_cache[cache_key]
+    
+    result = self._perform_analysis(question)
+    self.analysis_cache[cache_key] = result
+    return result
 
 class SemanticPipeline:
     """

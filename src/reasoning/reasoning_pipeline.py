@@ -205,6 +205,16 @@ class ReasoningBankPipeline:
             'generation_time': generation_time,
             'metadata': generation_metadata
         }
+    def _apply_strategies_to_prompt(
+        self,
+        base_prompt: str,
+        strategies: List[ReasoningStrategy]
+    ) -> str:
+        """Apply retrieved strategies to enhance prompt"""
+        enhanced_prompt = base_prompt
+        for strategy in strategies:
+            enhanced_prompt += f"\n\nStrategy: {strategy.name}\n{strategy.description}"
+        return enhanced_prompt
     
     def process_evaluation_result(
         self,
@@ -447,3 +457,14 @@ class ReasoningBankPipeline:
             json.dump(stats, f, indent=2)
         
         logger.info(f"Statistics saved to: {output_path}")
+
+    def _validate_evaluation_result(
+        self,
+        exact_match: float,
+        execution_match: bool
+    ) -> bool:
+        """Validate evaluation metrics are in expected ranges"""
+        if not (0.0 <= exact_match <= 1.0):
+            logger.warning(f"Invalid exact_match: {exact_match}")
+            return False
+        return True

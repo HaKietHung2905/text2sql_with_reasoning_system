@@ -104,14 +104,18 @@ SQL Query:"""
 
     def _clean_sql(self, text: str) -> str:
         """Clean generated text to extract SQL and normalize whitespace"""
-        # Remove markdown code blocks
-        text = text.replace("```sql", "").replace("```", "")
+        # Remove markdown code blocks (sql, sqlite, or just ```)
+        text = re.sub(r'```(?:sql|sqlite)?', '', text, flags=re.IGNORECASE)
+        text = text.replace('```', '')
         text = text.strip()
         
-        # Simple extraction if mixed content (though prompt says ONLY SQL)
-        # Maybe find first SELECT ...
+        # Extract SQL starting from SELECT (handles prefixes like "SQLite " or "ite ")
         match = re.search(r'(SELECT.*)', text, re.IGNORECASE | re.DOTALL)
         if match:
             text = match.group(1)
             
+        # Normalize whitespace
+        text = re.sub(r'\s+', ' ', text)
+        text = text.strip()
+        
         return text

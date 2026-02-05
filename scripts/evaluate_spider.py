@@ -6,6 +6,8 @@ import warnings
 import sys
 import os
 import argparse
+import json
+import re
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -15,7 +17,7 @@ load_dotenv()
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.evaluation.evaluator import evaluate
+from src.reasoning.evaluator import evaluate
 from src.evaluation.foreign_key_mapper import build_foreign_key_map_from_json
 from utils.logging_utils import get_logger
 
@@ -404,12 +406,6 @@ def print_configuration(args):
 
 def save_results(results: dict, output_path: str):
     """Save results to file"""
-    import json
-    
-    output_dir = os.path.dirname(output_path)
-    if output_dir:
-        os.makedirs(output_dir, exist_ok=True)
-    
     with open(output_path, 'w') as f:
         json.dump(results, f, indent=2)
 

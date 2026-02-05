@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 from pathlib import Path
 
-from utils.sql_schema import Schema, load_schema
+from utils.sql_schema import Schema, load_schema, load_full_db_context, format_db_context_for_prompt
 from src.data.sql_parser import parse_sql
 get_sql = parse_sql
 from src.evaluation.base_evaluator import BaseEvaluator
@@ -26,7 +26,10 @@ from src.evaluation.result_formatter import print_scores
 from utils.logging_utils import get_logger
 from utils.eval_utils import normalize_sql_for_evaluation
 
+
 logger = get_logger(__name__)
+
+# db_context moved inside generation loop
 
 # Import semantic pipeline
 try:
@@ -141,7 +144,7 @@ def evaluate(
         if db_id and db_id not in schema_mapping:
             db_path = os.path.join(db_dir, db_id, f"{db_id}.sqlite")
             if os.path.exists(db_path):
-                schema_mapping[db_id] = load_schema(db_id, db_dir)
+                schema_mapping[db_id] = load_schema(db_path)
     
     # === GENERATION OR LOAD PREDICTIONS ===
     plist = []
@@ -173,18 +176,28 @@ def evaluate(
             schema = schema_mapping.get(db_id)
             gold_sql = glist[i][0] if i < len(glist) else None
             
-            # Generate with full pipeline
-            result = generate_sql_with_pipeline(
-                question=question,
-                db_id=db_id,
-                db_path=db_path,
-                schema=schema,
-                gold_sql=gold_sql,
-                evaluator=evaluator,
-                semantic_pipeline=semantic_pipeline,
-                reasoning_pipeline=reasoning_pipeline
-            )
-            
+            try:
+                # Load context for this DB
+                db_context = load_full_db_context(db_id, db_dir)
+                
+                result = generate_sql_with_pipeline(  
+                    question=question,
+                    db_id=db_id,
+                    db_path=db_path,
+                    schema=db_context['schema'],
+                    gold_sql=gold_sql,
+                    evaluator=evaluator,
+                    semantic_pipeline=semantic_pipeline,
+                    reasoning_pipeline=reasoning_pipeline
+                )
+            except Exception as e:
+                logger.error(f"SQL generation failed: {e}")
+                # Fallback to baseline generation
+                result = {
+                    'sql': evaluator.generate_sql_from_question(question, db_path),
+                    'trajectory_id': None,
+                    'error': str(e)
+                }
             predictions.append([result['sql']])
         
         plist = [predictions]
@@ -197,7 +210,17 @@ def evaluate(
     
     # === EVALUATION ===
     evaluator_obj = BaseEvaluator()
-    scores = {'all': {'count': 0, 'exact': 0.0, 'exec': 0.0}}
+    levels = ['easy', 'medium', 'hard', 'extra', 'all']
+    partial_types = [
+        'select', 'select(no AGG)', 'where', 'where(no OP)',
+        'group(no Having)', 'group', 'order', 'and/or', 'IUEN', 'keywords'
+    ]
+    
+    scores = {}
+    for level in levels:
+        scores[level] = {'count': 0, 'exact': 0.0, 'exec': 0.0, 'partial': {}}
+        for type_ in partial_types:
+            scores[level]['partial'][type_] = {'acc': 0.0, 'rec': 0.0, 'f1': 0.0}
     detailed_results = []
     
     logger.info("📊 Evaluating predictions...")
@@ -223,10 +246,19 @@ def evaluate(
         )
         
         if res:
-            # Update scores
-            scores['all']['count'] += 1
-            scores['all']['exact'] += res['exact_score']
-            scores['all']['exec'] += res.get('exec_score', 0)
+            hardness = res.get('hardness', 'all')
+            for level in set(['all', hardness]):
+                if level in scores:
+                    scores[level]['count'] += 1
+                    scores[level]['exact'] += res['exact_score']
+                    scores[level]['exec'] += res.get('exec_score', 0)
+                    
+                    if 'partial_scores' in res and res['partial_scores']:
+                        for type_, p_score in res['partial_scores'].items():
+                            if type_ in scores[level]['partial']:
+                                scores[level]['partial'][type_]['acc'] += p_score['acc']
+                                scores[level]['partial'][type_]['rec'] += p_score['rec']
+                                scores[level]['partial'][type_]['f1'] += p_score['f1']
             
             # Process with ReasoningBank
             if reasoning_pipeline and 'trajectory_id' in res:
@@ -240,8 +272,8 @@ def evaluate(
             # Collect detailed results
             detailed_results.append({
                 'question': questions_data[i]['question'] if use_langchain else '',
-                'gold_sql': g_turn[0],
-                'predicted_sql': p_turn[0] if p_turn else '',
+                'gold_sql': res['entry']['goldSQL'],
+                'predicted_sql': res['entry']['predictSQL'],
                 'db_id': db_id,
                 'exact_match': bool(res['exact_score']),
                 'execution_match': res.get('exec_score', 0) > 0,
@@ -249,7 +281,15 @@ def evaluate(
             })
     
     # === FINALIZE ===
-    finalize_scores(scores, etype)
+    for level in levels:
+        count = scores[level]['count']
+        if count > 0:
+            scores[level]['exact'] /= count
+            scores[level]['exec'] /= count
+            for type_ in partial_types:
+                scores[level]['partial'][type_]['acc'] /= count
+                scores[level]['partial'][type_]['rec'] /= count
+                scores[level]['partial'][type_]['f1'] /= count
     
     # Consolidate learning if using ReasoningBank
     if reasoning_pipeline:
@@ -290,7 +330,7 @@ def evaluate(
         logger.error(f"Failed to save results: {e}")
     
     # Print summary
-    print_scores(results, etype)
+    print_scores(results['scores'], etype, include_turn_acc=False)
     
     return results
 
@@ -409,7 +449,7 @@ def evaluate_turn(
         return None
     
     db_path = os.path.join(db_dir, db_name, f"{db_name}.sqlite")
-    schema = load_schema(db_name, db_dir)
+    schema = load_schema(db_path)
     
     # Normalize queries
     p_str_normalized = normalize_sql_for_evaluation(p_str)
@@ -417,10 +457,12 @@ def evaluate_turn(
     
     # Parse SQL
     try:
-        g_sql = get_sql(schema, g_str_normalized)
-        p_sql = get_sql(schema, p_str_normalized)
+        g_sql = get_sql(g_str_normalized, schema)
+        p_sql = get_sql(p_str_normalized, schema)
     except Exception as e:
         logger.warning(f"Parse error: {e}")
+        logger.warning(f"Gold SQL: {g_str}")
+        logger.warning(f"Predict SQL: {p_str}")
         return {
             'exact_score': 0,
             'exec_score': 0,
@@ -429,6 +471,7 @@ def evaluate_turn(
     
     # Evaluate exact match
     exact_score = evaluator.eval_exact_match(p_sql, g_sql)
+    partial_scores = evaluator.partial_scores
     
     # Evaluate execution
     exec_score = 0
@@ -456,7 +499,8 @@ def evaluate_turn(
             'goldSQL': g_str,
             'predictSQL': p_str
         },
-        'component_scores': evaluator.get_component_scores() if hasattr(evaluator, 'get_component_scores') else None
+        'component_scores': evaluator.get_component_scores() if hasattr(evaluator, 'get_component_scores') else None,
+        'partial_scores': partial_scores
     }
 
 
@@ -506,3 +550,14 @@ def finalize_scores(scores: Dict, etype: str):
         scores['all']['exact'] /= count
         if etype in ['all', 'exec']:
             scores['all']['exec'] /= count
+
+def load_schema_for_db(db_id: str, db_dir: str) -> Dict:
+    """Load schema from database"""
+    schema_path = os.path.join(db_dir, db_id, f"{db_id}.sqlite")
+    schema = Schema(get_schema(schema_path))
+    return schema.schema
+
+def preprocess_question(question: str) -> str:
+    """Normalize and clean question"""
+    question = ' '.join(question.split())
+    return question

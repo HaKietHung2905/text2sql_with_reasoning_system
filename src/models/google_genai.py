@@ -24,13 +24,13 @@ class GoogleGenAI:
         api_key: Optional[str] = None,
         use_vertex_ai: bool = False,
         project_id: Optional[str] = None,
-        location: str = "us-central1"
+        location: str = "global"
     ):
         """
         Initialize the Gemini model
         
         Args:
-            model_name: Name of the Gemini model (e.g., 'gemini-1.5-flash', 'gemini-1.5-pro')
+            model_name: Name of the Gemini model (e.g., 'gemini-2.5-flash', 'gemini-2.5-pro')
             api_key: Google AI Studio API key (for AI Studio mode)
             use_vertex_ai: If True, use Vertex AI instead of AI Studio
             project_id: Google Cloud project ID (for Vertex AI mode)
