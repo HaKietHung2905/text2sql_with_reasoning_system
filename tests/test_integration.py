@@ -322,7 +322,7 @@ def test_end_to_end_integration():
         # Cleanup
         import shutil
         try:
-            # shutil.rmtree(test_dir)
+            shutil.rmtree(test_dir)
             logger.info("✓ End-to-end test cleanup completed")
         except:
             logger.warning("Could not clean up test directory")
