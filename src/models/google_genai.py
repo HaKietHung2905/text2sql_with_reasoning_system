@@ -3,9 +3,11 @@ Google Generative AI (Gemini) Model Wrapper
 Supports both Google AI Studio (API key) and Vertex AI (service account)
 """
 
-import os
 import time
+import os
 from typing import Optional, List
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from google.api_core import exceptions
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -17,7 +19,21 @@ class GoogleGenAI:
     1. Google AI Studio: Use API key (simpler, for development)
     2. Vertex AI: Use service account (production-grade)
     """
-    
+    @retry(
+        retry=retry_if_exception_type(exceptions.ResourceExhausted),
+        wait=wait_exponential(multiplier=1, min=4, max=60),
+        stop=stop_after_attempt(5)
+    )
+    def generate(self, prompt: str, **kwargs) -> str:
+        try:
+            response = self.client.generate_content(prompt, **kwargs)
+            return response.text
+        except exceptions.ResourceExhausted as e:
+            self.logger.error(f"Vertex AI rate limit hit: {e}")
+            raise  # Let tenacity handle the retry
+        except Exception as e:
+            self.logger.error(f"Vertex AI generation error: {e}")
+            raise
     def __init__(
         self, 
         model_name: str = "gemini-2.5-flash",

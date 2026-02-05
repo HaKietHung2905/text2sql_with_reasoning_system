@@ -68,11 +68,29 @@ class SQLValidationRules:
         "**Single Table Rule**: If query uses single table, do NOT use table alias, column alias, or field alias"
     ]
     
+    SPIDER_FORMAT_RULES = [
+        "**JOIN Syntax**: Use 'JOIN' instead of 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN'",
+        "**NO CASE Statements**: DO NOT use CASE statements (not supported by Spider parser)",
+        "**Simple Conditions**: Use WHERE with AND/OR instead of HAVING with CASE",
+        "**Simple Aggregates**: Use only COUNT(*), SUM(), AVG(), MIN(), MAX()",
+        "**Lowercase Identifiers**: Use lowercase for all table names and columns",
+        "**No Semicolons**: Do not include trailing semicolons in queries",
+    ]
+
     CRITICAL_RULES = [
         "For single table queries: NO table aliases, NO column aliases, NO field aliases",
         "Correct: SELECT column1, COUNT(*) FROM table GROUP BY column1",
         "Wrong: SELECT t.column1, COUNT(*) as cnt FROM table t GROUP BY t.column1"
+        "Use 'JOIN' instead of 'INNER JOIN', 'LEFT JOIN', or 'RIGHT JOIN'",
+        "DO NOT use CASE statements - use WHERE conditions with AND/OR instead",
+        "Use lowercase for all table names and column names",
+        "Do not include trailing semicolons",
     ]
+    
+    @classmethod
+    def get_spider_format_rules_text(cls) -> str:
+        """Get Spider-specific formatting rules"""
+        return "\n".join([f"{i+1}. {rule}" for i, rule in enumerate(cls.SPIDER_FORMAT_RULES)])
     
     @classmethod
     def get_rules_text(cls) -> str:
@@ -81,7 +99,7 @@ class SQLValidationRules:
     
     @classmethod
     def get_critical_rules_text(cls) -> str:
-        """Get formatted critical rules"""
+        """Get critical rules text"""
         return "\n".join([f"- {rule}" for rule in cls.CRITICAL_RULES])
 
 
@@ -344,13 +362,10 @@ class EnhancedPromptTemplate(BasePromptTemplate):
     
     TEMPLATE = """# Expert SQL Query Generator with Validation
 
-You are an elite SQL developer with deep knowledge of database systems and query optimization. Generate accurate, efficient, and syntactically correct SQL queries.
+You are an elite SQL developer with deep knowledge of database systems and query optimization. Generate accurate, efficient, and syntactically correct SQL queries following Spider benchmark format.
 
-## CORE CAPABILITIES:
-- Schema-aware query generation
-- Automatic error detection and correction
-- Optimization for performance
-- Support for complex queries (JOINs, subqueries, aggregations)
+## SPIDER FORMAT REQUIREMENTS:
+{spider_rules}
 
 ## VALIDATION RULES:
 {rules}
@@ -359,20 +374,6 @@ You are an elite SQL developer with deep knowledge of database systems and query
 {patterns}
 
 {examples}
-
-## QUERY CONSTRUCTION PROCESS:
-1. **Question Analysis**: Parse the natural language to identify intent
-2. **Schema Mapping**: Map question elements to database schema
-3. **Query Planning**: Design the optimal query structure
-4. **Validation**: Ensure all rules and constraints are satisfied
-5. **Generation**: Produce the final SQL query
-
-## ERROR PREVENTION:
-- Validate table and column existence before generation
-- Ensure proper JOIN syntax and conditions
-- Apply correct GROUP BY rules for aggregations
-- Use appropriate data types and operators
-- Handle edge cases (NULL values, empty results)
 
 ## CRITICAL RULES (MUST FOLLOW):
 {critical_rules}
@@ -392,12 +393,12 @@ SQL Query:"""
         return self.TEMPLATE.format(
             schema=schema,
             question=question,
+            spider_rules=self.rules.get_spider_format_rules_text(),
             rules=self.rules.get_rules_text(),
             patterns=self.patterns.get_patterns_text(),
             examples=self.examples.format_examples(max_examples),
             critical_rules=self.rules.get_critical_rules_text()
         )
-
 
 class StepByStepPromptTemplate(BasePromptTemplate):
     """Step-by-step analysis template"""

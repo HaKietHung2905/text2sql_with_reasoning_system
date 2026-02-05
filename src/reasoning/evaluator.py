@@ -10,6 +10,8 @@ This is the updated evaluator.py that integrates:
 import os
 import json
 import re
+import time
+from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
 from pathlib import Path
@@ -153,6 +155,9 @@ def evaluate(
         # Generate predictions with full pipeline
         logger.info("🤖 Generating SQL with enhanced pipeline...")
         
+        last_request_time = None
+        min_delay = 10.0 
+
         # Load questions
         with open(questions_file, 'r') as f:
             if questions_file.endswith('.json'):
@@ -170,6 +175,11 @@ def evaluate(
         # Generate with pipeline
         predictions = []
         for i, item in enumerate(tqdm(questions_data, desc="Generating SQL")):
+            if last_request_time:
+                elapsed = (datetime.now() - last_request_time).total_seconds()
+                if elapsed < min_delay:
+                    time.sleep(min_delay - elapsed)
+                    
             question = item['question']
             db_id = item['db_id']
             db_path = os.path.join(db_dir, db_id, f"{db_id}.sqlite")
@@ -199,7 +209,7 @@ def evaluate(
                     'error': str(e)
                 }
             predictions.append([result['sql']])
-        
+            last_request_time = datetime.now()
         plist = [predictions]
     
     elif predict:
@@ -561,3 +571,113 @@ def preprocess_question(question: str) -> str:
     """Normalize and clean question"""
     question = ' '.join(question.split())
     return question
+
+
+def _evaluate_single_query(
+    g_str: str,
+    p_str: str,
+    db_path: str,
+    schema: Schema,
+    evaluator: BaseEvaluator,
+    etype: str,
+    plug_value: bool,
+    keep_distinct: bool,
+    progress_bar: bool
+) -> Dict:
+    """Evaluate a single query pair"""
+    
+    # Import here to avoid circular dependency
+    from utils.eval_utils import normalize_sql_for_evaluation
+    
+    # Check for placeholder queries
+    if p_str.strip().upper() == "SELECT 1":
+        logger.warning(f"Placeholder query detected: {p_str}")
+        return {
+            'exact_score': 0,
+            'exec_score': 0,
+            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
+            'error': 'placeholder_query'
+        }
+    
+    # Normalize SQLs
+    g_str_normalized = normalize_sql_for_evaluation(g_str)
+    p_str_normalized = normalize_sql_for_evaluation(p_str)
+    
+    # Debug: Log normalized queries
+    logger.debug(f"Gold (normalized): {g_str_normalized}")
+    logger.debug(f"Pred (normalized): {p_str_normalized}")
+    
+    # Try to parse
+    try:
+        g_sql = get_sql(g_str_normalized, schema)
+        p_sql = get_sql(p_str_normalized, schema)
+    except Exception as e:
+        error_msg = str(e) if str(e) else "Unknown parse error"
+        
+        # Log the error with more context
+        logger.warning(f"Parse error: {error_msg}")
+        logger.debug(f"Gold SQL (original): {g_str}")
+        logger.debug(f"Gold SQL (normalized): {g_str_normalized}")
+        logger.debug(f"Predict SQL (original): {p_str}")
+        logger.debug(f"Predict SQL (normalized): {p_str_normalized}")
+        
+        # Check if it's a CASE statement issue
+        if 'case' in error_msg.lower() or 'case' in p_str_normalized.lower():
+            logger.info("Query contains CASE statement - not supported by Spider parser")
+        
+        # Still try execution match even if parsing fails
+        exec_score = 0
+        if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
+            try:
+                exec_score = eval_exec_match(
+                    db=db_path,
+                    p_str=p_str_normalized,
+                    g_str=g_str_normalized,
+                    plug_value=plug_value,
+                    keep_distinct=keep_distinct,
+                    progress_bar_for_each_datapoint=progress_bar
+                )
+                logger.info(f"Execution match score (despite parse error): {exec_score}")
+            except Exception as exec_e:
+                logger.warning(f"Execution evaluation also failed: {exec_e}")
+        
+        return {
+            'exact_score': 0,
+            'exec_score': exec_score,
+            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
+            'parse_error': error_msg
+        }
+    
+    # Evaluate exact match
+    exact_score = evaluator.eval_exact_match(p_sql, g_sql)
+    partial_scores = evaluator.partial_scores
+    
+    # Evaluate execution
+    exec_score = 0
+    if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
+        try:
+            exec_score = eval_exec_match(
+                db=db_path,
+                p_str=p_str_normalized,
+                g_str=g_str_normalized,
+                plug_value=plug_value,
+                keep_distinct=keep_distinct,
+                progress_bar_for_each_datapoint=progress_bar
+            )
+        except Exception as e:
+            logger.warning(f"Execution error: {e}")
+    
+    # Get hardness
+    hardness = eval_hardness(g_sql)
+    
+    return {
+        'exact_score': exact_score,
+        'exec_score': exec_score,
+        'hardness': hardness,
+        'entry': {
+            'goldSQL': g_str,
+            'predictSQL': p_str
+        },
+        'component_scores': evaluator.get_component_scores() if hasattr(evaluator, 'get_component_scores') else None,
+        'partial_scores': partial_scores
+    }

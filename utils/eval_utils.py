@@ -16,6 +16,8 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     - Aggregate function case (uppercase per Spider convention)
     - Spacing around punctuation
     - Trailing semicolons
+    - JOIN syntax normalization (INNER JOIN -> JOIN for Spider parser)
+    - Column name case normalization
     
     Args:
         sql: SQL query string
@@ -24,34 +26,58 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
         Normalized SQL query
         
     Example:
-        >>> sql = "SELECT\\n  name\\nFROM users"
+        >>> sql = "SELECT\\n  name\\nFROM users INNER JOIN orders"
         >>> normalize_sql_for_evaluation(sql)
-        'select name from users'
+        'select name from users join orders'
     """
     if not sql:
         return sql
     
+    # Step 0: Handle "SELECT 1" placeholder - return as-is to fail gracefully
+    if sql.strip().upper() == "SELECT 1":
+        return sql.strip().lower()
+    
     # Step 1: Remove newlines and normalize whitespace
     sql = re.sub(r'\s+', ' ', sql.strip())
     
-    # Step 2: Normalize keywords to lowercase
+    # Step 2: Normalize JOIN syntax FIRST (before case changes)
+    # Spider parser only recognizes simple JOIN
+    sql = re.sub(r'\bINNER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'LEFT JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b', 'RIGHT JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bFULL\s+OUTER\s+JOIN\b', 'FULL JOIN', sql, flags=re.IGNORECASE)
+    
+    # Step 3: Normalize keywords to lowercase
     keywords = [
         'SELECT', 'FROM', 'WHERE', 'GROUP', 'BY', 'HAVING', 
         'ORDER', 'LIMIT', 'JOIN', 'ON', 'AND', 'OR', 'IN',
         'NOT', 'LIKE', 'BETWEEN', 'DISTINCT', 'AS', 'UNION',
         'INTERSECT', 'EXCEPT', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
         'CROSS', 'NATURAL', 'EXISTS', 'ALL', 'ANY', 'CASE', 'WHEN',
-        'THEN', 'ELSE', 'END'
+        'THEN', 'ELSE', 'END', 'DESC', 'ASC', 'NULL', 'IS'
     ]
     for kw in keywords:
         sql = re.sub(rf'\b{kw}\b', kw.lower(), sql, flags=re.IGNORECASE)
     
-    # Step 3: Keep aggregate functions uppercase (Spider convention)
+    # Step 4: Keep aggregate functions uppercase (Spider convention)
     functions = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX']
     for fn in functions:
         sql = re.sub(rf'\b{fn}\b', fn, sql, flags=re.IGNORECASE)
     
-    # Step 4: Normalize spacing around punctuation
+    # Step 5: Normalize table/column aliases and identifiers to lowercase
+    # This handles cases like "T1.StuID" -> "t1.stuid"
+    def lowercase_identifier(match):
+        return match.group(0).lower()
+    
+    # Pattern: table.column (e.g., T1.fname, student.age)
+    sql = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*\b', 
+                 lowercase_identifier, sql)
+    
+    # Pattern: standalone identifiers (but not keywords or functions)
+    # This is tricky - we need to be careful not to lowercase keywords
+    # We'll do this selectively for known patterns
+    
+    # Step 6: Normalize spacing around punctuation
     sql = re.sub(r'\s*,\s*', ' , ', sql)
     sql = re.sub(r'\s*\(\s*', ' ( ', sql)
     sql = re.sub(r'\s*\)\s*', ' ) ', sql)
@@ -60,15 +86,14 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     sql = re.sub(r'\s*>\s*', ' > ', sql)
     sql = re.sub(r'\s*!\s*=\s*', ' != ', sql)
     
-    # Step 5: Remove trailing semicolon
+    # Step 7: Remove trailing semicolon
     sql = sql.rstrip(';').strip()
     
-    # Step 6: Final whitespace cleanup
+    # Step 8: Final whitespace cleanup
     sql = re.sub(r'\s+', ' ', sql)
     
     return sql.strip()
-
-
+    
 def extract_db_name_from_question(question: str) -> Optional[str]:
     """
     Extract database name from question if formatted as 'question [db_name]'

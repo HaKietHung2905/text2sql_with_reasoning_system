@@ -32,46 +32,63 @@ class SQLGenerator:
             self._setup_langchain()
     
     def _setup_langchain(self):
-        """Setup LangChain for SQL generation"""
-        load_dotenv()
-        api_key = os.getenv("GOOGLE_API_KEY")
+    """Setup LangChain for SQL generation"""
+    load_dotenv()
+    api_key = os.getenv("GOOGLE_API_KEY")
+    
+    if not api_key or api_key == "your-api-key-here":
+        logger.warning("Google API key not found")
+        return
+    
+    try:
+        llm = ChatGoogleGenerativeAI(
+            model="gemini-2.0-flash-exp",
+            temperature=0.1,
+            google_api_key=api_key,
+            convert_system_message_to_human=True
+        )
         
-        if not api_key or api_key == "your-api-key-here":
-            logger.warning("Google API key not found")
-            return
-        
-        try:
-            llm = ChatGoogleGenerativeAI(
-                model="gemini-2.0-flash-exp",
-                temperature=0.1,
-                google_api_key=api_key,
-                convert_system_message_to_human=True
-            )
-            
-            # Basic prompt template
-            system_prompt = """You are a SQL expert. Generate SIMPLE, correct SQL queries.
+        # Enhanced prompt template with Spider format rules
+        system_prompt = """You are a SQL expert. Generate SIMPLE, correct SQL queries following Spider benchmark format.
 
 Database Schema: {schema}
 
-CRITICAL RULES:
-1. NEVER use table aliases
-2. Use simplest possible query
-3. Column references: use column_name only for single table
-4. Column references: use Table.column_name for multiple tables
-5. Return ONLY the SQL query
+CRITICAL SPIDER FORMAT RULES (MUST FOLLOW):
+1. Use 'JOIN' instead of 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN'
+2. DO NOT use CASE statements (not supported by Spider parser)
+3. Use WHERE with AND/OR instead of HAVING with CASE
+4. Use simple aggregate functions: COUNT(*), SUM(), AVG(), MIN(), MAX()
+5. Use lowercase for all identifiers (table names, columns)
+6. Do not include trailing semicolons
+
+ADDITIONAL RULES:
+- For single table queries: NEVER use table aliases
+- For multi-table queries: ALWAYS use simple table aliases (t1, t2, etc.)
+- Use COUNT(*) for counting rows
+- Verify all table and column names exist in schema
+
+CORRECT EXAMPLES:
+✓ SELECT t1.fname FROM student AS t1 WHERE t1.age > 20
+✓ SELECT COUNT(*) FROM student
+✓ SELECT t1.name FROM stadium AS t1 JOIN concert AS t2 ON t1.stadium_id = t2.stadium_id
+
+INCORRECT EXAMPLES (will fail):
+✗ SELECT CASE WHEN condition THEN 1 ELSE 0 END
+✗ SELECT t1.fname FROM student AS t1 INNER JOIN pets AS t2
+✗ SELECT T1.Fname FROM Student AS T1
 
 Question: {question}
 
 SQL Query:"""
-            
-            prompt = ChatPromptTemplate.from_template(system_prompt)
-            self.generator = prompt | llm | StrOutputParser()
-            
-            logger.info("SQL generator initialized")
-            
-        except Exception as e:
-            logger.error(f"Failed to setup LangChain: {e}")
-            self.generator = None
+        
+        prompt = ChatPromptTemplate.from_template(system_prompt)
+        self.generator = prompt | llm | StrOutputParser()
+        
+        logger.info("SQL generator initialized with Spider format rules")
+        
+    except Exception as e:
+        logger.error(f"Failed to setup LangChain: {e}")
+        self.generator = None
     
     def generate(self, question: str, db_path: str) -> str:
         """

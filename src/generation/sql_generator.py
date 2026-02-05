@@ -4,6 +4,8 @@ SQL Generator using Google GenAI
 
 import os
 import re
+import time
+from datetime import datetime, timedelta
 from typing import Optional, Dict, List, Any
 from pathlib import Path
 
@@ -12,6 +14,7 @@ from utils.sql_schema import load_schema, Schema
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
+
 
 class SQLGenerator:
     """Generates SQL queries from natural language questions using Gemini"""
