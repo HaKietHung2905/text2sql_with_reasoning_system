@@ -1,0 +1,373 @@
+# Reasoning Configuration for Text-to-SQL System
+# Chain-of-Thought, semantic enhancement, and reasoning strategies
+
+# ============================================================================
+# Chain-of-Thought (CoT) Configuration
+# ============================================================================
+chain_of_thought:
+  enabled: true
+  
+  # CoT strategies
+  strategy: "multi_step"  # Options: "zero_shot", "few_shot", "multi_step", "tree_of_thought"
+  
+  # Zero-shot CoT
+  zero_shot:
+    trigger_phrase: "Let's think step by step."
+    max_reasoning_tokens: 500
+    
+  # Few-shot CoT with examples
+  few_shot:
+    num_examples: 3
+    example_selection: "similarity"  # Options: "similarity", "difficulty", "random"
+    include_reasoning: true
+    
+  # Multi-step reasoning
+  multi_step:
+    steps:
+      - name: "understand_question"
+        prompt: "First, let's understand what the question is asking:"
+        
+      - name: "identify_tables"
+        prompt: "Next, identify which tables are relevant:"
+        
+      - name: "identify_columns"
+        prompt: "Now, determine which columns we need:"
+        
+      - name: "determine_joins"
+        prompt: "If multiple tables are needed, how should they be joined:"
+        
+      - name: "apply_filters"
+        prompt: "What filtering conditions are required:"
+        
+      - name: "add_aggregations"
+        prompt: "Does this require any aggregations or grouping:"
+        
+      - name: "construct_query"
+        prompt: "Finally, construct the complete SQL query:"
+        
+  # Tree of Thought (ToT)
+  tree_of_thought:
+    enabled: false
+    branching_factor: 3
+    max_depth: 3
+    evaluation_strategy: "vote"  # Options: "vote", "value"
+
+# ============================================================================
+# Semantic Layer Enhancement
+# ============================================================================
+semantic_layer:
+  enabled: true
+  
+  # Intent recognition
+  intent_recognition:
+    enabled: true
+    
+    # Question patterns
+    patterns:
+      count:
+        keywords: ["how many", "count", "number of", "total"]
+        sql_hints: ["COUNT(*)", "COUNT(DISTINCT)"]
+        
+      aggregation:
+        keywords: ["average", "mean", "sum", "total", "maximum", "minimum", "avg", "max", "min"]
+        sql_hints: ["AVG()", "SUM()", "MAX()", "MIN()"]
+        
+      grouping:
+        keywords: ["each", "every", "per", "by", "for each"]
+        sql_hints: ["GROUP BY"]
+        
+      ordering:
+        keywords: ["highest", "lowest", "top", "bottom", "most", "least", "first", "last"]
+        sql_hints: ["ORDER BY ... DESC", "ORDER BY ... ASC", "LIMIT"]
+        
+      filtering:
+        keywords: ["where", "that", "with", "having", "which"]
+        sql_hints: ["WHERE", "HAVING"]
+        
+      comparison:
+        keywords: ["more than", "less than", "greater than", "at least", "at most", "between"]
+        sql_hints: [">", "<", ">=", "<=", "BETWEEN"]
+        
+      temporal:
+        keywords: ["before", "after", "during", "since", "until", "between"]
+        sql_hints: ["WHERE date", "BETWEEN ... AND"]
+        
+      negation:
+        keywords: ["not", "without", "except", "excluding", "neither", "none"]
+        sql_hints: ["NOT", "NOT IN", "NOT EXISTS", "!="]
+  
+  # Schema understanding
+  schema_understanding:
+    enabled: true
+    
+    # Relationship inference
+    relationship_inference:
+      use_foreign_keys: true
+      infer_implicit_joins: true
+      detect_many_to_many: true
+      
+    # Column semantics
+    column_semantics:
+      detect_temporal_columns: true
+      detect_numeric_columns: true
+      detect_categorical_columns: true
+      detect_identifier_columns: true
+      
+    # Value understanding
+    value_understanding:
+      sample_values: false
+      value_range_analysis: false
+  
+  # Query enhancement
+  query_enhancement:
+    enabled: true
+    
+    enhancements:
+      # Add DISTINCT when needed
+      auto_distinct:
+        enabled: true
+        trigger_patterns: ["unique", "different", "distinct"]
+        
+      # Add LIMIT for top-k queries
+      auto_limit:
+        enabled: true
+        trigger_patterns: ["top", "first", "last"]
+        default_limit: 1
+        
+      # Add ORDER BY for superlatives
+      auto_order:
+        enabled: true
+        trigger_patterns: ["highest", "lowest", "maximum", "minimum"]
+        
+      # Add GROUP BY for aggregations
+      auto_group:
+        enabled: true
+        trigger_patterns: ["each", "every", "per"]
+        
+      # Implicit join detection
+      implicit_joins:
+        enabled: true
+        confidence_threshold: 0.8
+
+# ============================================================================
+# Decomposition Strategy
+# ============================================================================
+decomposition:
+  enabled: true
+  
+  # Complex query decomposition
+  complex_query:
+    enabled: true
+    max_subqueries: 3
+    
+    # Decomposition triggers
+    triggers:
+      - "multiple aggregations"
+      - "nested conditions"
+      - "multiple table joins"
+      - "subqueries required"
+      
+  # Question decomposition
+  question_decomposition:
+    enabled: false
+    strategy: "recursive"  # Options: "recursive", "parallel"
+    max_depth: 2
+
+# ============================================================================
+# Self-Consistency
+# ============================================================================
+self_consistency:
+  enabled: true
+  
+  # Generate multiple reasoning paths
+  num_paths: 3
+  temperature: 0.7
+  
+  # Voting strategy
+  voting:
+    strategy: "majority"  # Options: "majority", "weighted", "ensemble"
+    min_agreement: 0.6
+    
+  # Consistency checking
+  consistency_checks:
+    syntax_consistency: true
+    semantic_consistency: true
+    result_consistency: true
+
+# ============================================================================
+# Retrieval-Augmented Generation (RAG)
+# ============================================================================
+rag:
+  enabled: true
+  
+  # Retrieval strategy
+  retrieval:
+    strategy: "hybrid"  # Options: "semantic", "keyword", "hybrid"
+    num_examples: 5
+    
+    # Semantic retrieval
+    semantic:
+      embedding_model: "sentence-transformers/all-MiniLM-L6-v2"
+      similarity_metric: "cosine"
+      min_similarity: 0.5
+      
+    # Keyword retrieval
+    keyword:
+      method: "bm25"
+      top_k: 10
+      
+    # Hybrid retrieval
+    hybrid:
+      semantic_weight: 0.7
+      keyword_weight: 0.3
+      
+  # Reranking
+  reranking:
+    enabled: true
+    strategy: "cross_encoder"  # Options: "cross_encoder", "llm", "rule_based"
+    model: "cross-encoder/ms-marco-MiniLM-L-6-v2"
+    
+  # Context augmentation
+  context:
+    include_similar_questions: true
+    include_schema_context: true
+    include_execution_results: false
+    max_context_length: 2048
+
+# ============================================================================
+# Error Detection and Recovery
+# ============================================================================
+error_detection:
+  enabled: true
+  
+  # Syntax checking
+  syntax_check:
+    enabled: true
+    use_sql_parser: true
+    parser: "sqlparse"  # Options: "sqlparse", "sqlglot"
+    
+  # Semantic checking
+  semantic_check:
+    enabled: true
+    
+    checks:
+      - name: "table_existence"
+        enabled: true
+      - name: "column_existence"
+        enabled: true
+      - name: "join_validity"
+        enabled: true
+      - name: "type_compatibility"
+        enabled: true
+      - name: "aggregation_validity"
+        enabled: true
+        
+  # Self-correction
+  self_correction:
+    enabled: true
+    max_attempts: 3
+    
+    strategies:
+      - "regenerate_with_feedback"
+      - "modify_with_hints"
+      - "decompose_and_retry"
+
+# ============================================================================
+# Reasoning Verification
+# ============================================================================
+verification:
+  enabled: true
+  
+  # SQL execution verification
+  execution:
+    enabled: true
+    timeout: 10.0
+    sandbox_mode: true
+    
+  # Result verification
+  result_check:
+    enabled: true
+    
+    checks:
+      - name: "non_empty_result"
+        critical: false
+      - name: "result_format"
+        critical: true
+      - name: "expected_columns"
+        critical: true
+        
+  # Explainability
+  explainability:
+    enabled: true
+    explain_query: true
+    explain_reasoning: true
+
+# ============================================================================
+# Progressive Reasoning
+# ============================================================================
+progressive_reasoning:
+  enabled: false
+  
+  # Start simple, then enhance
+  progression:
+    - level: "basic"
+      description: "Generate basic SQL structure"
+      
+    - level: "enhanced"
+      description: "Add filtering and conditions"
+      
+    - level: "optimized"
+      description: "Add aggregations and grouping"
+      
+    - level: "refined"
+      description: "Optimize and finalize query"
+
+# ============================================================================
+# Knowledge Integration
+# ============================================================================
+knowledge:
+  # SQL best practices
+  best_practices:
+    enabled: true
+    rules:
+      - "Use explicit JOIN syntax"
+      - "Avoid SELECT *"
+      - "Use appropriate indexes"
+      - "Consider NULL handling"
+      - "Use table aliases"
+      
+  # Database-specific knowledge
+  database_specific:
+    enabled: true
+    sqlite_optimizations: true
+    
+  # Common patterns
+  pattern_library:
+    enabled: true
+    patterns:
+      - name: "top_n"
+        template: "SELECT ... ORDER BY ... LIMIT N"
+      - name: "count_by_group"
+        template: "SELECT ..., COUNT(*) FROM ... GROUP BY ..."
+      - name: "exists_check"
+        template: "SELECT ... WHERE EXISTS (SELECT ...)"
+
+# ============================================================================
+# Reasoning Metrics
+# ============================================================================
+metrics:
+  # Track reasoning quality
+  track_reasoning:
+    enabled: true
+    
+    metrics:
+      - "reasoning_steps"
+      - "reasoning_tokens"
+      - "retrieval_quality"
+      - "consistency_score"
+      - "correction_attempts"
+      
+  # Intermediate results
+  save_intermediate:
+    enabled: true
+    path: "output/reasoning"

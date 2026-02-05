@@ -1,0 +1,226 @@
+# Base Configuration for Text-to-SQL Evaluation System
+# This file contains core settings shared across all configurations
+
+# ============================================================================
+# Project Information
+# ============================================================================
+project:
+  name: "text-to-sql-eval"
+  version: "0.1.0"
+  description: "Text-to-SQL evaluation system with RAG and semantic enhancement"
+  author: "Hung"
+  
+# ============================================================================
+# Environment Settings
+# ============================================================================
+environment:
+  random_seed: 42
+  deterministic: true
+  cuda_available: false
+  device: "cpu"
+  num_workers: 4
+  
+# ============================================================================
+# Data Paths (Relative to project root)
+# ============================================================================
+paths:
+  # Spider dataset directories
+  data_root: "data"
+  spider_dir: "data/spider"
+  database_dir: "data/spider/database"
+  
+  # Spider data files
+  train_spider: "data/spider/train_spider.json"
+  train_others: "data/spider/train_others.json"
+  dev: "data/spider/dev.json"
+  tables: "data/raw/spider/tables.json"
+  
+  # Output directories
+  output_root: "output"
+  results_dir: "output/results"
+  predictions_dir: "output/predictions"
+  logs_dir: "logs"
+  cache_dir: "cache"
+  checkpoints_dir: "checkpoints"
+  
+  # Visualization output
+  figures_dir: "output/figures"
+  reports_dir: "output/reports"
+
+# ============================================================================
+# Spider Dataset Configuration
+# ============================================================================
+spider:
+  # Dataset splits
+  splits:
+    train: true
+    dev: true
+    test: false
+  
+  # Difficulty levels
+  difficulty_levels:
+    - "easy"
+    - "medium" 
+    - "hard"
+    - "extra"
+  
+  # Database filtering
+  databases:
+    include_all: true
+    exclude_list: []
+    include_list: []
+  
+  # Question filtering
+  questions:
+    max_length: 512
+    min_length: 5
+    filter_duplicates: true
+
+# ============================================================================
+# Logging Configuration
+# ============================================================================
+logging:
+  version: 1
+  disable_existing_loggers: false
+  
+  # Log levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+  level: "INFO"
+  
+  # Format
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  date_format: "%Y-%m-%d %H:%M:%S"
+  
+  # Output
+  console:
+    enabled: true
+    level: "INFO"
+    colored: true
+    
+  file:
+    enabled: true
+    level: "DEBUG"
+    path: "logs/app.log"
+    max_bytes: 10485760  # 10MB
+    backup_count: 5
+    
+  # Module-specific levels
+  loggers:
+    text_to_sql: "DEBUG"
+    chromadb: "WARNING"
+    httpx: "WARNING"
+    openai: "INFO"
+    anthropic: "INFO"
+
+# ============================================================================
+# Performance Settings
+# ============================================================================
+performance:
+  # Parallel processing
+  multiprocessing:
+    enabled: true
+    num_processes: 4
+    chunk_size: 10
+    
+  # Caching
+  cache:
+    enabled: true
+    backend: "disk"  # Options: "disk", "memory", "redis"
+    ttl: 86400  # 24 hours
+    max_size_mb: 1024
+    
+  # Memory management
+  memory:
+    max_memory_gb: 8
+    garbage_collection: true
+    clear_cache_threshold: 0.9
+
+# ============================================================================
+# Evaluation Metrics
+# ============================================================================
+metrics:
+  # Primary metrics
+  primary:
+    - "exact_match"
+    - "execution_accuracy"
+    
+  # Additional metrics
+  additional:
+    - "component_match"
+    - "partial_match"
+    - "error_rate"
+    
+  # Metric computation settings
+  computation:
+    case_sensitive: false
+    normalize_sql: true
+    timeout_seconds: 10.0
+    
+  # Spider official evaluator
+  spider_evaluator:
+    use_official: true
+    component_matching: true
+
+# ============================================================================
+# Reproducibility
+# ============================================================================
+reproducibility:
+  seed_everything: true
+  deterministic_algorithms: true
+  benchmark_mode: false
+  save_config: true
+  save_environment: true
+  git_commit_tracking: true
+
+# ============================================================================
+# API Rate Limiting
+# ============================================================================
+rate_limiting:
+  enabled: true
+  requests_per_minute: 60
+  tokens_per_minute: 150000
+  retry_on_rate_limit: true
+  max_retries: 3
+  exponential_backoff: true
+
+# ============================================================================
+# Error Handling
+# ============================================================================
+error_handling:
+  continue_on_error: true
+  log_errors: true
+  save_error_reports: true
+  error_report_path: "output/errors"
+  raise_on_critical: true
+  max_consecutive_errors: 10
+
+# ============================================================================
+# Validation Settings
+# ============================================================================
+validation:
+  validate_config: true
+  validate_paths: true
+  validate_schema: true
+  strict_mode: false
+  
+# ============================================================================
+# Experiment Tracking
+# ============================================================================
+experiment:
+  tracking_enabled: true
+  experiment_name: "text2sql_baseline"
+  run_id: null  # Auto-generated if null
+  tags: []
+  notes: ""
+  
+  # What to save
+  save:
+    config: true
+    predictions: true
+    intermediate_results: true
+    metrics: true
+    logs: true
+    
+  # Versioning
+  versioning:
+    auto_version: true
+    version_format: "v{major}.{minor}.{patch}"

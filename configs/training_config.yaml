@@ -1,0 +1,453 @@
+# Training Configuration for Text-to-SQL System
+# Comprehensive settings for model training and fine-tuning
+
+# ============================================================================
+# Training Strategy
+# ============================================================================
+training:
+  # Training mode
+  mode: "fine_tuning"  # Options: "fine_tuning", "prompt_tuning", "few_shot", "zero_shot"
+  
+  # Training objective
+  objective: "causal_language_modeling"  # Options: "causal_lm", "seq2seq", "masked_lm"
+  
+  # Training phases
+  phases:
+    - name: "warmup"
+      duration: 0.05  # 5% of total steps
+      learning_rate: 1.0e-6
+      
+    - name: "main_training"
+      duration: 0.85  # 85% of total steps
+      learning_rate: 2.0e-4
+      
+    - name: "cooldown"
+      duration: 0.10  # 10% of total steps
+      learning_rate: 1.0e-6
+
+# ============================================================================
+# Hyperparameters
+# ============================================================================
+hyperparameters:
+  # Batch sizes
+  batch_size:
+    train: 4
+    eval: 8
+    test: 8
+    
+  # Gradient accumulation
+  gradient_accumulation_steps: 4
+  effective_batch_size: 16  # batch_size * gradient_accumulation_steps
+  
+  # Learning rates
+  learning_rate:
+    initial: 2.0e-4
+    min: 1.0e-6
+    max: 5.0e-4
+    
+  # Optimization
+  optimizer:
+    name: "adamw"
+    betas: [0.9, 0.999]
+    epsilon: 1.0e-8
+    weight_decay: 0.01
+    
+  # Learning rate schedule
+  lr_scheduler:
+    type: "cosine_with_restarts"  # Options: "linear", "cosine", "constant", "polynomial"
+    warmup_steps: 500
+    warmup_ratio: 0.03
+    num_cycles: 1
+    
+  # Regularization
+  regularization:
+    weight_decay: 0.01
+    dropout: 0.1
+    attention_dropout: 0.1
+    hidden_dropout: 0.1
+    label_smoothing: 0.0
+    
+  # Gradient clipping
+  gradient_clipping:
+    enabled: true
+    max_norm: 1.0
+    norm_type: 2
+
+# ============================================================================
+# Training Duration
+# ============================================================================
+duration:
+  # Epochs
+  num_epochs: 3
+  max_steps: null  # If null, determined by num_epochs
+  
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 3
+    min_delta: 0.001
+    metric: "eval_exact_match"
+    mode: "max"  # Options: "min", "max"
+    restore_best_weights: true
+
+# ============================================================================
+# Data Configuration
+# ============================================================================
+data:
+  # Data loading
+  loading:
+    num_workers: 4
+    pin_memory: true
+    persistent_workers: true
+    prefetch_factor: 2
+    
+  # Data preprocessing
+  preprocessing:
+    lowercase: false
+    remove_punctuation: false
+    normalize_whitespace: true
+    max_length: 2048
+    truncation: true
+    padding: "max_length"
+    
+  # Data augmentation
+  augmentation:
+    enabled: true
+    probability: 0.2
+    
+    techniques:
+      - name: "question_paraphrase"
+        enabled: true
+        probability: 0.3
+        
+      - name: "schema_shuffle"
+        enabled: true
+        probability: 0.2
+        
+      - name: "synonym_replacement"
+        enabled: true
+        probability: 0.1
+        num_replacements: 2
+        
+      - name: "sql_reformat"
+        enabled: true
+        probability: 0.2
+        
+  # Class balancing
+  balancing:
+    enabled: true
+    strategy: "oversample"  # Options: "oversample", "undersample", "weighted"
+    
+  # Train/val split
+  split:
+    train_ratio: 0.9
+    val_ratio: 0.1
+    stratify_by: "difficulty"
+    shuffle: true
+    seed: 42
+
+# ============================================================================
+# Model Configuration
+# ============================================================================
+model:
+  # Model architecture
+  architecture: "transformer"
+  
+  # Model size
+  hidden_size: 768
+  num_layers: 12
+  num_attention_heads: 12
+  intermediate_size: 3072
+  
+  # Position embeddings
+  max_position_embeddings: 2048
+  position_embedding_type: "absolute"  # Options: "absolute", "relative", "rotary"
+  
+  # Activation function
+  hidden_act: "gelu"
+  
+  # Normalization
+  layer_norm_eps: 1.0e-12
+  
+  # Initialization
+  initializer_range: 0.02
+
+# ============================================================================
+# Tokenization
+# ============================================================================
+tokenization:
+  tokenizer: "gpt2"  # Base tokenizer
+  vocab_size: 50257
+  
+  # Special tokens
+  special_tokens:
+    pad_token: "<|pad|>"
+    eos_token: "<|endoftext|>"
+    bos_token: "<|startoftext|>"
+    unk_token: "<|unk|>"
+    
+  # SQL-specific tokens (optional)
+  add_sql_tokens: true
+  sql_tokens:
+    - "SELECT"
+    - "FROM"
+    - "WHERE"
+    - "JOIN"
+    - "GROUP BY"
+    - "ORDER BY"
+    - "HAVING"
+    - "LIMIT"
+
+# ============================================================================
+# Mixed Precision Training
+# ============================================================================
+mixed_precision:
+  enabled: true
+  precision: "bf16"  # Options: "fp16", "bf16", "fp32"
+  
+  # Automatic Mixed Precision (AMP)
+  amp:
+    enabled: true
+    opt_level: "O1"  # Options: "O0", "O1", "O2", "O3"
+    loss_scale: "dynamic"
+    
+  # Gradient scaling
+  gradient_scaling:
+    enabled: true
+    init_scale: 65536
+    growth_factor: 2.0
+    backoff_factor: 0.5
+    growth_interval: 2000
+
+# ============================================================================
+# Distributed Training
+# ============================================================================
+distributed:
+  enabled: false
+  
+  # Strategy
+  strategy: "ddp"  # Options: "ddp", "fsdp", "deepspeed", "horovod"
+  
+  # DDP settings
+  ddp:
+    find_unused_parameters: false
+    gradient_as_bucket_view: true
+    static_graph: false
+    
+  # FSDP settings
+  fsdp:
+    sharding_strategy: "FULL_SHARD"  # Options: "NO_SHARD", "SHARD_GRAD_OP", "FULL_SHARD"
+    cpu_offload: false
+    
+  # DeepSpeed settings
+  deepspeed:
+    config_file: "configs/deepspeed_config.json"
+    zero_stage: 2  # Options: 0, 1, 2, 3
+    
+  # Multi-node settings
+  multi_node:
+    num_nodes: 1
+    num_gpus_per_node: 1
+    node_rank: 0
+    master_addr: "localhost"
+    master_port: 12355
+
+# ============================================================================
+# Checkpointing
+# ============================================================================
+checkpointing:
+  # Save strategy
+  save_strategy: "steps"  # Options: "steps", "epoch", "best"
+  save_steps: 500
+  save_total_limit: 3
+  
+  # Checkpoint directory
+  output_dir: "checkpoints"
+  checkpoint_dir: "checkpoints/training"
+  
+  # What to save
+  save_model: true
+  save_optimizer: true
+  save_scheduler: true
+  save_random_states: true
+  
+  # Resume training
+  resume_from_checkpoint: null
+  auto_find_checkpoint: true
+  
+  # Checkpoint format
+  save_safetensors: true
+  
+  # Best model tracking
+  metric_for_best_model: "eval_exact_match"
+  greater_is_better: true
+  save_best_model: true
+
+# ============================================================================
+# Evaluation
+# ============================================================================
+evaluation:
+  # Evaluation strategy
+  strategy: "steps"  # Options: "steps", "epoch", "no"
+  eval_steps: 500
+  eval_delay: 0
+  
+  # Evaluation metrics
+  metrics:
+    - "exact_match"
+    - "execution_accuracy"
+    - "component_match"
+    - "bleu"
+    - "rouge-l"
+    
+  # Evaluation during training
+  eval_on_start: false
+  eval_accumulation_steps: 1
+  
+  # Prediction settings
+  prediction:
+    max_length: 512
+    num_beams: 1
+    do_sample: false
+    temperature: 0.1
+    top_p: 0.95
+
+# ============================================================================
+# Logging and Monitoring
+# ============================================================================
+logging:
+  # Logging frequency
+  logging_steps: 10
+  logging_first_step: true
+  
+  # What to log
+  log_level: "INFO"
+  log_on_each_node: false
+  
+  # Training metrics
+  log_metrics:
+    - "loss"
+    - "learning_rate"
+    - "epoch"
+    - "grad_norm"
+    - "step"
+    
+  # Validation metrics
+  log_eval_metrics:
+    - "eval_loss"
+    - "eval_exact_match"
+    - "eval_execution_accuracy"
+    
+  # Resource usage
+  log_resources:
+    enabled: true
+    log_gpu_memory: true
+    log_cpu_percent: true
+
+# ============================================================================
+# Experiment Tracking
+# ============================================================================
+tracking:
+  # Tracking backend
+  backends:
+    - "tensorboard"
+    - "wandb"
+    
+  # TensorBoard
+  tensorboard:
+    enabled: true
+    log_dir: "runs"
+    
+  # Weights & Biases
+  wandb:
+    enabled: false
+    project: "text2sql-training"
+    entity: null
+    name: null  # Auto-generated if null
+    tags: ["training", "spider"]
+    notes: ""
+    
+    # What to log
+    log:
+      gradients: true
+      parameters: true
+      model_topology: true
+      
+  # MLflow
+  mlflow:
+    enabled: false
+    tracking_uri: "http://localhost:5000"
+    experiment_name: "text2sql-training"
+
+# ============================================================================
+# Memory Optimization
+# ============================================================================
+memory_optimization:
+  # Gradient checkpointing
+  gradient_checkpointing: true
+  
+  # CPU offloading
+  cpu_offload: false
+  offload_optimizer: false
+  offload_gradients: false
+  
+  # Activation checkpointing
+  activation_checkpointing:
+    enabled: false
+    checkpoint_every_n_layers: 1
+    
+  # Memory efficient attention
+  flash_attention: false
+  memory_efficient_attention: false
+
+# ============================================================================
+# Debugging and Profiling
+# ============================================================================
+debugging:
+  # Debug mode
+  debug: false
+  
+  # Detect anomalies
+  detect_anomaly: false
+  
+  # Profiling
+  profile:
+    enabled: false
+    profile_memory: true
+    with_stack: true
+    record_shapes: true
+    
+  # Overflow detection
+  detect_overflow: false
+  
+  # Gradient checking
+  check_gradients: false
+
+# ============================================================================
+# Post-Training
+# ============================================================================
+post_training:
+  # Model pruning
+  pruning:
+    enabled: false
+    method: "magnitude"
+    sparsity: 0.3
+    
+  # Quantization
+  quantization:
+    enabled: false
+    method: "dynamic"  # Options: "dynamic", "static", "qat"
+    dtype: "int8"
+    
+  # Knowledge distillation
+  distillation:
+    enabled: false
+    teacher_model: null
+    temperature: 2.0
+    alpha: 0.5
+    
+  # Model export
+  export:
+    enabled: true
+    formats: ["pytorch", "onnx"]
+    optimize_for_inference: true

@@ -1,0 +1,335 @@
+# LoRA Fine-tuning Configuration for Text-to-SQL
+# Low-Rank Adaptation settings for efficient model fine-tuning
+
+# ============================================================================
+# LoRA Architecture Configuration
+# ============================================================================
+lora:
+  # LoRA hyperparameters
+  rank: 8  # Rank of the low-rank matrices (r in paper)
+  alpha: 16  # Scaling factor (alpha in paper)
+  dropout: 0.1  # Dropout probability for LoRA layers
+  
+  # Target modules for LoRA adaptation
+  target_modules:
+    - "q_proj"  # Query projection
+    - "v_proj"  # Value projection
+    - "k_proj"  # Key projection (optional)
+    - "o_proj"  # Output projection (optional)
+    - "gate_proj"  # Gate projection for MLP
+    - "up_proj"  # Up projection for MLP
+    - "down_proj"  # Down projection for MLP
+    
+  # Module configuration
+  modules:
+    # Apply LoRA to all attention layers
+    attention:
+      enabled: true
+      rank: 8
+      alpha: 16
+      
+    # Apply LoRA to feed-forward layers
+    feed_forward:
+      enabled: true
+      rank: 4
+      alpha: 8
+      
+    # Layer-specific configuration (optional)
+    layer_specific:
+      enabled: false
+      configs: []
+      
+  # LoRA variants
+  variant: "lora"  # Options: "lora", "adalora", "qlora", "vera"
+  
+  # Task-specific adaptation
+  task_type: "CAUSAL_LM"  # Options: "CAUSAL_LM", "SEQ_2_SEQ_LM", "SEQ_CLS"
+
+# ============================================================================
+# Base Model Configuration
+# ============================================================================
+base_model:
+  # Model selection
+  name: "codellama/CodeLlama-7b-hf"  # Base model to fine-tune
+  
+  # Alternative models
+  alternatives:
+    - "meta-llama/Llama-2-7b-hf"
+    - "WizardLM/WizardCoder-Python-7B-V1.0"
+    - "defog/sqlcoder-7b"
+    - "NumbersStation/nsql-llama-2-7B"
+    
+  # Model loading
+  load_in_8bit: false
+  load_in_4bit: true  # QLoRA: quantized base model
+  device_map: "auto"
+  torch_dtype: "auto"  # Options: "auto", "float16", "bfloat16", "float32"
+  
+  # Quantization config (for QLoRA)
+  quantization:
+    load_in_4bit: true
+    bnb_4bit_compute_dtype: "float16"
+    bnb_4bit_quant_type: "nf4"  # Options: "nf4", "fp4"
+    bnb_4bit_use_double_quant: true
+
+# ============================================================================
+# Training Configuration
+# ============================================================================
+training:
+  # Training hyperparameters
+  num_epochs: 3
+  batch_size: 4
+  gradient_accumulation_steps: 4
+  learning_rate: 2.0e-4
+  weight_decay: 0.01
+  warmup_ratio: 0.03
+  max_grad_norm: 1.0
+  
+  # Optimizer
+  optimizer:
+    name: "adamw_torch"  # Options: "adamw_torch", "adamw_8bit", "sgd", "adafactor"
+    betas: [0.9, 0.999]
+    epsilon: 1.0e-8
+    
+  # Learning rate scheduler
+  lr_scheduler:
+    type: "cosine"  # Options: "linear", "cosine", "constant", "polynomial"
+    num_warmup_steps: 100
+    
+  # Training settings
+  fp16: false
+  bf16: true  # Use bfloat16 if supported
+  gradient_checkpointing: true
+  logging_steps: 10
+  save_steps: 500
+  eval_steps: 500
+  save_total_limit: 3
+  
+  # Early stopping
+  early_stopping:
+    enabled: true
+    patience: 3
+    metric: "eval_loss"
+    mode: "min"
+    
+  # DataLoader settings
+  dataloader:
+    num_workers: 4
+    pin_memory: true
+    prefetch_factor: 2
+
+# ============================================================================
+# Dataset Configuration
+# ============================================================================
+dataset:
+  # Data sources
+  train_data: "data/spider/train_spider.json"
+  eval_data: "data/spider/dev.json"
+  
+  # Data preprocessing
+  preprocessing:
+    max_length: 2048
+    padding: "max_length"  # Options: "max_length", "longest", "do_not_pad"
+    truncation: true
+    
+  # Prompt template
+  prompt_template: |
+    ### Instruction:
+    Generate a SQL query to answer the following question using the provided database schema.
+    
+    ### Database Schema:
+    {schema}
+    
+    ### Question:
+    {question}
+    
+    ### SQL Query:
+    {sql}
+    
+  # Template components
+  template:
+    instruction_key: "### Instruction:"
+    input_key: "### Database Schema:"
+    question_key: "### Question:"
+    response_key: "### SQL Query:"
+    
+  # Data augmentation
+  augmentation:
+    enabled: true
+    techniques:
+      - "paraphrase_question"
+      - "synonym_replacement"
+      - "shuffle_schema_order"
+    augmentation_ratio: 0.2
+
+# ============================================================================
+# Evaluation Configuration
+# ============================================================================
+evaluation:
+  # Evaluation strategy
+  strategy: "steps"  # Options: "steps", "epoch", "no"
+  
+  # Metrics
+  metrics:
+    - "exact_match"
+    - "execution_accuracy"
+    - "bleu"
+    - "rouge"
+    
+  # Generation parameters for evaluation
+  generation:
+    max_new_tokens: 256
+    temperature: 0.1
+    top_p: 0.95
+    top_k: 50
+    num_beams: 1
+    do_sample: false
+    
+  # Spider evaluation
+  spider_eval:
+    enabled: true
+    use_official_evaluator: true
+
+# ============================================================================
+# Model Merging Configuration
+# ============================================================================
+merging:
+  # Whether to merge LoRA weights back into base model
+  merge_adapter: true
+  
+  # Merge strategy
+  strategy: "linear"  # Options: "linear", "ties", "dare"
+  
+  # Save merged model
+  save_merged: true
+  merged_model_path: "output/merged_model"
+
+# ============================================================================
+# Checkpoint Management
+# ============================================================================
+checkpointing:
+  output_dir: "output/lora_checkpoints"
+  
+  # What to save
+  save_strategy: "steps"
+  save_steps: 500
+  save_total_limit: 3
+  
+  # Resume from checkpoint
+  resume_from_checkpoint: null
+  
+  # Checkpoint configuration
+  save_safetensors: true
+  save_only_model: false
+
+# ============================================================================
+# Memory Optimization
+# ============================================================================
+memory_optimization:
+  # Gradient checkpointing
+  gradient_checkpointing: true
+  gradient_checkpointing_kwargs:
+    use_reentrant: false
+    
+  # Memory efficient attention
+  use_flash_attention_2: false
+  
+  # CPU offload
+  cpu_offload: false
+  
+  # Activation checkpointing
+  activation_checkpointing: false
+
+# ============================================================================
+# Distributed Training
+# ============================================================================
+distributed:
+  enabled: false
+  
+  # DeepSpeed configuration
+  deepspeed:
+    enabled: false
+    config_file: "configs/deepspeed_config.json"
+    
+  # FSDP configuration
+  fsdp:
+    enabled: false
+    fsdp_strategy: "FULL_SHARD"
+    
+  # Multi-GPU settings
+  multi_gpu:
+    enabled: false
+    num_gpus: 1
+    strategy: "ddp"  # Options: "ddp", "dp", "ddp_spawn"
+
+# ============================================================================
+# Inference Configuration
+# ============================================================================
+inference:
+  # Generation parameters
+  generation_config:
+    max_new_tokens: 512
+    min_new_tokens: 10
+    temperature: 0.1
+    top_p: 0.95
+    top_k: 50
+    repetition_penalty: 1.1
+    no_repeat_ngram_size: 3
+    num_beams: 1
+    do_sample: false
+    early_stopping: true
+    
+  # Batch inference
+  batch_inference:
+    enabled: true
+    batch_size: 8
+    
+  # Post-processing
+  postprocessing:
+    remove_special_tokens: true
+    clean_up_tokenization_spaces: true
+    strip_prompt: true
+
+# ============================================================================
+# Experiment Tracking
+# ============================================================================
+tracking:
+  # Weights & Biases
+  wandb:
+    enabled: false
+    project: "text2sql-lora"
+    entity: "your-username"
+    tags: ["lora", "spider", "text2sql"]
+    
+  # TensorBoard
+  tensorboard:
+    enabled: true
+    log_dir: "runs/lora_training"
+    
+  # MLflow
+  mlflow:
+    enabled: false
+    tracking_uri: "http://localhost:5000"
+    experiment_name: "text2sql-lora"
+
+# ============================================================================
+# Hyperparameter Search (Optional)
+# ============================================================================
+hyperparameter_search:
+  enabled: false
+  
+  # Search space
+  search_space:
+    learning_rate: [1e-5, 5e-5, 1e-4, 2e-4]
+    lora_rank: [4, 8, 16, 32]
+    lora_alpha: [8, 16, 32, 64]
+    batch_size: [2, 4, 8]
+    
+  # Search strategy
+  strategy: "grid"  # Options: "grid", "random", "bayesian"
+  n_trials: 20
+  
+  # Optimization objective
+  objective:
+    metric: "eval_exact_match"
+    direction: "maximize"

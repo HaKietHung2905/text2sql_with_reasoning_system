@@ -1,0 +1,337 @@
+# Path Configuration for Text-to-SQL Evaluation System
+# Centralized management of all file and directory paths
+
+# ============================================================================
+# Root Directories
+# ============================================================================
+root:
+  project: "."
+  data: "data"
+  output: "output"
+  cache: "cache"
+  logs: "logs"
+  configs: "configs"
+  checkpoints: "checkpoints"
+  models: "models"
+
+# ============================================================================
+# Spider Dataset Paths
+# ============================================================================
+spider:
+  # Base directory
+  root: "data/spider"
+  
+  # Dataset files
+  train_spider: "data/spider/train_spider.json"
+  train_others: "data/spider/train_others.json"
+  dev: "data/spider/dev.json"
+  tables: "data/raw/spider/tables.json"
+  
+  # Database files
+  databases_root: "data/spider/database"
+  
+  # Individual database directories (examples)
+  databases:
+    concert_singer: "data/spider/database/concert_singer"
+    student_transcripts: "data/spider/database/student_transcripts_tracking"
+    world_1: "data/spider/database/world_1"
+    flight_2: "data/spider/database/flight_2"
+    car_1: "data/spider/database/car_1"
+    
+  # Evaluation scripts
+  evaluation_script: "evaluation/spider/evaluation.py"
+  
+  # Preprocessed data
+  preprocessed:
+    train: "data/spider/preprocessed/train.pkl"
+    dev: "data/spider/preprocessed/dev.pkl"
+
+# ============================================================================
+# Vector Database Paths (ChromaDB)
+# ============================================================================
+chromadb:
+  persist_directory: "chroma_db"
+  
+  # Collections
+  collections:
+    train_examples: "chroma_db/train_examples"
+    dev_examples: "chroma_db/dev_examples"
+    combined: "chroma_db/combined_examples"
+    
+  # Metadata
+  metadata: "chroma_db/metadata.json"
+  
+  # Backups
+  backup_dir: "chroma_db/backups"
+
+# ============================================================================
+# Output Paths
+# ============================================================================
+output:
+  # Results
+  results:
+    root: "output/results"
+    predictions: "output/results/predictions.json"
+    metrics: "output/results/metrics.json"
+    errors: "output/results/errors.json"
+    summary: "output/results/summary.json"
+    
+  # Predictions by split
+  predictions:
+    train: "output/predictions/train_predictions.csv"
+    dev: "output/predictions/dev_predictions.csv"
+    test: "output/predictions/test_predictions.csv"
+    
+  # Analysis outputs
+  analysis:
+    root: "output/analysis"
+    error_analysis: "output/analysis/error_analysis.json"
+    difficulty_breakdown: "output/analysis/difficulty_breakdown.json"
+    database_performance: "output/analysis/database_performance.json"
+    
+  # Figures and visualizations
+  figures:
+    root: "output/figures"
+    accuracy_plot: "output/figures/accuracy_by_difficulty.png"
+    confusion_matrix: "output/figures/confusion_matrix.png"
+    error_distribution: "output/figures/error_distribution.png"
+    
+  # Reports
+  reports:
+    root: "output/reports"
+    main_report: "output/reports/evaluation_report.pdf"
+    latex_tables: "output/reports/tables.tex"
+    markdown_summary: "output/reports/README.md"
+    
+  # Experiment tracking
+  experiments:
+    root: "output/experiments"
+    runs: "output/experiments/runs"
+    comparisons: "output/experiments/comparisons"
+
+# ============================================================================
+# Cache Paths
+# ============================================================================
+cache:
+  # Embeddings cache
+  embeddings:
+    root: "cache/embeddings"
+    questions: "cache/embeddings/questions.pkl"
+    schemas: "cache/embeddings/schemas.pkl"
+    
+  # LLM response cache
+  llm_cache:
+    root: "cache/llm_responses"
+    anthropic: "cache/llm_responses/anthropic"
+    openai: "cache/llm_responses/openai"
+    
+  # Processing cache
+  processing:
+    root: "cache/processing"
+    parsed_sql: "cache/processing/parsed_sql.pkl"
+    normalized_queries: "cache/processing/normalized_queries.pkl"
+    
+  # Evaluation cache
+  evaluation:
+    root: "cache/evaluation"
+    execution_results: "cache/evaluation/execution_results.pkl"
+
+# ============================================================================
+# Log Paths
+# ============================================================================
+logs:
+  # Main application logs
+  app: "logs/app.log"
+  error: "logs/error.log"
+  debug: "logs/debug.log"
+  
+  # Module-specific logs
+  evaluation: "logs/evaluation.log"
+  generation: "logs/generation.log"
+  data_processing: "logs/data_processing.log"
+  
+  # Performance logs
+  performance: "logs/performance.jsonl"
+  api_calls: "logs/api_calls.jsonl"
+  
+  # Audit logs
+  audit: "logs/audit.log"
+  
+  # Rotating logs
+  daily: "logs/daily.log"
+  
+  # Archive
+  archive: "logs/archive"
+
+# ============================================================================
+# Model Paths
+# ============================================================================
+models:
+  # Pretrained models
+  pretrained:
+    root: "models/pretrained"
+    embedding_model: "models/pretrained/sentence-transformers"
+    
+  # Fine-tuned models
+  finetuned:
+    root: "models/finetuned"
+    lora_adapters: "models/finetuned/lora_adapters"
+    merged_models: "models/finetuned/merged"
+    
+  # Model checkpoints
+  checkpoints:
+    root: "checkpoints"
+    best_model: "checkpoints/best_model"
+    latest_checkpoint: "checkpoints/latest"
+    
+  # Model artifacts
+  artifacts:
+    tokenizer: "models/tokenizer"
+    config: "models/config.json"
+    vocab: "models/vocab.json"
+
+# ============================================================================
+# Configuration Paths
+# ============================================================================
+configs:
+  # Main configurations
+  base: "configs/base_config.yaml"
+  deployment: "configs/deployment_config.yaml"
+  lora: "configs/lora_config.yaml"
+  paths: "configs/paths.yaml"
+  reasoning: "configs/reasoning_config.yaml"
+  training: "configs/training_config.yaml"
+  
+  # Prompts
+  prompts: "configs/prompts.yaml"
+  
+  # Logging
+  logging: "configs/logging.yaml"
+  
+  # Environment-specific
+  dev: "configs/environments/dev.yaml"
+  staging: "configs/environments/staging.yaml"
+  production: "configs/environments/production.yaml"
+
+# ============================================================================
+# Test Data Paths
+# ============================================================================
+test_data:
+  # Unit test fixtures
+  fixtures:
+    root: "tests/fixtures"
+    sample_questions: "tests/fixtures/sample_questions.json"
+    sample_schemas: "tests/fixtures/sample_schemas.json"
+    expected_outputs: "tests/fixtures/expected_outputs.json"
+    
+  # Integration test data
+  integration:
+    root: "tests/integration/data"
+    small_dataset: "tests/integration/data/small_spider.json"
+    
+  # Mock data
+  mocks:
+    root: "tests/mocks"
+    mock_responses: "tests/mocks/llm_responses.json"
+    mock_databases: "tests/mocks/databases"
+
+# ============================================================================
+# Documentation Paths
+# ============================================================================
+docs:
+  # Documentation root
+  root: "docs"
+  
+  # Source files
+  source: "docs/source"
+  api: "docs/source/api"
+  guides: "docs/source/guides"
+  tutorials: "docs/source/tutorials"
+  
+  # Build outputs
+  build: "docs/_build"
+  html: "docs/_build/html"
+  pdf: "docs/_build/latex"
+  
+  # Assets
+  images: "docs/images"
+  figures: "docs/figures"
+  diagrams: "docs/diagrams"
+  
+  # Examples
+  examples: "docs/examples"
+  notebooks: "docs/notebooks"
+
+# ============================================================================
+# Scripts Paths
+# ============================================================================
+scripts:
+  # Main execution scripts
+  run_evaluation: "scripts/run_evaluation.py"
+  prepare_data: "scripts/prepare_data.py"
+  train_model: "scripts/train_model.py"
+  
+  # Utility scripts
+  utils:
+    download_spider: "scripts/utils/download_spider.py"
+    build_chromadb: "scripts/utils/build_chromadb.py"
+    export_results: "scripts/utils/export_results.py"
+    
+  # Analysis scripts
+  analysis:
+    error_analysis: "scripts/analysis/error_analysis.py"
+    visualization: "scripts/analysis/visualization.py"
+    statistics: "scripts/analysis/statistics.py"
+
+# ============================================================================
+# External Resources
+# ============================================================================
+external:
+  # Spider official resources
+  spider_website: "https://yale-lily.github.io/spider"
+  spider_github: "https://github.com/taoyds/spider"
+  
+  # Download URLs
+  downloads:
+    spider_dataset: "https://drive.google.com/uc?export=download&id=11icoH_EA-NYb0OrPTdehRWm_d7-DIzWX"
+    evaluation_script: "https://github.com/taoyds/spider/raw/master/evaluation.py"
+
+# ============================================================================
+# Temporary and Working Directories
+# ============================================================================
+temp:
+  root: "temp"
+  downloads: "temp/downloads"
+  processing: "temp/processing"
+  uploads: "temp/uploads"
+  
+# Working directory for long-running processes
+work:
+  root: "work"
+  training: "work/training"
+  evaluation: "work/evaluation"
+
+# ============================================================================
+# Path Validation Rules
+# ============================================================================
+validation:
+  # Required directories that must exist
+  required_dirs:
+    - "data/spider"
+    - "output"
+    - "logs"
+    - "cache"
+    
+  # Required files that must exist
+  required_files:
+    - "data/raw/spider/tables.json"
+    - "data/spider/dev.json"
+    
+  # Directories to create if missing
+  auto_create:
+    - "output/results"
+    - "output/predictions"
+    - "output/figures"
+    - "logs"
+    - "cache"
+    - "chroma_db"

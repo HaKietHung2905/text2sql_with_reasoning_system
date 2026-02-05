@@ -1,0 +1,354 @@
+# Deployment Configuration for Text-to-SQL System
+# Settings for production deployment, API serving, and monitoring
+
+# ============================================================================
+# API Server Configuration
+# ============================================================================
+api:
+  server:
+    host: "0.0.0.0"
+    port: 8080
+    workers: 4
+    timeout: 120
+    keepalive: 5
+    max_requests: 1000
+    max_requests_jitter: 50
+    
+  # API versioning
+  versioning:
+    enabled: true
+    prefix: "/api/v1"
+    latest_version: "v1"
+    
+  # CORS settings
+  cors:
+    enabled: true
+    allow_origins:
+      - "http://localhost:3000"
+      - "https://your-frontend.com"
+    allow_methods:
+      - "GET"
+      - "POST"
+      - "PUT"
+      - "DELETE"
+    allow_headers:
+      - "Content-Type"
+      - "Authorization"
+    allow_credentials: true
+    
+  # Authentication
+  authentication:
+    enabled: true
+    type: "jwt"  # Options: "jwt", "api_key", "oauth2"
+    jwt_secret: "${JWT_SECRET}"
+    jwt_algorithm: "HS256"
+    token_expiry: 3600  # 1 hour
+    
+  # Rate limiting (per client)
+  rate_limit:
+    enabled: true
+    requests_per_minute: 100
+    burst: 20
+    
+  # Request validation
+  validation:
+    max_question_length: 500
+    max_batch_size: 10
+    allowed_databases: []  # Empty means all allowed
+
+# ============================================================================
+# Model Serving Configuration
+# ============================================================================
+model_serving:
+  # Model loading
+  load_on_startup: true
+  lazy_loading: false
+  model_warmup: true
+  
+  # Batch processing
+  batching:
+    enabled: true
+    max_batch_size: 32
+    batch_timeout_ms: 100
+    
+  # Model caching
+  cache:
+    enabled: true
+    cache_size: 1000
+    eviction_policy: "lru"  # Options: "lru", "lfu", "fifo"
+    
+  # Inference optimization
+  optimization:
+    use_gpu: false
+    mixed_precision: false
+    compile_model: false
+
+# ============================================================================
+# Database Configuration (for production)
+# ============================================================================
+database:
+  # PostgreSQL for results storage
+  postgres:
+    host: "${POSTGRES_HOST:localhost}"
+    port: "${POSTGRES_PORT:5432}"
+    database: "${POSTGRES_DB:text2sql_results}"
+    user: "${POSTGRES_USER:text2sql}"
+    password: "${POSTGRES_PASSWORD}"
+    pool_size: 10
+    max_overflow: 20
+    pool_timeout: 30
+    pool_recycle: 3600
+    
+  # Redis for caching
+  redis:
+    host: "${REDIS_HOST:localhost}"
+    port: "${REDIS_PORT:6379}"
+    db: 0
+    password: "${REDIS_PASSWORD:}"
+    socket_timeout: 5
+    socket_keepalive: true
+    max_connections: 50
+    
+  # ChromaDB
+  chromadb:
+    host: "${CHROMADB_HOST:localhost}"
+    port: "${CHROMADB_PORT:8000}"
+    collection_name: "spider_examples_prod"
+    ssl: false
+    headers: {}
+
+# ============================================================================
+# Monitoring and Observability
+# ============================================================================
+monitoring:
+  # Prometheus metrics
+  prometheus:
+    enabled: true
+    port: 9090
+    path: "/metrics"
+    
+  # Health checks
+  health_check:
+    enabled: true
+    endpoint: "/health"
+    interval: 30
+    timeout: 5
+    
+    checks:
+      - name: "database"
+        enabled: true
+      - name: "chromadb"
+        enabled: true
+      - name: "redis"
+        enabled: true
+      - name: "llm_api"
+        enabled: true
+        
+  # Logging aggregation
+  logging:
+    # Use structured logging in production
+    format: "json"
+    level: "INFO"
+    
+    # Send logs to external service
+    external:
+      enabled: false
+      service: "elasticsearch"  # Options: "elasticsearch", "cloudwatch", "stackdriver"
+      endpoint: "${LOG_ENDPOINT}"
+      
+  # Performance tracking
+  performance:
+    track_latency: true
+    track_throughput: true
+    track_errors: true
+    slow_query_threshold_ms: 1000
+    
+  # Alerting
+  alerting:
+    enabled: true
+    channels:
+      - type: "email"
+        recipients:
+          - "admin@example.com"
+      - type: "slack"
+        webhook_url: "${SLACK_WEBHOOK_URL}"
+        
+    rules:
+      - name: "high_error_rate"
+        condition: "error_rate > 0.05"
+        severity: "critical"
+      - name: "high_latency"
+        condition: "p95_latency > 2000"
+        severity: "warning"
+      - name: "low_throughput"
+        condition: "requests_per_minute < 10"
+        severity: "info"
+
+# ============================================================================
+# Security Configuration
+# ============================================================================
+security:
+  # SSL/TLS
+  ssl:
+    enabled: true
+    cert_file: "/etc/ssl/certs/server.crt"
+    key_file: "/etc/ssl/private/server.key"
+    
+  # API key management
+  api_keys:
+    encryption: true
+    rotation_days: 90
+    
+  # Input sanitization
+  input_validation:
+    sql_injection_protection: true
+    xss_protection: true
+    max_input_size_kb: 100
+    
+  # Secret management
+  secrets:
+    provider: "env"  # Options: "env", "aws_secrets", "vault", "gcp_secret_manager"
+    rotation_enabled: false
+
+# ============================================================================
+# Scalability Configuration
+# ============================================================================
+scalability:
+  # Auto-scaling
+  autoscaling:
+    enabled: false
+    min_replicas: 2
+    max_replicas: 10
+    target_cpu_percent: 70
+    target_memory_percent: 80
+    
+  # Load balancing
+  load_balancer:
+    strategy: "round_robin"  # Options: "round_robin", "least_connections", "ip_hash"
+    health_check_interval: 10
+    
+  # Queue configuration (for async processing)
+  queue:
+    enabled: false
+    backend: "celery"  # Options: "celery", "rq", "bull"
+    broker_url: "${REDIS_URL}"
+    result_backend: "${REDIS_URL}"
+    max_retries: 3
+    task_timeout: 300
+
+# ============================================================================
+# Backup and Recovery
+# ============================================================================
+backup:
+  # Database backups
+  database:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+    retention_days: 30
+    storage_location: "s3://backups/text2sql"
+    
+  # Model checkpoints
+  models:
+    enabled: true
+    keep_last_n: 5
+    
+  # Configuration backups
+  configs:
+    enabled: true
+    version_control: true
+
+# ============================================================================
+# Deployment Environments
+# ============================================================================
+environments:
+  # Development
+  development:
+    debug: true
+    log_level: "DEBUG"
+    reload: true
+    workers: 1
+    
+  # Staging
+  staging:
+    debug: false
+    log_level: "INFO"
+    reload: false
+    workers: 2
+    monitoring:
+      enabled: true
+      
+  # Production
+  production:
+    debug: false
+    log_level: "WARNING"
+    reload: false
+    workers: 4
+    monitoring:
+      enabled: true
+    security:
+      ssl:
+        enabled: true
+    backup:
+      enabled: true
+
+# ============================================================================
+# Container Configuration (Docker/K8s)
+# ============================================================================
+container:
+  # Resource limits
+  resources:
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+    limits:
+      cpu: "2000m"
+      memory: "4Gi"
+      
+  # Probes
+  liveness_probe:
+    path: "/health"
+    initial_delay_seconds: 30
+    period_seconds: 10
+    timeout_seconds: 5
+    failure_threshold: 3
+    
+  readiness_probe:
+    path: "/ready"
+    initial_delay_seconds: 10
+    period_seconds: 5
+    timeout_seconds: 3
+    failure_threshold: 3
+    
+  # Environment variables
+  env:
+    - name: "ENVIRONMENT"
+      value: "production"
+    - name: "LOG_LEVEL"
+      value: "INFO"
+
+# ============================================================================
+# CDN and Static Assets
+# ============================================================================
+cdn:
+  enabled: false
+  provider: "cloudflare"
+  zone_id: "${CDN_ZONE_ID}"
+  purge_on_deploy: true
+
+# ============================================================================
+# Analytics and Telemetry
+# ============================================================================
+analytics:
+  enabled: true
+  provider: "custom"
+  
+  # Usage tracking
+  track:
+    queries: true
+    databases: true
+    errors: true
+    latency: true
+    
+  # Privacy
+  anonymize_data: true
+  data_retention_days: 90

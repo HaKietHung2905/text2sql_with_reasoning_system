@@ -1,0 +1,44 @@
+Semantic Layer Integration Guide
+========================================
+
+
+# Semantic Layer Integration Guide
+# Add this to your utils/eval.py file
+
+# At the top with other imports:
+try:
+    from semantic_layer import SemanticEvaluator
+    SEMANTIC_AVAILABLE = True
+except ImportError:
+    SEMANTIC_AVAILABLE = False
+    print("Semantic layer not available")
+
+# In your argument parser section:
+parser.add_argument('--use_semantic', default=False, action='store_true',
+                    help='Use semantic layer for enhanced SQL generation')
+
+# Where you create the evaluator, replace:
+# evaluator = Evaluator(...)
+# With:
+if args.use_semantic and SEMANTIC_AVAILABLE:
+    evaluator = SemanticEvaluator(
+        prompt_type=args.prompt_type,
+        enable_debugging=args.enable_debugging,
+        use_chromadb=args.use_chromadb,
+        chromadb_config=chromadb_config
+    )
+    print("Using Semantic Enhanced Evaluator")
+else:
+    evaluator = Evaluator(
+        prompt_type=args.prompt_type,
+        enable_debugging=args.enable_debugging,
+        use_chromadb=args.use_chromadb,
+        chromadb_config=chromadb_config
+    )
+
+# At the end of evaluation, optionally show semantic stats:
+if args.use_semantic and SEMANTIC_AVAILABLE and hasattr(evaluator, 'get_semantic_statistics'):
+    semantic_stats = evaluator.get_semantic_statistics()
+    print("\nSemantic Enhancement Statistics:")
+    for key, value in semantic_stats.items():
+        print(f"  {key}: {value}")
