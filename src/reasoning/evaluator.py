@@ -122,6 +122,7 @@ def evaluate(
             logger.info("✓ ReasoningBank pipeline enabled")
         except Exception as e:
             logger.warning(f"Failed to initialize ReasoningBank pipeline: {e}")
+            logger.error(f"ReasoningBank initialization error details: {e}", exc_info=True)
     
     # === LOAD DATA ===
     # Load gold queries
@@ -156,7 +157,7 @@ def evaluate(
         logger.info("🤖 Generating SQL with enhanced pipeline...")
         
         last_request_time = None
-        min_delay = 10.0 
+        min_delay = 15.0 
 
         # Load questions
         with open(questions_file, 'r') as f:
@@ -174,7 +175,10 @@ def evaluate(
         
         # Generate with pipeline
         predictions = []
+        failed_predictions = 0
+        
         for i, item in enumerate(tqdm(questions_data, desc="Generating SQL")):
+            # Rate limiting
             if last_request_time:
                 elapsed = (datetime.now() - last_request_time).total_seconds()
                 if elapsed < min_delay:
@@ -200,16 +204,37 @@ def evaluate(
                     semantic_pipeline=semantic_pipeline,
                     reasoning_pipeline=reasoning_pipeline
                 )
+                
+                # Check if generation failed
+                if not result.get('sql') or result['sql'].strip() == '':
+                    logger.warning(f"Empty prediction for question {i}: {question}")
+                    result['sql'] = "SELECT 1"  # Placeholder
+                    result['error'] = result.get('error', 'Empty prediction')
+                    failed_predictions += 1
+                    
             except Exception as e:
-                logger.error(f"SQL generation failed: {e}")
-                # Fallback to baseline generation
+                logger.error(f"SQL generation failed for question {i}: {e}")
+                # Fallback to baseline generation or placeholder
+                try:
+                    sql = evaluator.generate_sql_from_question(question, db_path)
+                    if not sql or sql.strip() == '':
+                        sql = "SELECT 1"
+                except:
+                    sql = "SELECT 1"
+                
                 result = {
-                    'sql': evaluator.generate_sql_from_question(question, db_path),
+                    'sql': sql,
                     'trajectory_id': None,
                     'error': str(e)
                 }
+                failed_predictions += 1
+                
             predictions.append([result['sql']])
             last_request_time = datetime.now()
+        
+        if failed_predictions > 0:
+            logger.warning(f"⚠️  {failed_predictions} predictions failed or were empty")
+        
         plist = [predictions]
     
     elif predict:
@@ -272,22 +297,28 @@ def evaluate(
             
             # Process with ReasoningBank
             if reasoning_pipeline and 'trajectory_id' in res:
-                reasoning_pipeline.process_evaluation_result(
-                    trajectory_id=res['trajectory_id'],
-                    exact_match=res['exact_score'],
-                    execution_match=res.get('exec_score', 0) > 0,
-                    component_scores=res.get('component_scores')
-                )
+                try:
+                    reasoning_pipeline.process_evaluation_result(
+                        trajectory_id=res['trajectory_id'],
+                        exact_match=res['exact_score'],
+                        execution_match=res.get('exec_score', 0) > 0,
+                        component_scores=res.get('component_scores')
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to process evaluation result: {e}")
             
             # Collect detailed results
+            question = questions_data[i]['question'] if use_langchain and i < len(questions_data) else ''
             detailed_results.append({
-                'question': questions_data[i]['question'] if use_langchain else '',
+                'question': question,
                 'gold_sql': res['entry']['goldSQL'],
                 'predicted_sql': res['entry']['predictSQL'],
                 'db_id': db_id,
                 'exact_match': bool(res['exact_score']),
                 'execution_match': res.get('exec_score', 0) > 0,
-                'hardness': res.get('hardness', 'unknown')
+                'hardness': res.get('hardness', 'unknown'),
+                'error': res.get('error'),
+                'parse_error': res.get('parse_error')
             })
     
     # === FINALIZE ===
@@ -303,8 +334,11 @@ def evaluate(
     
     # Consolidate learning if using ReasoningBank
     if reasoning_pipeline:
-        logger.info("🧠 Final memory consolidation...")
-        reasoning_pipeline.consolidate_memory()
+        try:
+            logger.info("🧠 Final memory consolidation...")
+            reasoning_pipeline.consolidate_memory()
+        except Exception as e:
+            logger.warning(f"Memory consolidation failed: {e}")
     
     # === RESULTS ===
     results = {
@@ -318,16 +352,16 @@ def evaluate(
     if semantic_pipeline:
         try:
             results['semantic_statistics'] = semantic_pipeline.get_statistics()
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to get semantic statistics: {e}")
     
     # Add ReasoningBank statistics
     if reasoning_pipeline:
         try:
             results['reasoning_statistics'] = reasoning_pipeline.get_statistics()
             reasoning_pipeline.save_statistics('./results/reasoning_stats.json')
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Failed to save reasoning statistics: {e}")
     
     # Save detailed results
     try:
@@ -376,27 +410,66 @@ def generate_sql_with_pipeline(
         except Exception as e:
             logger.warning(f"Semantic analysis failed: {e}")
     
-    # Step 2: ReasoningBank enhancement
+    # Step 2: ReasoningBank enhancement with retry logic
     if reasoning_pipeline:
-        # Define SQL generator function
+        # Define SQL generator function with retry
         def sql_generator(q):
-            return evaluator.generate_sql_from_question(q, db_path)
+            max_retries = 3
+            for attempt in range(max_retries):
+                try:
+                    result = evaluator.generate_sql_from_question(q, db_path)
+                    if result and result.strip():
+                        return result
+                except Exception as e:
+                    error_msg = str(e)
+                    # Check for rate limiting
+                    if "429" in error_msg or "Resource exhausted" in error_msg:
+                        if attempt < max_retries - 1:
+                            wait_time = (2 ** attempt) * 5  # 5s, 10s, 20s
+                            logger.warning(f"Rate limited, waiting {wait_time}s before retry {attempt+1}/{max_retries}")
+                            time.sleep(wait_time)
+                        else:
+                            logger.error(f"Max retries reached for rate limiting")
+                            return ""
+                    else:
+                        logger.error(f"Generation error: {e}")
+                        if attempt < max_retries - 1:
+                            time.sleep(2)
+                        else:
+                            return ""
+            return ""
         
         # Generate with ReasoningBank
-        result = reasoning_pipeline.enhance_sql_generation(
-            question=question,
-            db_id=db_id,
-            schema=schema,
-            gold_sql=gold_sql,
-            semantic_analysis=semantic_analysis,
-            sql_generator=sql_generator
-        )
-        
-        return result
+        try:
+            result = reasoning_pipeline.enhance_sql_generation(
+                question=question,
+                db_id=db_id,
+                schema=schema,
+                gold_sql=gold_sql,
+                semantic_analysis=semantic_analysis,
+                sql_generator=sql_generator
+            )
+            return result
+        except Exception as e:
+            logger.error(f"ReasoningBank generation failed: {e}")
+            # Fallback to standard generation
+            sql = sql_generator(question)
+            return {
+                'sql': sql,
+                'trajectory_id': None,
+                'strategies_used': [],
+                'generation_time': 0.0,
+                'metadata': {'method': 'fallback', 'error': str(e)}
+            }
     
     # Step 3: Standard generation (fallback)
     else:
-        sql = evaluator.generate_sql_from_question(question, db_path)
+        try:
+            sql = evaluator.generate_sql_from_question(question, db_path)
+        except Exception as e:
+            logger.error(f"Standard generation failed: {e}")
+            sql = ""
+        
         return {
             'sql': sql,
             'trajectory_id': None,
@@ -461,6 +534,18 @@ def evaluate_turn(
     db_path = os.path.join(db_dir, db_name, f"{db_name}.sqlite")
     schema = load_schema(db_path)
     
+    # Check for placeholder queries
+    if p_str.strip().upper() == "SELECT 1":
+        logger.debug(f"Placeholder query detected, skipping exact match evaluation")
+        return {
+            'exact_score': 0,
+            'exec_score': 0,
+            'hardness': 'unknown',
+            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
+            'error': 'placeholder_query',
+            'partial_scores': {}
+        }
+    
     # Normalize queries
     p_str_normalized = normalize_sql_for_evaluation(p_str)
     g_str_normalized = normalize_sql_for_evaluation(g_str)
@@ -470,13 +555,33 @@ def evaluate_turn(
         g_sql = get_sql(g_str_normalized, schema)
         p_sql = get_sql(p_str_normalized, schema)
     except Exception as e:
-        logger.warning(f"Parse error: {e}")
-        logger.warning(f"Gold SQL: {g_str}")
-        logger.warning(f"Predict SQL: {p_str}")
+        error_msg = str(e) if str(e) else "Unknown parse error"
+        logger.warning(f"Parse error: {error_msg}")
+        logger.debug(f"Gold SQL: {g_str}")
+        logger.debug(f"Predict SQL: {p_str}")
+        
+        # Still try execution match even if parsing fails
+        exec_score = 0
+        if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
+            try:
+                exec_score = eval_exec_match(
+                    db=db_path,
+                    p_str=p_str_normalized,
+                    g_str=g_str_normalized,
+                    plug_value=plug_value,
+                    keep_distinct=keep_distinct,
+                    progress_bar_for_each_datapoint=progress_bar
+                )
+            except Exception as exec_e:
+                logger.debug(f"Execution evaluation also failed: {exec_e}")
+        
         return {
             'exact_score': 0,
-            'exec_score': 0,
-            'entry': {'goldSQL': g_str, 'predictSQL': p_str}
+            'exec_score': exec_score,
+            'hardness': 'unknown',
+            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
+            'parse_error': error_msg,
+            'partial_scores': {}
         }
     
     # Evaluate exact match
@@ -496,7 +601,7 @@ def evaluate_turn(
                 progress_bar_for_each_datapoint=progress_bar
             )
         except Exception as e:
-            logger.warning(f"Execution error: {e}")
+            logger.debug(f"Execution error: {e}")
     
     # Get hardness
     hardness = eval_hardness(g_sql)
@@ -561,123 +666,15 @@ def finalize_scores(scores: Dict, etype: str):
         if etype in ['all', 'exec']:
             scores['all']['exec'] /= count
 
+
 def load_schema_for_db(db_id: str, db_dir: str) -> Dict:
     """Load schema from database"""
     schema_path = os.path.join(db_dir, db_id, f"{db_id}.sqlite")
     schema = Schema(get_schema(schema_path))
     return schema.schema
 
+
 def preprocess_question(question: str) -> str:
     """Normalize and clean question"""
     question = ' '.join(question.split())
     return question
-
-
-def _evaluate_single_query(
-    g_str: str,
-    p_str: str,
-    db_path: str,
-    schema: Schema,
-    evaluator: BaseEvaluator,
-    etype: str,
-    plug_value: bool,
-    keep_distinct: bool,
-    progress_bar: bool
-) -> Dict:
-    """Evaluate a single query pair"""
-    
-    # Import here to avoid circular dependency
-    from utils.eval_utils import normalize_sql_for_evaluation
-    
-    # Check for placeholder queries
-    if p_str.strip().upper() == "SELECT 1":
-        logger.warning(f"Placeholder query detected: {p_str}")
-        return {
-            'exact_score': 0,
-            'exec_score': 0,
-            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
-            'error': 'placeholder_query'
-        }
-    
-    # Normalize SQLs
-    g_str_normalized = normalize_sql_for_evaluation(g_str)
-    p_str_normalized = normalize_sql_for_evaluation(p_str)
-    
-    # Debug: Log normalized queries
-    logger.debug(f"Gold (normalized): {g_str_normalized}")
-    logger.debug(f"Pred (normalized): {p_str_normalized}")
-    
-    # Try to parse
-    try:
-        g_sql = get_sql(g_str_normalized, schema)
-        p_sql = get_sql(p_str_normalized, schema)
-    except Exception as e:
-        error_msg = str(e) if str(e) else "Unknown parse error"
-        
-        # Log the error with more context
-        logger.warning(f"Parse error: {error_msg}")
-        logger.debug(f"Gold SQL (original): {g_str}")
-        logger.debug(f"Gold SQL (normalized): {g_str_normalized}")
-        logger.debug(f"Predict SQL (original): {p_str}")
-        logger.debug(f"Predict SQL (normalized): {p_str_normalized}")
-        
-        # Check if it's a CASE statement issue
-        if 'case' in error_msg.lower() or 'case' in p_str_normalized.lower():
-            logger.info("Query contains CASE statement - not supported by Spider parser")
-        
-        # Still try execution match even if parsing fails
-        exec_score = 0
-        if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
-            try:
-                exec_score = eval_exec_match(
-                    db=db_path,
-                    p_str=p_str_normalized,
-                    g_str=g_str_normalized,
-                    plug_value=plug_value,
-                    keep_distinct=keep_distinct,
-                    progress_bar_for_each_datapoint=progress_bar
-                )
-                logger.info(f"Execution match score (despite parse error): {exec_score}")
-            except Exception as exec_e:
-                logger.warning(f"Execution evaluation also failed: {exec_e}")
-        
-        return {
-            'exact_score': 0,
-            'exec_score': exec_score,
-            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
-            'parse_error': error_msg
-        }
-    
-    # Evaluate exact match
-    exact_score = evaluator.eval_exact_match(p_sql, g_sql)
-    partial_scores = evaluator.partial_scores
-    
-    # Evaluate execution
-    exec_score = 0
-    if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
-        try:
-            exec_score = eval_exec_match(
-                db=db_path,
-                p_str=p_str_normalized,
-                g_str=g_str_normalized,
-                plug_value=plug_value,
-                keep_distinct=keep_distinct,
-                progress_bar_for_each_datapoint=progress_bar
-            )
-        except Exception as e:
-            logger.warning(f"Execution error: {e}")
-    
-    # Get hardness
-    hardness = eval_hardness(g_sql)
-    
-    return {
-        'exact_score': exact_score,
-        'exec_score': exec_score,
-        'hardness': hardness,
-        'entry': {
-            'goldSQL': g_str,
-            'predictSQL': p_str
-        },
-        'component_scores': evaluator.get_component_scores() if hasattr(evaluator, 'get_component_scores') else None,
-        'partial_scores': partial_scores
-    }

@@ -78,7 +78,7 @@ class MemoryRetrieval:
             'performance_weight': 0.25,
             'recency_weight': 0.15,
             'min_similarity': 0.3,
-            'min_success_rate': 0.5,
+            'min_success_rate': 0.0,
             'diversity_threshold': 0.85
         }
         
@@ -131,31 +131,31 @@ class MemoryRetrieval:
         else:
             selected = scored_candidates[:top_k]
         
-        logger.info(f"Retrieved {len(selected)} strategies (from {len(candidates)} candidates)")
+        #logger.info(f"Retrieved {len(selected)} strategies (from {len(candidates)} candidates)")
         return selected
     
     def _identify_candidate_patterns(self, context: RetrievalContext) -> List[str]:
         """Identify potential SQL patterns from context"""
-        
+            
         patterns = set()
         query_lower = context.query.lower()
-        
+            
         # Detect aggregation patterns
         if any(word in query_lower for word in ['average', 'mean', 'avg', 'sum', 'total', 'count', 'how many', 'number of', 'max', 'maximum', 'min', 'minimum']):
-            patterns.add('AGGREGATION')
-        
+            patterns.add('aggregation')
+            
         # Detect grouping patterns
         if any(word in query_lower for word in ['each', 'every', 'per', 'by', 'group']):
-            patterns.add('GROUPING')
+            patterns.add('grouping')
         
         # Detect ranking patterns
         if any(word in query_lower for word in ['top', 'bottom', 'highest', 'lowest', 'best', 'worst', 'first', 'last']):
-            patterns.add('RANKING')
-            patterns.add('ORDERING')
+            patterns.add('ranking')
+            patterns.add('ordering')
         
         # Detect filtering patterns
         if any(word in query_lower for word in ['where', 'with', 'that', 'which', 'greater', 'less', 'equal', 'between']):
-            patterns.add('FILTERING')
+            patterns.add('filtering')
         
         # Detect join patterns from schema
         if context.schema and len(context.schema.get('tables', [])) > 1:
@@ -163,19 +163,19 @@ class MemoryRetrieval:
             table_names = [t.lower() for t in context.schema.get('tables', [])]
             mentioned_tables = sum(1 for table in table_names if table in query_lower)
             if mentioned_tables > 1:
-                patterns.add('JOIN')
+                patterns.add('join')  # ← CHANGE THIS FROM 'JOIN' to 'join'
         
         # Use semantic analysis if available
         if context.semantic_analysis:
             intent = context.semantic_analysis.get('intent', '')
             if intent:
-                # Extract patterns from intent
-                intent_patterns = intent.split('_')
+                # Extract patterns from intent (convert to lowercase)
+                intent_patterns = [p.lower() for p in intent.split('_')]  # ← ADD .lower()
                 patterns.update(intent_patterns)
         
         # Always include basic select as fallback
         if not patterns:
-            patterns.add('BASIC_SELECT')
+            patterns.add('basic_select')  # ← CHANGE THIS FROM 'BASIC_SELECT' to 'basic_select'
         
         return list(patterns)
     
@@ -190,33 +190,43 @@ class MemoryRetrieval:
         candidates = []
         seen_ids = set()
         
+        logger.debug(f"Looking for patterns: {patterns}")  # ← ADD THIS
+        
         # Source 1: Pattern-based retrieval
         for pattern in patterns:
             strategies = self.memory_store.get_strategies_by_pattern(pattern)
+            logger.debug(f"Pattern '{pattern}' found {len(strategies)} strategies")  # ← ADD THIS
             for strategy in strategies:
                 if strategy.strategy_id not in seen_ids:
                     candidates.append(strategy)
                     seen_ids.add(strategy.strategy_id)
         
+        logger.debug(f"After pattern matching: {len(candidates)} candidates")  # ← ADD THIS
+        
         # Source 2: Semantic similarity search
         if len(candidates) < max_candidates:
             search_query = self._build_search_query(context)
+            logger.debug(f"Semantic search query: {search_query[:100]}")  
             similar_strategies = self.memory_store.search_strategies(
                 query=search_query,
                 n_results=max_candidates,
-                min_success_rate=self.config['min_success_rate']
+                min_success_rate=0.0
             )
+            logger.debug(f"Semantic search found {len(similar_strategies)} strategies")  
             
             for strategy, _ in similar_strategies:
                 if strategy.strategy_id not in seen_ids:
                     candidates.append(strategy)
                     seen_ids.add(strategy.strategy_id)
         
+        logger.debug(f"After semantic search: {len(candidates)} candidates")  
+        
         # Source 3: High-performing strategies (if still need more)
         if len(candidates) < max_candidates:
             all_strategies = self.memory_store.get_all_strategies(
-                min_success_rate=self.config['min_success_rate']
+                min_success_rate=0.0
             )
+            logger.debug(f"All strategies in DB: {len(all_strategies)}")
             
             for strategy in all_strategies:
                 if strategy.strategy_id not in seen_ids:
@@ -224,6 +234,8 @@ class MemoryRetrieval:
                     seen_ids.add(strategy.strategy_id)
                     if len(candidates) >= max_candidates:
                         break
+        
+        logger.debug(f"Final candidates: {len(candidates)}")  
         
         return candidates[:max_candidates]
     
@@ -333,20 +345,33 @@ class MemoryRetrieval:
     ) -> float:
         """Calculate semantic similarity between strategy and query"""
         
-        # Build query text
-        query_text = self._build_search_query(context)
+        try:
+            # Build query text
+            query_text = self._build_search_query(context)
+            
+            # Build strategy text
+            strategy_text = self._strategy_to_search_text(strategy)
+            
+            # Generate embeddings using the correct method
+            if hasattr(self.embedding_gen, 'encode'):
+                query_emb = self.embedding_gen.encode(query_text).tolist()
+                strategy_emb = self.embedding_gen.encode(strategy_text).tolist()
+            elif hasattr(self.embedding_gen, 'get_embedding'):
+                query_emb = self.embedding_gen.get_embedding(query_text)
+                strategy_emb = self.embedding_gen.get_embedding(strategy_text)
+            else:
+                # Fallback - return neutral similarity
+                logger.warning("EmbeddingGenerator has no known embedding method")
+                return 0.5
+            
+            # Calculate cosine similarity
+            similarity = self._cosine_similarity(query_emb, strategy_emb)
+            
+            return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
         
-        # Build strategy text
-        strategy_text = self._strategy_to_search_text(strategy)
-        
-        # Generate embeddings
-        query_emb = self.embedding_gen.generate_embedding(query_text)
-        strategy_emb = self.embedding_gen.generate_embedding(strategy_text)
-        
-        # Calculate cosine similarity
-        similarity = self._cosine_similarity(query_emb, strategy_emb)
-        
-        return max(0.0, min(1.0, similarity))  # Clamp to [0, 1]
+        except Exception as e:
+            logger.warning(f"Similarity calculation failed: {e}")
+            return 0.5  # Return neutral score on error
     
     def _strategy_to_search_text(self, strategy: ReasoningStrategy) -> str:
         """Convert strategy to searchable text"""
@@ -400,8 +425,8 @@ class MemoryRetrieval:
         
         # Check 2: Intent type matching
         if context.semantic_analysis:
-            context_intent = context.semantic_analysis.get('intent', '').upper()
-            strategy_intents = [i.upper() for i in strategy.applicability.get('intent_types', [])]
+            context_intent = context.semantic_analysis.get('intent', '').lower()  # ← ADD .lower()
+            strategy_intents = [i.lower() for i in strategy.applicability.get('intent_types', [])]  # ← ADD .lower()
             
             if context_intent and strategy_intents:
                 # Check if any intent component matches
@@ -414,19 +439,19 @@ class MemoryRetrieval:
                     score += intent_score * 1.5  # Weight intent matching higher
                     total_checks += 1.5
         
-        # Check 3: SQL pattern matching
-        strategy_patterns = set(p.upper() for p in strategy.applicability.get('sql_patterns', []))
+        # Check 3: SQL pattern matching - NORMALIZE TO LOWERCASE
+        strategy_patterns = set(p.lower() for p in strategy.applicability.get('sql_patterns', []))  # ← ADD .lower()
         
-        # Detect required SQL patterns from query
+        # Detect required SQL patterns from query (use lowercase)
         required_patterns = set()
         if any(word in query_lower for word in ['join', 'combine', 'with', 'and']):
-            required_patterns.add('JOIN')
+            required_patterns.add('join')  # ← CHANGE to lowercase
         if any(word in query_lower for word in ['group', 'each', 'per']):
-            required_patterns.add('GROUP BY')
+            required_patterns.add('group by')  # ← CHANGE to lowercase
         if any(word in query_lower for word in ['order', 'sort', 'top', 'highest', 'lowest']):
-            required_patterns.add('ORDER BY')
+            required_patterns.add('order by')  # ← CHANGE to lowercase
         if any(word in query_lower for word in ['limit', 'top', 'first', 'last']):
-            required_patterns.add('LIMIT')
+            required_patterns.add('limit')  # ← CHANGE to lowercase
         
         if required_patterns:
             pattern_overlap = len(required_patterns & strategy_patterns)
@@ -434,19 +459,19 @@ class MemoryRetrieval:
             score += pattern_score
             total_checks += 1
         
-        # Check 4: Pattern exact match
+        # Check 4: Pattern exact match - NORMALIZE TO LOWERCASE
         if strategy.pattern:
             # Check if strategy pattern components match query needs
-            pattern_parts = set(strategy.pattern.split('_'))
+            pattern_parts = set(p.lower() for p in strategy.pattern.split('_'))  # ← ADD .lower()
             
-            # Extract implied patterns from query
+            # Extract implied patterns from query (use lowercase)
             implied_patterns = set()
             if 'aggregat' in query_lower or 'average' in query_lower or 'sum' in query_lower:
-                implied_patterns.add('AGGREGATION')
+                implied_patterns.add('aggregation')  # ← CHANGE to lowercase
             if 'each' in query_lower or 'per' in query_lower:
-                implied_patterns.add('GROUPING')
+                implied_patterns.add('grouping')  # ← CHANGE to lowercase
             if 'top' in query_lower or 'rank' in query_lower:
-                implied_patterns.add('RANKING')
+                implied_patterns.add('ranking')  # ← CHANGE to lowercase
             
             if implied_patterns:
                 exact_match = len(pattern_parts & implied_patterns)

@@ -10,11 +10,42 @@ import json
 import re
 from pathlib import Path
 from dotenv import load_dotenv
+import warnings
+import logging
 
-# Load env vars
+
+for handler in logging.root.handlers[:]:
+    logging.root.removeHandler(handler)
+
+logging.basicConfig(
+    level=logging.WARNING,
+    format='%(message)s',
+    stream=sys.stdout
+)
+
+logging.getLogger('__main__').setLevel(logging.INFO)
+logging.getLogger('src.reasoning.evaluator').setLevel(logging.INFO)
+
+for logger_name in [
+    'utils.embedding_utils',
+    'src.reasoning.memory_retrieval',
+    'src.reasoning.memory_store',
+    'src.reasoning.reasoning_pipeline',
+    'src.reasoning.experience_collector',
+    'src.reasoning.self_judgment',
+    'src.reasoning.strategy_distillation',
+    'src.reasoning.memory_consolidation',
+    'src.semantic.semantic_pipeline',
+    'chromadb',
+    'chromadb.api',
+    'chromadb.telemetry',
+]:
+    logging.getLogger(logger_name).setLevel(logging.ERROR)
+
+warnings.filterwarnings('ignore')
+
 load_dotenv()
 
-# Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.reasoning.evaluator import evaluate
@@ -23,10 +54,7 @@ from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-# Suppress all warnings
 warnings.filterwarnings('ignore')
-
-# Suppress specific warning categories
 warnings.filterwarnings('ignore', category=FutureWarning)
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 warnings.filterwarnings('ignore', category=UserWarning)

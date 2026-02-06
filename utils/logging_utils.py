@@ -5,35 +5,29 @@ import sys
 from pathlib import Path
 
 
-def get_logger(name: str, level: int = logging.INFO) -> logging.Logger:
+def get_logger(name: str, level: int = None) -> logging.Logger:
     """
-    Get configured logger
+    Get a configured logger
     
     Args:
         name: Logger name (usually __name__)
-        level: Logging level
-        
+        level: Logging level (None = use parent level)
+    
     Returns:
         Configured logger
     """
     logger = logging.getLogger(name)
     
-    # Avoid adding handlers multiple times
-    if not logger.handlers:
+    # Don't add handlers if parent already has them
+    if not logger.handlers and not logging.root.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter('%(message)s')  # Simple format
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+    
+    # Only set level if explicitly provided
+    if level is not None:
         logger.setLevel(level)
-        
-        # Console handler
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(level)
-        
-        # Format
-        formatter = logging.Formatter(
-            '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-            datefmt='%Y-%m-%d %H:%M:%S'
-        )
-        console_handler.setFormatter(formatter)
-        
-        logger.addHandler(console_handler)
     
     return logger
 
