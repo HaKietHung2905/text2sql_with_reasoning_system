@@ -302,12 +302,29 @@ class ReasoningBankPipeline:
         
         # Consolidate existing strategies
         if self.config['enable_consolidation']:
-            consolidation_result = self.memory_consolidation.consolidate(
-                new_trajectories=trajectories
-            )
+            # Get judgments for trajectories
+            judgments = [
+                self.experience_collector.get_judgment(t.trajectory_id)
+                for t in trajectories
+            ]
             
-            self.stats['memory_consolidations'] += 1
-            logger.info(f"✓ Memory consolidation complete: {consolidation_result['summary']}")
+            # Filter out None judgments
+            valid_pairs = [
+                (t, j) for t, j in zip(trajectories, judgments) if j is not None
+            ]
+            
+            if valid_pairs:
+                trajectories_with_judgments, judgments_list = zip(*valid_pairs)
+                
+                consolidation_result = self.memory_consolidation.consolidate_memory(
+                    new_trajectories=list(trajectories_with_judgments),
+                    new_judgments=list(judgments_list)
+                )
+                
+                self.stats['memory_consolidations'] += 1
+                logger.info(f"✓ Memory consolidation complete: {consolidation_result}")
+            else:
+                logger.info("No trajectories with judgments for consolidation")
     
     def _retrieve_strategies(
         self,

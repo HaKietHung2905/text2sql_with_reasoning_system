@@ -1,12 +1,3 @@
-"""
-Reasoning Memory Store: Persistent storage for reasoning strategies
-
-This module provides persistent storage for distilled reasoning strategies
-using SQLite for structured data and ChromaDB for vector-based retrieval.
-
-Based on ReasoningBank: Scaling Agent Self-Evolving with Reasoning Memory
-"""
-
 import json
 import sqlite3
 from datetime import datetime
@@ -16,7 +7,6 @@ import hashlib
 
 try:
     import chromadb
-    from chromadb.config import Settings
     CHROMADB_AVAILABLE = True
 except ImportError:
     CHROMADB_AVAILABLE = False
@@ -25,6 +15,7 @@ except ImportError:
 from .strategy_distillation import ReasoningStrategy
 from utils.logging_utils import get_logger
 from utils.embedding_utils import EmbeddingGenerator
+from chromadb.config import Settings
 
 logger = get_logger(__name__)
 
@@ -80,6 +71,22 @@ class ReasoningMemoryStore:
         
         logger.info(f"ReasoningMemoryStore initialized: {db_path}")
     
+    def _initialize_chromadb(self, embedding_model: str):
+        """Initialize ChromaDB for vector storage"""
+        try:
+            self.chroma_client = chromadb.PersistentClient(
+                path=str(self.chromadb_path)
+            )
+            self.strategy_collection = self.chroma_client.get_or_create_collection(
+                name="reasoning_strategies",
+                metadata={"description": "High-level SQL generation strategies"}
+            )
+            logger.info(f"✓ ChromaDB initialized: {self.chromadb_path}")
+        except Exception as e:
+            logger.error(f"Failed to initialize ChromaDB: {e}")
+            self.chroma_client = None
+            self.strategy_collection = None
+    
     def _initialize_database_schema(self):
         """Create database tables if they don't exist"""
         
@@ -104,7 +111,7 @@ class ReasoningMemoryStore:
             )
         """)
         
-        # Strategy applications table - tracks when strategies are used
+        # Strategy applications table
         self.db.execute("""
             CREATE TABLE IF NOT EXISTS strategy_applications (
                 application_id TEXT PRIMARY KEY,
@@ -115,41 +122,9 @@ class ReasoningMemoryStore:
                 difficulty TEXT,
                 success BOOLEAN,
                 exact_match REAL,
-                execution_match BOOLEAN,
-                generation_time REAL,
+                execution_match REAL,
                 applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (strategy_id) REFERENCES strategies(strategy_id)
-            )
-        """)
-        
-        # Strategy evolution table - tracks changes over time
-        self.db.execute("""
-            CREATE TABLE IF NOT EXISTS strategy_evolution (
-                evolution_id TEXT PRIMARY KEY,
-                strategy_id TEXT NOT NULL,
-                version INTEGER NOT NULL,
-                changes TEXT,              -- JSON describing changes
-                performance_before REAL,
-                performance_after REAL,
-                performance_delta REAL,
-                sample_count INTEGER,
-                evolved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (strategy_id) REFERENCES strategies(strategy_id)
-            )
-        """)
-        
-        # Strategy relationships - tracks which strategies work well together
-        self.db.execute("""
-            CREATE TABLE IF NOT EXISTS strategy_relationships (
-                relationship_id TEXT PRIMARY KEY,
-                strategy_id_1 TEXT NOT NULL,
-                strategy_id_2 TEXT NOT NULL,
-                relationship_type TEXT,    -- 'complementary', 'conflicting', 'sequential'
-                co_occurrence_count INTEGER DEFAULT 0,
-                combined_success_rate REAL DEFAULT 0.0,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (strategy_id_1) REFERENCES strategies(strategy_id),
-                FOREIGN KEY (strategy_id_2) REFERENCES strategies(strategy_id)
             )
         """)
         
@@ -165,7 +140,7 @@ class ReasoningMemoryStore:
             )
         """)
         
-        # Create indices for faster queries
+        # Create indices
         self.db.execute("""
             CREATE INDEX IF NOT EXISTS idx_strategies_pattern 
             ON strategies(pattern)
