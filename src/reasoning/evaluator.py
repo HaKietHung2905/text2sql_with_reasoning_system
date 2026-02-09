@@ -152,6 +152,9 @@ def evaluate(
     # === GENERATION OR LOAD PREDICTIONS ===
     plist = []
     
+    # ⭐ TRACK TRAJECTORIES: Store trajectory IDs for later update
+    trajectory_map = {}  # Maps index -> trajectory_id
+    
     if use_langchain and questions_file:
         # Generate predictions with full pipeline
         logger.info("🤖 Generating SQL with enhanced pipeline...")
@@ -204,6 +207,10 @@ def evaluate(
                     semantic_pipeline=semantic_pipeline,
                     reasoning_pipeline=reasoning_pipeline
                 )
+                
+                # ⭐ STORE TRAJECTORY ID for later update
+                if result.get('trajectory_id'):
+                    trajectory_map[i] = result['trajectory_id']
                 
                 # Check if generation failed
                 if not result.get('sql') or result['sql'].strip() == '':
@@ -295,17 +302,27 @@ def evaluate(
                                 scores[level]['partial'][type_]['rec'] += p_score['rec']
                                 scores[level]['partial'][type_]['f1'] += p_score['f1']
             
-            # Process with ReasoningBank
-            if reasoning_pipeline and 'trajectory_id' in res:
+            # ⭐ UPDATE TRAJECTORY with evaluation results
+            trajectory_id = trajectory_map.get(i)
+            if reasoning_pipeline and trajectory_id:
                 try:
-                    reasoning_pipeline.process_evaluation_result(
-                        trajectory_id=res['trajectory_id'],
-                        exact_match=res['exact_score'],
-                        execution_match=res.get('exec_score', 0) > 0,
-                        component_scores=res.get('component_scores')
+                    reasoning_pipeline.update_trajectory(
+                        trajectory_id=trajectory_id,
+                        success=bool(res['exact_score']),
+                        execution_success=res.get('exec_score', 0) > 0,
+                        metadata={
+                            'exact_match': bool(res['exact_score']),
+                            'execution_match': res.get('exec_score', 0) > 0,
+                            'hardness': res.get('hardness', 'unknown'),
+                            'component_scores': res.get('component_scores'),
+                            'partial_scores': res.get('partial_scores'),
+                            'error': res.get('error'),
+                            'parse_error': res.get('parse_error')
+                        }
                     )
+                    logger.debug(f"Updated trajectory {trajectory_id} with results")
                 except Exception as e:
-                    logger.warning(f"Failed to process evaluation result: {e}")
+                    logger.warning(f"Failed to update trajectory {trajectory_id}: {e}")
             
             # Collect detailed results
             question = questions_data[i]['question'] if use_langchain and i < len(questions_data) else ''
@@ -318,7 +335,8 @@ def evaluate(
                 'execution_match': res.get('exec_score', 0) > 0,
                 'hardness': res.get('hardness', 'unknown'),
                 'error': res.get('error'),
-                'parse_error': res.get('parse_error')
+                'parse_error': res.get('parse_error'),
+                'trajectory_id': trajectory_id
             })
     
     # === FINALIZE ===
@@ -332,13 +350,39 @@ def evaluate(
                 scores[level]['partial'][type_]['rec'] /= count
                 scores[level]['partial'][type_]['f1'] /= count
     
-    # Consolidate learning if using ReasoningBank
+    # ⭐ LEARN FROM TRAJECTORIES - DISTILL STRATEGIES
     if reasoning_pipeline:
+        logger.info("\n" + "="*80)
+        logger.info("🧠 LEARNING PHASE: Distilling strategies from trajectories...")
+        logger.info("="*80)
+        
         try:
-            logger.info("🧠 Final memory consolidation...")
-            reasoning_pipeline.consolidate_memory()
+            # Distill strategies from all collected trajectories
+            distillation_result = reasoning_pipeline.distill_strategies()
+            
+            logger.info(f"✓ Strategy distillation complete")
+            logger.info(f"  New strategies created: {distillation_result.get('new_strategies', 0)}")
+            logger.info(f"  Strategies updated: {distillation_result.get('updated_strategies', 0)}")
+            logger.info(f"  Trajectories processed: {len(trajectory_map)}")
+            
+        except Exception as e:
+            logger.error(f"Failed to distill strategies: {e}")
+            import traceback
+            traceback.print_exc()
+            distillation_result = {'error': str(e)}
+        
+        # ⭐ CONSOLIDATE MEMORY
+        try:
+            consolidation_freq = reasoning_config.get('consolidation_frequency', 50) if reasoning_config else 50
+            if len(detailed_results) >= consolidation_freq or True:  # Always consolidate after evaluation
+                logger.info("\n💾 Consolidating memory...")
+                consolidation_result = reasoning_pipeline.consolidate_memory()
+                
+                logger.info(f"✓ Memory consolidation complete")
+                logger.info(f"  Patterns identified: {consolidation_result.get('patterns_identified', 0)}")
         except Exception as e:
             logger.warning(f"Memory consolidation failed: {e}")
+            consolidation_result = {'error': str(e)}
     
     # === RESULTS ===
     results = {
@@ -358,8 +402,20 @@ def evaluate(
     # Add ReasoningBank statistics
     if reasoning_pipeline:
         try:
-            results['reasoning_statistics'] = reasoning_pipeline.get_statistics()
-            reasoning_pipeline.save_statistics('./results/reasoning_stats.json')
+            reasoning_stats = reasoning_pipeline.get_statistics()
+            reasoning_stats['distillation'] = distillation_result
+            if 'consolidation_result' in locals():
+                reasoning_stats['consolidation'] = consolidation_result
+            reasoning_stats['total_trajectories_collected'] = len(trajectory_map)
+            
+            results['reasoning_statistics'] = reasoning_stats
+            
+            # Save statistics
+            stats_file = './results/reasoning_stats.json'
+            Path(stats_file).parent.mkdir(parents=True, exist_ok=True)
+            with open(stats_file, 'w') as f:
+                json.dump(reasoning_stats, f, indent=2)
+            logger.info(f"Reasoning statistics saved to {stats_file}")
         except Exception as e:
             logger.warning(f"Failed to save reasoning statistics: {e}")
     
@@ -399,7 +455,7 @@ def generate_sql_with_pipeline(
     4. Trajectory collection
     
     Returns:
-        Dictionary with SQL and metadata
+        Dictionary with SQL and metadata (including trajectory_id)
     """
     
     # Step 1: Semantic analysis
@@ -439,7 +495,7 @@ def generate_sql_with_pipeline(
                             return ""
             return ""
         
-        # Generate with ReasoningBank
+        # Generate with ReasoningBank (includes trajectory collection)
         try:
             result = reasoning_pipeline.enhance_sql_generation(
                 question=question,
@@ -449,6 +505,7 @@ def generate_sql_with_pipeline(
                 semantic_analysis=semantic_analysis,
                 sql_generator=sql_generator
             )
+            # Result should include trajectory_id
             return result
         except Exception as e:
             logger.error(f"ReasoningBank generation failed: {e}")
