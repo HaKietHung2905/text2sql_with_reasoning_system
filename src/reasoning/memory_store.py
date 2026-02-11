@@ -77,7 +77,7 @@ class ReasoningMemoryStore:
         """Initialize ChromaDB for vector storage (using new API)"""
         
         try:
-            # Use new PersistentClient API (v0.4.0+)
+            # Use new PersistentClient API
             self.chroma_client = chromadb.PersistentClient(
                 path=str(self.chromadb_path)
             )
