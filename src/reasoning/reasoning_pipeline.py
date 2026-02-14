@@ -216,6 +216,7 @@ class ReasoningBankPipeline:
             enhanced_prompt += f"\n\nStrategy: {strategy.name}\n{strategy.description}"
         return enhanced_prompt
     
+    
     def process_evaluation_result(
         self,
         trajectory_id: str,
@@ -232,99 +233,161 @@ class ReasoningBankPipeline:
             execution_match: Execution match result
             component_scores: Component-level scores
         """
-        # Get trajectory
-        trajectory = self.experience_collector.get_trajectory(trajectory_id)
-        if not trajectory:
-            logger.warning(f"Trajectory not found: {trajectory_id}")
-            return
+        try:
+            # Get trajectory
+            trajectory = self.experience_collector.get_trajectory(trajectory_id)
+            if not trajectory:
+                logger.warning(f"Trajectory not found: {trajectory_id}")
+                return
+            
+            # Update trajectory with results
+            trajectory.exact_match = exact_match
+            trajectory.execution_match = execution_match
+            trajectory.component_scores = component_scores
+            
+            # Self-judgment
+            judgment = self.self_judgment.judge_trajectory(trajectory)
+            
+            # Store judgment
+            self.experience_collector.add_judgment(trajectory_id, judgment)
+            
+            # Record strategy applications
+            for strategy_id in trajectory.strategies_used:
+                try:
+                    # FIXED: Safely get metadata
+                    difficulty = 'unknown'
+                    if hasattr(trajectory, 'metadata') and trajectory.metadata:
+                        difficulty = trajectory.metadata.get('difficulty', 'unknown')
+                    elif hasattr(trajectory, 'difficulty'):
+                        difficulty = trajectory.difficulty or 'unknown'
+                    
+                    self.memory_store.record_application(
+                        strategy_id=strategy_id,
+                        trajectory_id=trajectory_id,
+                        query=trajectory.question,
+                        database=trajectory.database,
+                        difficulty=difficulty,
+                        success=judgment.is_success(),
+                        exact_match=exact_match,
+                        execution_match=execution_match,
+                        generation_time=trajectory.generation_time
+                    )
+                except Exception as e:
+                    logger.debug(f"Failed to record application for {strategy_id}: {e}")
+            
+            # Check if we should consolidate
+            if self._should_consolidate():
+                try:
+                    self.consolidate_memory()
+                except Exception as e:
+                    logger.warning(f"Consolidation failed (non-critical): {e}")
         
-        # Update trajectory with results
-        trajectory.exact_match = exact_match
-        trajectory.execution_match = execution_match
-        trajectory.component_scores = component_scores
-        
-        # Self-judgment
-        judgment = self.self_judgment.judge_trajectory(trajectory)
-        
-        # Store judgment
-        self.experience_collector.add_judgment(trajectory_id, judgment)
-        
-        # Record strategy applications
-        for strategy_id in trajectory.strategies_used:
-            self.memory_store.record_application(
-                strategy_id=strategy_id,
-                trajectory_id=trajectory_id,
-                query=trajectory.question,
-                database=trajectory.database,
-                difficulty=trajectory.metadata.get('difficulty', 'unknown'),
-                success=judgment.is_success(),
-                exact_match=exact_match,
-                execution_match=execution_match,
-                generation_time=trajectory.generation_time
-            )
-        
-        # Check if we should consolidate
-        if self._should_consolidate():
-            self.consolidate_memory()
+        except Exception as e:
+            logger.error(f"Failed to process evaluation result for {trajectory_id}: {e}")
+
+    
     
     def consolidate_memory(self):
         """
         Consolidate memory: distill new strategies and refine existing ones
+        
+        FULLY SAFE VERSION - Always returns a dict
         """
         logger.info("🧠 Consolidating memory...")
         
-        # Get recent trajectories
-        trajectories = self.experience_collector.get_all_trajectories()
+        # CRITICAL: Initialize result at the VERY BEGINNING
+        result = {
+            'new_strategies': 0,
+            'updated_strategies': 0,
+            'patterns_identified': 0,
+            'total_trajectories': 0,
+            'errors': []
+        }
         
-        if len(trajectories) < self.config['min_trajectories_for_distillation']:
-            logger.info(f"Not enough trajectories for distillation: {len(trajectories)}")
-            return
+        try:
+            # Get recent trajectories
+            trajectories = self.experience_collector.get_all_trajectories()
+            result['total_trajectories'] = len(trajectories)
+            
+            if len(trajectories) < self.config.get('min_trajectories_for_distillation', 10):
+                logger.info(f"Not enough trajectories for distillation: {len(trajectories)}")
+                return result
+            
+            # Distill new strategies from successful trajectories
+            if self.config.get('enable_distillation', True):
+                logger.info("  Distilling strategies...")
+                
+                try:
+                    # Get judgments for trajectories
+                    judgments = []
+                    successful_trajectories = []
+                    
+                    for t in trajectories:
+                        judgment = self.experience_collector.get_judgment(t.trajectory_id)
+                        if judgment and judgment.is_success():
+                            successful_trajectories.append(t)
+                            judgments.append(judgment)
+                    
+                    logger.info(f"  Found {len(successful_trajectories)} successful trajectories")
+                    
+                    if successful_trajectories and len(successful_trajectories) >= 3:
+                        # Distill strategies
+                        new_strategies = self.strategy_distillation.distill_strategies(
+                            trajectories=successful_trajectories,
+                            judgments=judgments
+                        )
+                        
+                        # Store new strategies
+                        for strategy in new_strategies:
+                            if self.memory_store.store_strategy(strategy):
+                                self.stats['strategies_distilled'] += 1
+                                result['new_strategies'] += 1
+                        
+                        logger.info(f"✓ Distilled {len(new_strategies)} new strategies")
+                        
+                except Exception as e:
+                    logger.error(f"Strategy distillation failed: {e}")
+                    result['errors'].append(f"Distillation: {str(e)}")
+            
+            # Consolidate existing strategies
+            if self.config.get('enable_consolidation', False):
+                logger.info("  Consolidating existing strategies...")
+                
+                try:
+                    # Get judgments for all trajectories
+                    all_judgments = []
+                    all_trajectories = []
+                    
+                    for t in trajectories:
+                        judgment = self.experience_collector.get_judgment(t.trajectory_id)
+                        if judgment is not None:
+                            all_trajectories.append(t)
+                            all_judgments.append(judgment)
+                    
+                    if all_trajectories:
+                        consolidation_result = self.memory_consolidation.consolidate_memory(
+                            new_trajectories=all_trajectories,
+                            new_judgments=all_judgments
+                        )
+                        
+                        self.stats['memory_consolidations'] += 1
+                        
+                        # Extract statistics safely
+                        if consolidation_result and isinstance(consolidation_result, dict):
+                            result['updated_strategies'] = consolidation_result.get('refined', 0)
+                            result['patterns_identified'] = consolidation_result.get('patterns_discovered', 0)
+                            
+                            logger.info(f"✓ Memory consolidation complete")
+                        
+                except Exception as e:
+                    logger.warning(f"Memory consolidation failed: {e}")
+                    result['errors'].append(f"Consolidation: {str(e)}")
         
-        # Distill new strategies from successful trajectories
-        if self.config['enable_distillation']:
-            successful_trajectories = [
-                t for t in trajectories 
-                if self.experience_collector.get_judgment(t.trajectory_id)
-                and self.experience_collector.get_judgment(t.trajectory_id).is_success()
-            ]
-            
-            if successful_trajectories:
-                new_strategies = self.strategy_distillation.distill_from_trajectories(
-                    trajectories=successful_trajectories
-                )
-                
-                # Store new strategies
-                for strategy in new_strategies:
-                    self.memory_store.store_strategy(strategy)
-                    self.stats['strategies_distilled'] += 1
-                
-                logger.info(f"✓ Distilled {len(new_strategies)} new strategies")
+        except Exception as e:
+            logger.error(f"Critical error in consolidate_memory: {e}")
+            result['errors'].append(f"Critical: {str(e)}")
         
-        # Consolidate existing strategies
-        if self.config['enable_consolidation']:
-            # Get judgments for trajectories
-            judgments = [
-                self.experience_collector.get_judgment(t.trajectory_id)
-                for t in trajectories
-            ]
-            
-            # Filter out None judgments
-            valid_pairs = [
-                (t, j) for t, j in zip(trajectories, judgments) if j is not None
-            ]
-            
-            if valid_pairs:
-                trajectories_with_judgments, judgments_list = zip(*valid_pairs)
-                
-                consolidation_result = self.memory_consolidation.consolidate_memory(
-                    new_trajectories=list(trajectories_with_judgments),
-                    new_judgments=list(judgments_list)
-                )
-                
-                self.stats['memory_consolidations'] += 1
-                logger.info(f"✓ Memory consolidation complete: {consolidation_result}")
-            else:
-                logger.info("No trajectories with judgments for consolidation")
+        return result
     
     def _retrieve_strategies(
         self,
@@ -485,3 +548,64 @@ class ReasoningBankPipeline:
             logger.warning(f"Invalid exact_match: {exact_match}")
             return False
         return True
+
+    def update_trajectory(
+        self,
+        trajectory_id: str,
+        success: bool,
+        execution_success: bool = None,
+        metadata: Optional[Dict] = None
+    ):
+        """Update trajectory with evaluation results"""
+        try:
+            exact_match = 1.0 if success else 0.0
+            execution_match = execution_success if execution_success is not None else success
+            component_scores = metadata.get('component_scores') if metadata else None
+            
+            return self.process_evaluation_result(
+                trajectory_id=trajectory_id,
+                exact_match=exact_match,
+                execution_match=execution_match,
+                component_scores=component_scores
+            )
+        except Exception as e:
+            logger.error(f"Failed to update trajectory {trajectory_id}: {e}")
+            return None
+
+    def distill_strategies(self) -> Dict:
+        """Distill new strategies from collected trajectories"""
+        logger.info("🧠 Distilling strategies from trajectories...")
+        
+        result = {'new_strategies': 0, 'trajectories_processed': 0}
+        
+        try:
+            trajectories = self.experience_collector.get_all_trajectories()
+            result['trajectories_processed'] = len(trajectories)
+            
+            if len(trajectories) < self.config.get('min_trajectories_for_distillation', 10):
+                return result
+            
+            successful_trajectories = []
+            judgments = []
+            
+            for t in trajectories:
+                judgment = self.experience_collector.get_judgment(t.trajectory_id)
+                if judgment and judgment.is_success():
+                    successful_trajectories.append(t)
+                    judgments.append(judgment)
+            
+            if len(successful_trajectories) >= 3:
+                new_strategies = self.strategy_distillation.distill_strategies(
+                    trajectories=successful_trajectories,
+                    judgments=judgments
+                )
+                
+                for strategy in new_strategies:
+                    if self.memory_store.store_strategy(strategy):
+                        result['new_strategies'] += 1
+                        self.stats['strategies_distilled'] += 1
+        
+        except Exception as e:
+            result['error'] = str(e)
+        
+        return result

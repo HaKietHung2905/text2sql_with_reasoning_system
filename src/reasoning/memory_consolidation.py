@@ -157,25 +157,52 @@ class MemoryConsolidation:
         
         logger.info(f"Consolidation complete: {stats}")
         return stats
-    
+        
     def _match_trajectories_to_strategies(
         self,
         trajectories: List[Trajectory],
         judgments: List[JudgmentResult]
     ) -> Dict[str, List[Tuple[Trajectory, JudgmentResult]]]:
-        """Match trajectories to the strategies they used"""
+        """
+        Match trajectories to the strategies they used
         
+        Args:
+            trajectories: List of trajectories
+            judgments: List of judgments
+            
+        Returns:
+            Dict mapping strategy_id to list of (trajectory, judgment) tuples
+        """
         strategy_applications = defaultdict(list)
         
         for traj, judgment in zip(trajectories, judgments):
             # Get strategies used in this trajectory
-            if traj.retrieved_strategies:
-                for strategy_dict in traj.retrieved_strategies:
-                    strategy_id = strategy_dict.get('strategy_id')
-                    if strategy_id:
-                        strategy_applications[strategy_id].append((traj, judgment))
+            # Handle different possible attribute names
+            strategies_used = None
+            
+            if hasattr(traj, 'strategies_used') and traj.strategies_used:
+                # strategies_used is a list of strategy IDs
+                strategies_used = traj.strategies_used
+            elif hasattr(traj, 'retrieved_strategies') and traj.retrieved_strategies:
+                # retrieved_strategies might be a list of dicts
+                if isinstance(traj.retrieved_strategies, list):
+                    strategies_used = []
+                    for item in traj.retrieved_strategies:
+                        if isinstance(item, dict):
+                            strategy_id = item.get('strategy_id')
+                            if strategy_id:
+                                strategies_used.append(strategy_id)
+                        elif isinstance(item, str):
+                            strategies_used.append(item)
+            
+            # Add to applications if we found strategies
+            if strategies_used:
+                for strategy_id in strategies_used:
+                    strategy_applications[strategy_id].append((traj, judgment))
         
+        logger.debug(f"Matched {len(strategy_applications)} strategies to trajectories")
         return dict(strategy_applications)
+
     
     def _make_consolidation_decision(
         self,
@@ -419,7 +446,8 @@ class MemoryConsolidation:
             specialized.success_rate = successes / len(group_applications)
             specialized.sample_count = len(group_applications)
             
-            # Add context-specific insights
+            if specialized.applicability is None:
+                specialized.applicability = {}
             specialized.applicability['context'] = context_key
             
             # Store specialized strategy
@@ -441,14 +469,20 @@ class MemoryConsolidation:
         # Try grouping by difficulty first
         groups_by_difficulty = defaultdict(list)
         for traj, judgment in applications:
-            if traj.difficulty:
-                groups_by_difficulty[traj.difficulty].append((traj, judgment))
+            # Safely get difficulty with fallback
+            difficulty = None
+            if hasattr(traj, 'difficulty') and traj.difficulty:
+                difficulty = traj.difficulty
+            elif hasattr(traj, 'metadata') and traj.metadata:
+                difficulty = traj.metadata.get('difficulty')
+            
+            difficulty = difficulty or 'unknown'
+            groups_by_difficulty[difficulty].append((traj, judgment))
         
         if len(groups_by_difficulty) > 1:
-            # Check if groups have sufficient size
             valid_groups = {
                 k: v for k, v in groups_by_difficulty.items()
-                if len(v) >= self.config['min_sample_count']
+                if len(v) >= self.config.get('min_sample_count', 5)
             }
             if len(valid_groups) > 1:
                 return valid_groups
@@ -456,7 +490,8 @@ class MemoryConsolidation:
         # Fallback: group by database type
         groups_by_database = defaultdict(list)
         for traj, judgment in applications:
-            groups_by_database[traj.database].append((traj, judgment))
+            database = getattr(traj, 'database', 'unknown')
+            groups_by_database[database].append((traj, judgment))
         
         return dict(groups_by_database)
     

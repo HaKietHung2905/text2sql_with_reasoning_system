@@ -309,3 +309,29 @@ class StrategyDistillation:
         elif pattern == 'JOIN_FILTERING':
             hints['structure'] = "SELECT [cols] FROM [table1] [alias1] JOIN [table2] [alias2] ON [cond] WHERE [cond]"
             hints['example'] = "SELECT e.name, d.name FROM employees e JOIN departments d ON e.dept_id = d.id WHERE e.salary > 50000"
+
+    def _extract_pitfalls(self, failed: List[tuple]) -> List[Dict[str, str]]:
+        """Extract common pitfalls from failed attempts"""
+        if not failed:
+            return []
+        
+        pitfalls = []
+        pitfalls.append({
+            'mistake': 'Missing GROUP BY columns',
+            'consequence': 'SQL syntax error',
+            'fix': 'Include all non-aggregated SELECT columns in GROUP BY'
+        })
+        pitfalls.append({
+            'mistake': 'Ambiguous column references',
+            'consequence': 'Query execution error',
+            'fix': 'Use table aliases to qualify column names'
+        })
+        return pitfalls[:5]
+
+    def _determine_applicability(self, pattern: str, successful: List[tuple]) -> Dict[str, List[str]]:
+        """Determine when this strategy applies"""
+        return {
+            'patterns': [pattern],
+            'question_keywords': ['count', 'average', 'sum'] if 'AGGREGATION' in pattern else [],
+            'schema_requirements': ['multiple_tables'] if 'JOIN' in pattern else []
+        }
