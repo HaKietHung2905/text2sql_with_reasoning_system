@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 import warnings
 import logging
 
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 for handler in logging.root.handlers[:]:
     logging.root.removeHandler(handler)
