@@ -166,7 +166,7 @@ def load_foreign_keys(db_id: str, db_dir: str) -> List[Dict]:
         
         # For each table, get foreign keys
         for table in tables:
-            cursor.execute(f"PRAGMA foreign_key_list({table})")
+            cursor.execute(f'PRAGMA foreign_key_list("{table}")')
             fks = cursor.fetchall()
             
             for fk in fks:
@@ -219,7 +219,7 @@ def load_sample_rows(db_id: str, db_dir: str, limit: int = 3) -> Dict[str, List[
         # For each table, get sample rows
         for table in tables:
             try:
-                cursor.execute(f"SELECT * FROM {table} LIMIT {limit}")
+                cursor.execute(f'SELECT * FROM "{table}" LIMIT {limit}')
                 rows = cursor.fetchall()
                 
                 # Convert to list of dictionaries
@@ -335,7 +335,7 @@ def get_schema_from_sqlite(db_path: str) -> Dict[str, List[str]]:
         
         # Fetch table info
         for table in tables:
-            cursor.execute(f"PRAGMA table_info({table})")
+            cursor.execute(f'PRAGMA table_info("{table}")')
             schema[table] = [str(col[1].lower()) for col in cursor.fetchall()]
         
         conn.close()
