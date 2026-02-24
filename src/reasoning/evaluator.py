@@ -11,6 +11,7 @@ import os
 import json
 import re
 import time
+import re as _re
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
@@ -604,9 +605,17 @@ def evaluate_turn(
         }
     
     # Normalize queries
-    p_str_normalized = normalize_sql_for_evaluation(p_str)
-    g_str_normalized = normalize_sql_for_evaluation(g_str)
-    
+    p_str_normalized = normalize_sql_for_evaluation(p_str) if p_str else ""
+    p_str_normalized = p_str_normalized.strip('`').replace('`', '')
+
+    p_str_normalized = _re.sub(
+        r'\bFROM\s+table\b', 'FROM wikisql_data', p_str_normalized, flags=_re.IGNORECASE
+    )
+    p_str_normalized = _re.sub(
+        r'\bJOIN\s+table\b', 'JOIN wikisql_data', p_str_normalized, flags=_re.IGNORECASE
+    )
+
+    g_str_normalized = normalize_sql_for_evaluation(g_str) if g_str else ""
     # Parse SQL
     try:
         g_sql = get_sql(g_str_normalized, schema)

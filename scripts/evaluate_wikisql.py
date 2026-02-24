@@ -100,10 +100,7 @@ def wikisql_type_to_sqlite(t: str) -> str:
 def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
     """
     Create a .sqlite file for one WikiSQL example.
-
-    The SQLite table is named WIKISQL_TABLE_NAME (not "table") to avoid
-    SQLite's reserved-word error in PRAGMA table_info(table).
-    Returns True on success.
+    Columns are stored lowercase so gold/predicted SQL match without quoting.
     """
     table   = item.get("table", {})
     headers = table.get("header", [])
@@ -113,9 +110,10 @@ def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
     if not headers:
         return False
 
-    safe_headers = [sanitize_col(h) for h in headers]
+    # Lowercase so SQL parser matches without case sensitivity issues
+    safe_headers = [sanitize_col(h).lower() for h in headers]
     col_defs = ", ".join(
-        f'"{h}" {wikisql_type_to_sqlite(t)}'
+        f'{h} {wikisql_type_to_sqlite(t)}'
         for h, t in zip(safe_headers, types)
     )
 
@@ -124,7 +122,6 @@ def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
         conn = sqlite3.connect(db_path)
         conn.text_factory = str
         cur = conn.cursor()
-        # Use WIKISQL_TABLE_NAME — avoids "near 'table': syntax error"
         cur.execute(f'CREATE TABLE IF NOT EXISTS {WIKISQL_TABLE_NAME} ({col_defs})')
         if rows:
             ph = ", ".join(["?"] * len(safe_headers))
@@ -137,7 +134,6 @@ def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
     except Exception as e:
         logger.warning(f"Failed to build SQLite for {db_path}: {e}")
         return False
-
 
 def prepare_wikisql_databases(
     gold_file: str,
@@ -239,12 +235,12 @@ def convert_wikisql_gold_to_spider_format(
         table    = item.get("table", {})
         headers  = table.get("header", [])
 
-        # Replace col0/col1/... with sanitized real column names
-        safe_headers = [sanitize_col(h) for h in headers]
+        # Sanitize headers to match SQLite column names (no quotes, lowercase)
+        safe_headers = [sanitize_col(h).lower() for h in headers]
 
         def replacer(m):
             idx = int(m.group(1))
-            return f'"{safe_headers[idx]}"' if idx < len(safe_headers) else m.group(0)
+            return safe_headers[idx] if idx < len(safe_headers) else m.group(0)
 
         real_sql = re.sub(r'\bcol(\d+)\b', replacer, sql)
 
@@ -262,12 +258,15 @@ def convert_wikisql_gold_to_spider_format(
             flags=re.IGNORECASE,
         )
 
-        # WikiSQL uses generic "table" as table name; keep it
+        # Strip ALL double-quote identifiers so Spider parser can handle them
+        # e.g. "Position" → position, "School_Club_Team" → school_club_team
+        real_sql = re.sub(r'"([^"]+)"', lambda m: m.group(1).lower(), real_sql)
+
         converted.append({
             "db_id":    db_id,
             "question": question,
             "query":    real_sql,
-            "sql":      real_sql,   # some parsers look for 'sql' key
+            "sql":      real_sql,
         })
 
     os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
@@ -301,6 +300,37 @@ def load_config(config_path: str) -> dict:
     logger.warning(f"Unsupported config format: {config_path}")
     return {}
 
+def normalize_predicted_wikisql_sql(sql: str) -> str:
+    """
+    Post-process LLM-generated SQL for WikiSQL evaluation.
+
+    LLMs trained on Spider/WikiSQL typically emit "FROM table" because
+    the original WikiSQL dataset uses "table" as the table name.
+    We rename it to WIKISQL_TABLE_NAME to match the SQLite files we built.
+
+    Also strips backtick quoting that some models emit.
+    """
+    if not sql:
+        return sql
+
+    # Replace bare "table" reference in FROM / JOIN
+    sql = re.sub(
+        r'\bFROM\s+`?table`?\b',
+        f'FROM {WIKISQL_TABLE_NAME}',
+        sql,
+        flags=re.IGNORECASE,
+    )
+    sql = re.sub(
+        r'\bJOIN\s+`?table`?\b',
+        f'JOIN {WIKISQL_TABLE_NAME}',
+        sql,
+        flags=re.IGNORECASE,
+    )
+
+    # Strip stray backticks
+    sql = sql.replace('`', '')
+
+    return sql.strip()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CLI

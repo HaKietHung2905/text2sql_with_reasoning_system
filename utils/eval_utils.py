@@ -8,47 +8,31 @@ from typing import Optional, Tuple
 
 def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     """
-    Normalize SQL query for fair comparison - ENHANCED VERSION
-    
-    Handles:
-    - Newlines and whitespace collapse
-    - Keyword case normalization (lowercase)
-    - Aggregate function case (uppercase per Spider convention)
-    - Spacing around punctuation
-    - Trailing semicolons
-    - JOIN syntax normalization (INNER/LEFT/RIGHT JOIN -> JOIN for Spider parser)
-    - Column name case normalization
-    
-    Args:
-        sql: SQL query string
-        
-    Returns:
-        Normalized SQL query
+    Normalize SQL query for fair comparison.
+    Handles Spider + WikiSQL quirks.
     """
     if not sql:
         return sql
-    
-    # Step 0: Handle "SELECT 1" placeholder - return as-is to fail gracefully
+
+    # Step 0: Handle placeholder
     if sql.strip().upper() == "SELECT 1":
         return sql.strip().lower()
-    
-    # Step 1: Remove newlines and normalize whitespace
+
+    # Step 1: Collapse whitespace
     sql = re.sub(r'\s+', ' ', sql.strip())
-    
-    # Step 2: Normalize JOIN syntax FIRST (before case changes)
-    # Spider parser has very limited JOIN support - convert all to simple JOIN
-    # CRITICAL: Spider parser doesn't support LEFT/RIGHT/FULL joins in many cases
-    sql = re.sub(r'\bINNER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'\bLEFT\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)  # Add this
-    sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'\bRIGHT\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)  # Add this
-    sql = re.sub(r'\bFULL\s+OUTER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
-    sql = re.sub(r'\bFULL\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)  # Add this
-    
-    # Step 3: Normalize keywords to lowercase
+
+    # Step 2: Normalize JOIN variants → simple JOIN
+    sql = re.sub(r'\bINNER\s+JOIN\b',       'JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b','JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bLEFT\s+JOIN\b',        'JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b','JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bRIGHT\s+JOIN\b',       'JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bFULL\s+OUTER\s+JOIN\b','JOIN', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bFULL\s+JOIN\b',        'JOIN', sql, flags=re.IGNORECASE)
+
+    # Step 3: Lowercase all keywords
     keywords = [
-        'SELECT', 'FROM', 'WHERE', 'GROUP', 'BY', 'HAVING', 
+        'SELECT', 'FROM', 'WHERE', 'GROUP', 'BY', 'HAVING',
         'ORDER', 'LIMIT', 'JOIN', 'ON', 'AND', 'OR', 'IN',
         'NOT', 'LIKE', 'BETWEEN', 'DISTINCT', 'AS', 'UNION',
         'INTERSECT', 'EXCEPT', 'LEFT', 'RIGHT', 'INNER', 'OUTER',
@@ -57,35 +41,50 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     ]
     for kw in keywords:
         sql = re.sub(rf'\b{kw}\b', kw.lower(), sql, flags=re.IGNORECASE)
-    
-    # Step 4: Keep aggregate functions uppercase (Spider convention)
-    functions = ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX']
-    for fn in functions:
+
+    # Step 4: Uppercase aggregate functions (Spider convention)
+    for fn in ['COUNT', 'SUM', 'AVG', 'MIN', 'MAX']:
         sql = re.sub(rf'\b{fn}\b', fn, sql, flags=re.IGNORECASE)
-    
-    # Step 5: Normalize table/column aliases and identifiers to lowercase
-    def lowercase_identifier(match):
-        return match.group(0).lower()
-    
-    # Pattern: table.column (e.g., T1.fname, student.age)
-    sql = re.sub(r'\b[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*\b', 
-                 lowercase_identifier, sql)
-    
+
+    # Step 5: Lowercase table.column identifiers
+    sql = re.sub(
+        r'\b[a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*\b',
+        lambda m: m.group(0).lower(), sql
+    )
+
     # Step 6: Normalize spacing around punctuation
-    sql = re.sub(r'\s*,\s*', ' , ', sql)
+    sql = re.sub(r'\s*,\s*',  ' , ', sql)
     sql = re.sub(r'\s*\(\s*', ' ( ', sql)
     sql = re.sub(r'\s*\)\s*', ' ) ', sql)
-    sql = re.sub(r'\s*=\s*', ' = ', sql)
-    sql = re.sub(r'\s*<\s*', ' < ', sql)
-    sql = re.sub(r'\s*>\s*', ' > ', sql)
-    sql = re.sub(r'\s*!\s*=\s*', ' != ', sql)
-    
+    sql = re.sub(r'\s*=\s*',  ' = ', sql)
+    sql = re.sub(r'\s*<\s*',  ' < ', sql)
+    sql = re.sub(r'\s*>\s*',  ' > ', sql)
+    sql = re.sub(r'\s*!=\s*', ' != ', sql)
+
     # Step 7: Remove trailing semicolon
     sql = sql.rstrip(';').strip()
-    
-    # Step 8: Final whitespace cleanup
+
+    # ── WikiSQL-specific normalizations ──────────────────────────────────────
+
+    # Step 8: Lowercase string literals so value casing doesn't affect exact match
+    # e.g. 'Butler CC (KS)' → 'butler cc (ks)'
+    def lowercase_string_literal(m):
+        quote = m.group(1)
+        value = m.group(2).lower()
+        return f"{quote}{value}{quote}"
+
+    sql = re.sub(r"(['\"])([^'\"]*)\1", lowercase_string_literal, sql)
+
+    # Step 9: Normalize numeric string literals → bare integers
+    sql = re.sub(r"= '(\d+)'", r"= \1", sql)
+    sql = re.sub(r"= \"(\d+)\"", r"= \1", sql)
+
+    # Step 10: Remove DISTINCT inside COUNT for WikiSQL exact match
+    sql = re.sub(r'\bCOUNT\s*\(\s*distinct\s+', 'COUNT ( ', sql, flags=re.IGNORECASE)
+
+    # Step 11: Final whitespace cleanup
     sql = re.sub(r'\s+', ' ', sql)
-    
+
     return sql.strip()
 
 def extract_db_name_from_question(question: str) -> Optional[str]:

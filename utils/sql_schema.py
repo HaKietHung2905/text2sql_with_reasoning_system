@@ -40,29 +40,26 @@ class Schema:
     
     def _map(self, schema: Dict[str, List[str]]) -> Dict[str, str]:
         """
-        Create ID mapping for tables and columns
-        
-        Args:
-            schema: Schema dictionary
-            
-        Returns:
-            ID mapping dictionary
+        Create ID mapping for tables and columns.
+        Registers both original and lowercase keys so the parser handles
+        quoted (mixed-case) identifiers from WikiSQL gold SQL correctly.
         """
         idMap = {'*': "__all__"}
-        id_counter = 1
-        
-        # Map columns
+
         for table, columns in schema.items():
             for column in columns:
-                key = f"{table.lower()}.{column.lower()}"
-                idMap[key] = f"__{key}__"
-                id_counter += 1
-        
-        # Map tables
+                key = f"{table}.{column}"
+                mapped = f"__{key.lower()}__"
+                idMap[key] = mapped
+                idMap[key.lower()] = mapped         
+                idMap[column] = mapped
+                idMap[column.lower()] = mapped
+
         for table in schema:
-            idMap[table.lower()] = f"__{table.lower()}__"
-            id_counter += 1
-        
+            mapped = f"__{table.lower()}__"
+            idMap[table] = mapped
+            idMap[table.lower()] = mapped
+
         return idMap
     
     def get_tables_with_alias(self, toks: List[str]) -> Dict[str, str]:
@@ -331,7 +328,7 @@ def get_schema_from_sqlite(db_path: str) -> Dict[str, List[str]]:
         
         # Fetch table names
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-        tables = [str(table[0].lower()) for table in cursor.fetchall()]
+        tables = [str(row[0].lower()) for row in cursor.fetchall()]
         
         # Fetch table info
         for table in tables:
