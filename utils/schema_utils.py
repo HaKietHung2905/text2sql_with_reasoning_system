@@ -27,7 +27,7 @@ def get_sqlite_schema(db_path: Path) -> Dict[str, List[Dict[str, Any]]]:
         
         # Get columns for each table
         for table in tables:
-            cursor.execute(f"PRAGMA table_info({table});")
+            cursor.execute(f'PRAGMA table_info("{table}");')
             columns = cursor.fetchall()
             
             schema[table] = [

@@ -138,7 +138,7 @@ SQL Query:"""
             
             schema_info = {}
             for table in tables:
-                cursor.execute(f"PRAGMA table_info({table})")
+                cursor.execute(f'PRAGMA table_info("{table}")')
                 columns = [col[1] for col in cursor.fetchall()]
                 schema_info[table] = columns
             

@@ -233,7 +233,7 @@ class WikiSQLSchemaExtractor:
         
         schema = {
             'db_id': item.get('db_id', 'unknown'),
-            'table_name': table.get('name', 'table'),
+            'table_name': table.get('name', 'wikisql_data'),
             'columns': []
         }
         
