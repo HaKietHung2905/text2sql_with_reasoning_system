@@ -10,9 +10,15 @@ from dotenv import load_dotenv
 
 from utils.logging_utils import get_logger
 
+# Import shared prompt builder from generation module
+try:
+    from src.generation.sql_generator import build_sql_prompt
+    _SHARED_PROMPT_AVAILABLE = True
+except ImportError:
+    _SHARED_PROMPT_AVAILABLE = False
+
 logger = get_logger(__name__)
 
-# Check for LangChain availability
 try:
     from langchain_google_genai import ChatGoogleGenerativeAI
     from langchain_core.prompts import ChatPromptTemplate
@@ -24,186 +30,287 @@ except ImportError:
 
 
 class SQLGenerator:
-    """Generate SQL from natural language questions"""
-    
+    """Generate SQL from natural language questions (LangChain / Gemini backend)"""
+
     def __init__(self):
         self.generator = None
+        self.generator_simple = None   # second chain for retry
         if LANGCHAIN_AVAILABLE:
             self._setup_langchain()
-    
+
     def _setup_langchain(self):
-    """Setup LangChain for SQL generation"""
-    load_dotenv()
-    api_key = os.getenv("GOOGLE_API_KEY")
-    
-    if not api_key or api_key == "your-api-key-here":
-        logger.warning("Google API key not found")
-        return
-    
-    try:
-        llm = ChatGoogleGenerativeAI(
-            model="deepseek-ai/deepseek-r1-0528-maas",
-            temperature=0.1,
-            google_api_key=api_key,
-            convert_system_message_to_human=True
-        )
-        
-        # Enhanced prompt template with Spider format rules
-        system_prompt = """You are a SQL expert. Generate SIMPLE, correct SQL queries following Spider benchmark format.
+        """Setup LangChain chains for SQL generation (full + simple fallback)."""
+        load_dotenv()
+        api_key = os.getenv("GOOGLE_API_KEY")
 
-Database Schema: {schema}
+        if not api_key or api_key == "your-api-key-here":
+            logger.warning("Google API key not found")
+            return
 
-CRITICAL SPIDER FORMAT RULES (MUST FOLLOW):
-1. Use 'JOIN' instead of 'INNER JOIN', 'LEFT JOIN', 'RIGHT JOIN'
-2. DO NOT use CASE statements (not supported by Spider parser)
-3. Use WHERE with AND/OR instead of HAVING with CASE
-4. Use simple aggregate functions: COUNT(*), SUM(), AVG(), MIN(), MAX()
-5. Use lowercase for all identifiers (table names, columns)
-6. Do not include trailing semicolons
+        try:
+            llm = ChatGoogleGenerativeAI(
+                model="deepseek-ai/deepseek-r1-0528-maas",
+                temperature=0.1,
+                google_api_key=api_key,
+                convert_system_message_to_human=True
+            )
 
-ADDITIONAL RULES:
-- For single table queries: NEVER use table aliases
-- For multi-table queries: ALWAYS use simple table aliases (t1, t2, etc.)
-- Use COUNT(*) for counting rows
-- Verify all table and column names exist in schema
+            # ── Full prompt (injected at call time via build_sql_prompt) ──
+            full_template = "{prompt}"
+            self.generator = (
+                ChatPromptTemplate.from_template(full_template) | llm | StrOutputParser()
+            )
 
-CORRECT EXAMPLES:
-✓ SELECT t1.fname FROM student AS t1 WHERE t1.age > 20
-✓ SELECT COUNT(*) FROM student
-✓ SELECT t1.name FROM stadium AS t1 JOIN concert AS t2 ON t1.stadium_id = t2.stadium_id
+            # ── Simple/direct prompt (retry fallback) ────────────────────
+            self.generator_simple = self.generator  # same chain; prompt differs
 
-INCORRECT EXAMPLES (will fail):
-✗ SELECT CASE WHEN condition THEN 1 ELSE 0 END
-✗ SELECT t1.fname FROM student AS t1 INNER JOIN pets AS t2
-✗ SELECT T1.Fname FROM Student AS T1
+            logger.info("SQL generator (LangChain) initialized")
 
-Question: {question}
+        except Exception as e:
+            logger.error(f"Failed to setup LangChain: {e}")
+            self.generator = None
 
-SQL Query:"""
-        
-        prompt = ChatPromptTemplate.from_template(system_prompt)
-        self.generator = prompt | llm | StrOutputParser()
-        
-        logger.info("SQL generator initialized with Spider format rules")
-        
-    except Exception as e:
-        logger.error(f"Failed to setup LangChain: {e}")
-        self.generator = None
-    
     def generate(self, question: str, db_path: str) -> str:
         """
-        Generate SQL from question
-        
-        Args:
-            question: Natural language question
-            db_path: Path to database file
-            
-        Returns:
-            Generated SQL query
+        Generate SQL from question.
+
+        Tries the full structured prompt first; if the result is not valid SQL
+        (model produced reasoning prose), retries with a shorter direct prompt.
         """
         if not os.path.exists(db_path):
             logger.error(f"Database not found: {db_path}")
             return "SELECT 1"
-        
+
         schema_info = self._get_db_schema(db_path)
         if not schema_info:
             logger.error("Could not extract schema")
             return "SELECT 1"
-        
+
         schema_text = self._format_schema(schema_info)
-        
-        if self.generator:
-            try:
-                result = self.generator.invoke({
-                    "question": question,
-                    "schema": schema_text
-                })
-                
-                cleaned = self._clean_sql(result)
-                return cleaned
-                
-            except Exception as e:
-                logger.error(f"Generation failed: {e}")
-        
-        # Fallback to pattern matching
+
+        # ── Attempt 1: full prompt ─────────────────────────────────────
+        sql = self._invoke(question, schema_text, simple=False)
+        if sql:
+            return sql
+
+        # ── Attempt 2: simple/direct prompt ────────────────────────────
+        logger.warning(f"Full prompt produced no SQL for: {question!r} — retrying")
+        sql = self._invoke(question, schema_text, simple=True)
+        if sql:
+            return sql
+
+        # ── Fallback: pattern matching ─────────────────────────────────
         return self._pattern_generate(question, schema_info)
-    
+
+    def _invoke(self, question: str, schema_text: str, simple: bool) -> str:
+        """Invoke the LangChain chain and return clean SQL, or "" on failure."""
+        if not self.generator:
+            return ""
+
+        if _SHARED_PROMPT_AVAILABLE:
+            prompt_text = build_sql_prompt(question, schema_text, simple=simple)
+        else:
+            prompt_text = self._fallback_prompt(question, schema_text, simple)
+
+        try:
+            result = self.generator.invoke({"prompt": prompt_text})
+            return self._clean_sql(result)
+        except Exception as e:
+            logger.error(f"LangChain invoke failed ({'simple' if simple else 'full'}): {e}")
+            return ""
+
+    def _fallback_prompt(self, question: str, schema_text: str,
+                         simple: bool = False) -> str:
+        """Inline prompt builder used when src.generation is not importable."""
+        if simple:
+            return f"""Database Schema:
+{schema_text}
+
+Write a single SQL SELECT statement for the question below.
+Rules:
+- Output ONLY the SQL, nothing else. Start with SELECT.
+- Use = for exact matches (not LIKE).
+- "how many" / "total number of" → COUNT(col)
+- "total amount of [countable]"  → COUNT(col), NOT SUM
+- "minimum X" → MIN(col), "maximum X" → MAX(col)
+- Never split a compound filter like '4th, Atlantic Division' into two conditions.
+
+Question: {question}
+SQL:"""
+
+        return f"""You are a SQL expert. Output ONLY a single SQL SELECT statement — nothing else.
+Do not explain. Do not reason. Do not add footnotes. Start directly with SELECT.
+
+Database Schema:
+{schema_text}
+
+══ HARD RULES ══════════════════════════════════════════════════════════
+
+OUTPUT FORMAT
+  • First character MUST be 'S' (SELECT)
+  • NO markdown, NO labels, NO comments, NO prose
+  • One line, no trailing semicolon
+
+AGGREGATION
+  • "how many X" / "total number of X"       → COUNT(x_column)  ← NOT SUM
+  • "total amount of X" (X is a count)        → COUNT(x_column)  ← NOT SUM
+  • "total amount / sum of X" (X is numeric)  → SUM(x_column)
+  • "minimum / lowest / Name the min X"       → MIN(x_column)    ← ALWAYS wrap
+  • "maximum / highest / total X when ..."    → MAX(x_column)    ← ALWAYS wrap
+  • "what is the X when <filter>" (single)    → MIN(x_column) WHERE <filter>
+
+WHERE CLAUSE
+  • Exact match: WHERE col = 'value'   NOT LIKE
+  • Dates/years: WHERE years_in_toronto = '1996-97'   NOT LIKE '%1996-97%'
+  • Compound value stays as one string:
+      WHERE regular_season = '4th, Atlantic Division'  ← CORRECT
+      WHERE regular_season = '4th' AND division = ...  ← WRONG
+
+══ EXAMPLES ════════════════════════════════════════════════════════════
+Q: How many schools did player 3 play at?
+A: SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_ = 3
+
+Q: What is the total amount of numbers on the Toronto team in 2005-06?
+A: SELECT COUNT(no_) FROM wikisql_data WHERE years_in_toronto = '2005-06'
+
+Q: Name the minimum ties played for 6 years.
+A: SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6
+
+Q: What is the total amount of trees when district is Leninsky?
+A: SELECT MAX(total_amount_of_trees) FROM wikisql_data WHERE district = 'leninsky'
+
+Q: What is the u.s. open cup status for regular season of 4th, Atlantic Division?
+A: SELECT u_s__open_cup FROM wikisql_data WHERE regular_season = '4th, Atlantic Division'
+
+Q: What player played guard for Toronto in 1996-97?
+A: SELECT player FROM wikisql_data WHERE position = 'guard' AND years_in_toronto = '1996-97'
+
+══════════════════════════════════════════════════════════════════════
+
+Question: {question}
+SQL:"""
+
+    # ------------------------------------------------------------------
+    # SQL extraction  (handles DeepSeek R1 / CoT verbose output)
+    # ------------------------------------------------------------------
+
+    def _clean_sql(self, result: str) -> str:
+        """Extract and clean a SQL statement. Returns "" on failure (never prose)."""
+        if not result or not result.strip():
+            return ""
+
+        text = result.strip()
+
+        # 1. ```sql … ``` block
+        m = re.search(r"```sql\s*(.*?)\s*```", text, re.IGNORECASE | re.DOTALL)
+        if m:
+            return self._finalize(m.group(1))
+
+        # 2. Generic ``` … ``` that starts with SELECT
+        m = re.search(r"```\s*(SELECT\b.*?)\s*```", text, re.IGNORECASE | re.DOTALL)
+        if m:
+            return self._finalize(m.group(1))
+
+        # 3. Common label prefixes
+        for prefix in (
+            r"final\s+sql\s*query\s*:",
+            r"final\s+sql\s*:",
+            r"sql\s+query\s*:",
+            r"sql\s*:",
+            r"answer\s*:",
+            r"query\s*:",
+        ):
+            m = re.search(prefix, text, re.IGNORECASE)
+            if m:
+                candidate = text[m.end():].strip()
+                sql = self._first_select(candidate)
+                if sql:
+                    return self._finalize(sql)
+
+        # 4. Last SELECT-starting line (prefer last — CoT writes draft first)
+        select_lines = [
+            line.strip()
+            for line in text.splitlines()
+            if re.match(r"SELECT\b", line.strip(), re.IGNORECASE)
+        ]
+        if select_lines:
+            return self._finalize(select_lines[-1])
+
+        # 5. First SELECT block anywhere
+        sql = self._first_select(text)
+        if sql:
+            return self._finalize(sql)
+
+        # 6. Nothing found — return "" so caller can retry
+        logger.warning(f"Could not extract SQL from output: {text[:200]!r}")
+        return ""
+
+    def _first_select(self, text: str) -> str:
+        """Pull the first complete SELECT statement from arbitrary text."""
+        m = re.search(r"(SELECT\b.*?)(?:\n\n|\Z)", text, re.IGNORECASE | re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        m = re.search(r"(SELECT\b[^;]*)", text, re.IGNORECASE | re.DOTALL)
+        if m:
+            return m.group(1).strip()
+        return ""
+
+    def _finalize(self, sql: str) -> str:
+        """Normalise extracted SQL: trim prose, remove backticks, collapse whitespace."""
+        if not sql:
+            return ""
+        sql = sql.split("\n\n")[0]
+        sql = sql.split(";")[0]
+        sql = re.sub(
+            r"\s+\b(But|However|Note|Therefore|Also|Alternatively|Wait)\b[^\"']*$",
+            "",
+            sql,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        sql = sql.replace("`", "")
+        return " ".join(sql.split()).strip()
+
+    # ------------------------------------------------------------------
+
     def _get_db_schema(self, db_path: str) -> Dict[str, List[str]]:
-        """Extract database schema"""
+        """Extract database schema from SQLite file."""
         try:
             conn = sqlite3.connect(db_path)
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-            tables = [table[0] for table in cursor.fetchall()]
-            
+            tables = [t[0] for t in cursor.fetchall()]
             schema_info = {}
             for table in tables:
                 cursor.execute(f'PRAGMA table_info("{table}")')
-                columns = [col[1] for col in cursor.fetchall()]
-                schema_info[table] = columns
-            
+                schema_info[table] = [col[1] for col in cursor.fetchall()]
             conn.close()
             return schema_info
-            
         except Exception as e:
             logger.error(f"Schema extraction failed: {e}")
             return {}
-    
+
     def _format_schema(self, schema_info: Dict[str, List[str]]) -> str:
-        """Format schema for prompt"""
-        lines = []
-        for table, columns in schema_info.items():
-            lines.append(f"Table {table}: {', '.join(columns)}")
-        return '\n'.join(lines)
-    
-    def _clean_sql(self, result: str) -> str:
-        """Clean LLM result"""
-        sql = result.strip()
-        
-        # Remove "SQL:" prefix
-        if sql.lower().startswith("sql:"):
-            sql = sql[4:].strip()
-        
-        # Extract from code blocks
-        if "```sql" in sql.lower():
-            start = sql.lower().find("```sql") + 6
-            end = sql.find("```", start)
-            if end != -1:
-                sql = sql[start:end].strip()
-        elif "```" in sql:
-            start = sql.find("```") + 3
-            end = sql.find("```", start)
-            if end != -1:
-                sql = sql[start:end].strip()
-        
-        # Normalize whitespace
-        sql = ' '.join(sql.strip().split())
-        
-        # Remove trailing semicolon
-        if sql.endswith(';'):
-            sql = sql[:-1]
-        
-        return sql
-    
+        """Format schema dict as prompt-friendly string."""
+        return '\n'.join(
+            f"Table {table}: {', '.join(columns)}"
+            for table, columns in schema_info.items()
+        )
+
     def _pattern_generate(self, question: str, schema_info: Dict) -> str:
-        """Pattern-based SQL generation"""
-        question_lower = question.lower()
+        """Pattern-based SQL generation fallback."""
+        q = question.lower()
         tables = list(schema_info.keys())
-        
         if not tables:
             return "SELECT 1"
-        
-        primary_table = tables[0]
-        
-        # Pattern matching
-        if re.search(r'how many|count', question_lower):
-            return f"SELECT COUNT(*) FROM {primary_table}"
-        elif re.search(r'list all|show all', question_lower):
-            return f"SELECT * FROM {primary_table}"
-        elif re.search(r'names?', question_lower):
-            columns = schema_info.get(primary_table, [])
-            name_col = next((col for col in columns if 'name' in col.lower()), 
-                          columns[0] if columns else '*')
-            return f"SELECT {name_col} FROM {primary_table}"
+        tbl = tables[0]
+        if re.search(r'how many|count|total number', q):
+            return f"SELECT COUNT(*) FROM {tbl}"
+        elif re.search(r'list all|show all', q):
+            return f"SELECT * FROM {tbl}"
+        elif re.search(r'names?', q):
+            cols = schema_info.get(tbl, [])
+            name_col = next((c for c in cols if 'name' in c.lower()),
+                            cols[0] if cols else '*')
+            return f"SELECT {name_col} FROM {tbl}"
         else:
-            return f"SELECT * FROM {primary_table}"
+            return f"SELECT * FROM {tbl}"
