@@ -76,15 +76,18 @@ class SQLGenerator:
 
         Tries the full structured prompt first; if the result is not valid SQL
         (model produced reasoning prose), retries with a shorter direct prompt.
+        If both LLM attempts fail, returns "" so the caller can use SELECT 1.
+        Never falls back to pattern matching — a wrong pattern SQL is worse
+        than an explicit "" that the caller handles cleanly.
         """
         if not os.path.exists(db_path):
             logger.error(f"Database not found: {db_path}")
-            return "SELECT 1"
+            return ""
 
         schema_info = self._get_db_schema(db_path)
         if not schema_info:
             logger.error("Could not extract schema")
-            return "SELECT 1"
+            return ""
 
         schema_text = self._format_schema(schema_info)
 
@@ -93,14 +96,17 @@ class SQLGenerator:
         if sql:
             return sql
 
-        # ── Attempt 2: simple/direct prompt ────────────────────────────
-        logger.warning(f"Full prompt produced no SQL for: {question!r} — retrying")
+        # ── Attempt 2: simple/direct prompt ───────────────────────────
+        logger.warning(f"Full prompt produced no SQL for: {question!r} — retrying simple")
         sql = self._invoke(question, schema_text, simple=True)
         if sql:
             return sql
 
-        # ── Fallback: pattern matching ─────────────────────────────────
-        return self._pattern_generate(question, schema_info)
+        # ── Both LLM attempts failed — return "" for clean fallback ───
+        # Do NOT use _pattern_generate: a generic "SELECT COUNT(*) FROM tbl"
+        # silently poisons results.  Let the caller decide (SELECT 1).
+        logger.warning(f"All generation attempts failed for: {question!r}")
+        return ""
 
     def _invoke(self, question: str, schema_text: str, simple: bool) -> str:
         """Invoke the LangChain chain and return clean SQL, or "" on failure."""
@@ -176,12 +182,6 @@ A: SELECT COUNT(no_) FROM wikisql_data WHERE years_in_toronto = '2005-06'
 Q: Name the minimum ties played for 6 years.
 A: SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6
 
-Q: What is the total amount of trees when district is Leninsky?
-A: SELECT MAX(total_amount_of_trees) FROM wikisql_data WHERE district = 'leninsky'
-
-Q: What is the u.s. open cup status for regular season of 4th, Atlantic Division?
-A: SELECT u_s__open_cup FROM wikisql_data WHERE regular_season = '4th, Atlantic Division'
-
 Q: What player played guard for Toronto in 1996-97?
 A: SELECT player FROM wikisql_data WHERE position = 'guard' AND years_in_toronto = '1996-97'
 
@@ -241,9 +241,12 @@ SQL:"""
         if sql:
             return self._finalize(sql)
 
-        # 6. Nothing found — return "" so caller can retry
-        logger.warning(f"Could not extract SQL from output: {text[:200]!r}")
-        return ""
+        # 6. Nothing found — apply prose guard then return "" if still not SQL
+        candidate = self._finalize(text)
+        if candidate and not re.match(r'^\s*SELECT\b', candidate, re.IGNORECASE):
+            logger.warning(f"Could not extract SQL from output: {text[:200]!r}")
+            return ""  # signal extraction failure → caller uses SELECT 1
+        return candidate
 
     def _first_select(self, text: str) -> str:
         """Pull the first complete SELECT statement from arbitrary text."""
@@ -297,7 +300,11 @@ SQL:"""
         )
 
     def _pattern_generate(self, question: str, schema_info: Dict) -> str:
-        """Pattern-based SQL generation fallback."""
+        """
+        Pattern-based SQL generation — kept for reference but NO LONGER called
+        from generate().  Calling this silently produces wrong SQLs that corrupt
+        evaluation results.  Use SELECT 1 as a safe explicit failure instead.
+        """
         q = question.lower()
         tables = list(schema_info.keys())
         if not tables:

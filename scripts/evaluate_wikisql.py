@@ -135,6 +135,7 @@ def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
         logger.warning(f"Failed to build SQLite for {db_path}: {e}")
         return False
 
+
 def prepare_wikisql_databases(
     gold_file: str,
     db_dir: str,
@@ -206,6 +207,37 @@ def prepare_wikisql_databases(
     return db_dir
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Gold SQL conversion helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def _strip_quoted_identifiers(sql: str) -> str:
+    """
+    Remove double-quote wrappers from column/table identifiers only.
+
+    Double-quoted tokens that look like plain identifiers (word chars only)
+    are unquoted and lowercased.  Double-quoted tokens that contain spaces,
+    apostrophes, or other special characters are string literals — they are
+    converted to single-quoted SQL strings with apostrophes escaped as ''.
+
+    Examples:
+        "Position"    → position          (identifier)
+        "st. john's"  → 'st. john''s'     (string literal)
+        "New York"    → 'New York'         (string literal with space)
+    """
+    def replacer(m: re.Match) -> str:
+        inner = m.group(1)
+        # Pure identifier: only word characters (letters, digits, underscore)
+        if re.fullmatch(r'\w+', inner):
+            return inner.lower()
+        # Everything else is a string value — wrap in single quotes,
+        # escaping any embedded apostrophe as ''
+        escaped = inner.replace("'", "''")
+        return f"'{escaped}'"
+
+    return re.sub(r'"([^"]*)"', replacer, sql)
+
+
 def convert_wikisql_gold_to_spider_format(
     gold_file: str,
     output_file: str,
@@ -258,9 +290,9 @@ def convert_wikisql_gold_to_spider_format(
             flags=re.IGNORECASE,
         )
 
-        # Strip ALL double-quote identifiers so Spider parser can handle them
-        # e.g. "Position" → position, "School_Club_Team" → school_club_team
-        real_sql = re.sub(r'"([^"]+)"', lambda m: m.group(1).lower(), real_sql)
+        # Strip double-quote identifiers safely — preserves quoted string values
+        # e.g. "Position" → position, "st. john's" → 'st. john''s'
+        real_sql = _strip_quoted_identifiers(real_sql)
 
         converted.append({
             "db_id":    db_id,
@@ -300,6 +332,7 @@ def load_config(config_path: str) -> dict:
     logger.warning(f"Unsupported config format: {config_path}")
     return {}
 
+
 def normalize_predicted_wikisql_sql(sql: str) -> str:
     """
     Post-process LLM-generated SQL for WikiSQL evaluation.
@@ -331,6 +364,7 @@ def normalize_predicted_wikisql_sql(sql: str) -> str:
     sql = sql.replace('`', '')
 
     return sql.strip()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CLI

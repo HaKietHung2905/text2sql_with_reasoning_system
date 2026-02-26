@@ -567,14 +567,31 @@ def generate_sql_with_pipeline(
             for attempt in range(max_retries):
                 try:
                     raw = evaluator.generate_sql_from_question(q, db_path)
-                    if raw and raw.strip():
-                        # ── FIX: extract clean SQL from model output ──────
-                        sql = _extract_sql_from_output(raw)
-                        if _is_valid_sql(sql):
-                            return sql
-                        # If extraction failed, return original and let
-                        # downstream handle it
+
+                    # Empty string means the generator gave up cleanly (prose
+                    # output or LLM failure).  Don't retry — the model will
+                    # produce the same prose again.  Return "" immediately so
+                    # the ReasoningBank pipeline or outer caller can substitute
+                    # SELECT 1.
+                    if not raw or not raw.strip():
+                        return ""
+
+                    # If it looks like valid SQL, return it directly
+                    if _is_valid_sql(raw):
                         return raw
+
+                    # Try to recover SQL from prose output
+                    sql = _extract_sql_from_output(raw)
+                    if _is_valid_sql(sql):
+                        return sql
+
+                    # Extraction also failed — same model will keep producing
+                    # prose, so give up immediately instead of burning retries.
+                    logger.warning(
+                        f"Could not extract SQL for: {q!r} — using SELECT 1"
+                    )
+                    return ""
+
                 except Exception as e:
                     err = str(e)
                     if "429" in err or "Resource exhausted" in err:
@@ -606,13 +623,22 @@ def generate_sql_with_pipeline(
                 sql_generator=sql_generator
             )
 
-            # ── FIX: ensure the SQL in the result is clean ────────────────
+            # Ensure the SQL in the result is clean
             raw_sql = result.get('sql', '')
             if raw_sql and not _is_valid_sql(raw_sql):
-                clean = _extract_sql_from_output(raw_sql)
-                if clean:
-                    result['sql'] = clean
-                    logger.debug(f"Post-processed SQL: {raw_sql[:80]!r} → {clean!r}")
+                extracted = _extract_sql_from_output(raw_sql)
+                if extracted and _is_valid_sql(extracted):
+                    result['sql'] = extracted
+                    logger.debug(f"Post-processed SQL: {raw_sql[:80]!r} → {extracted!r}")
+                else:
+                    # Extraction failed — use safe fallback
+                    logger.warning(
+                        f"Could not extract SQL from output: {raw_sql[:80]!r}"
+                    )
+                    result['sql'] = "SELECT 1"
+
+            if not result.get('sql'):
+                result['sql'] = "SELECT 1"
 
             return result
 

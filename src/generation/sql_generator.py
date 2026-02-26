@@ -77,6 +77,8 @@ class SQLGenerator:
           - "SQL:" / "Final SQL:" label prefixes
           - DeepSeek / CoT models that emit reasoning prose before/after
           - Multi-line outputs where the real SQL is buried mid-text
+
+        Returns "" on failure — never returns raw prose.
         """
         if not result or not result.strip():
             return ""
@@ -124,13 +126,18 @@ class SQLGenerator:
         if sql:
             return self._finalize(sql)
 
-        # 6. Last resort — return as-is (will likely fail downstream)
-        logger.warning(f"Could not extract SQL from output: {text[:200]!r}")
-        return self._finalize(text)
+        # 6. Last resort — run _finalize on the full text, then apply the
+        #    prose guard: if the result doesn't start with a SQL keyword,
+        #    return "" so the caller can fall back to SELECT 1 cleanly.
+        candidate = self._finalize(text)
+        if candidate and not re.match(r'^\s*SELECT\b', candidate, re.IGNORECASE):
+            logger.warning(f"Could not extract SQL from output: {text[:200]!r}")
+            return ""  # signal extraction failure → caller uses SELECT 1
+        return candidate
 
     def _first_select(self, text: str) -> str:
         """Pull the first complete SELECT statement from arbitrary text."""
-        # Stop at first blank line
+        # Stop at first blank line — prose usually follows
         m = re.search(r"(SELECT\b.*?)(?:\n\n|\Z)", text, re.IGNORECASE | re.DOTALL)
         if m:
             return m.group(1).strip()
@@ -151,7 +158,7 @@ class SQLGenerator:
         if not sql:
             return ""
 
-        # Stop at first blank line — prose usually follows
+        # Stop at first blank line — prose usually follows after here
         sql = sql.split("\n\n")[0]
 
         # Remove trailing semicolon
