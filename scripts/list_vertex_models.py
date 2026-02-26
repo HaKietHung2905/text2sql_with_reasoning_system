@@ -43,7 +43,7 @@ def list_models():
         # (This is just a placeholder, listing publisher models is actually hard via SDK)
         
         print("\nTry to call generate_content on specific models:")
-        models_to_test = ["gemini-2.5-flash", "gemini-2.5-pro"]
+        models_to_test = ["gemini-1.5-flash", "gemini-1.5-pro"]
         for m in models_to_test:
             try:
                 from vertexai.generative_models import GenerativeModel

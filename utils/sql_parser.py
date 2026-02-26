@@ -65,85 +65,129 @@ def is_identifier(token: str) -> bool:
     return True
 
 
+
 def tokenize(string: str) -> List[str]:
     """
     Tokenize SQL query string with proper handling of column references.
-    
-    CRITICAL FIX: Merges tokens like ['table', '.', 'column'] back into 'table.column'
-    to avoid parse errors like "Error parsing column: t2" or "'pets.stuid'".
-    
-    This fixes the following error patterns:
-    - Error parsing column: t2, t1, as, ||, select
-    - 'pets.stuid', 'car_names.maker', 'cars_data.model'
-    
-    Args:
-        string: SQL query string
-        
-    Returns:
-        List of tokens with column references preserved
+
+    CRITICAL FIX: Merges tokens like ['table', '.', 'column'] back into
+    'table.column' to avoid parse errors like "Error parsing column: t2".
+
+    Also handles apostrophes inside string literals (e.g. "St. John's")
+    that would otherwise cause an "Unexpected quote" assertion error.
     """
     string = str(string)
-    string = string.replace("\'", "\"")
+
+    # ------------------------------------------------------------------
+    # STEP 1: Normalize quotes.
+    # The rest of this function works entirely with double-quote delimiters.
+    # We need to convert single-quoted SQL strings to double-quoted ones,
+    # but we must preserve apostrophes *inside* string literals first.
+    #
+    # Strategy: scan for single-quoted regions manually, then escape any
+    # apostrophe that sits inside a quoted value.
+    # ------------------------------------------------------------------
+
+    # Replace SQL-standard escaped apostrophes '' and \' with a safe placeholder
+    # BEFORE we start scanning for quote pairs.
+    APOS = "\x00APOS\x00"
+    string = string.replace("''", APOS)   # SQL standard:  'St. John''s' → 'St. John\x00APOS\x00s'
+    string = string.replace("\\'", APOS)  # C-style escape: 'O\'Brien'   → 'O\x00APOS\x00Brien'
+
+    # Now every remaining single-quote is a proper open/close delimiter.
+    # Convert them all to double-quotes for uniform processing below.
+    string = string.replace("'", '"')
+
     quote_idxs = [idx for idx, char in enumerate(string) if char == '"']
-    
-    assert len(quote_idxs) % 2 == 0, "Unexpected quote"
-    
-    # Keep string value as token
-    vals = {}
+
+    if len(quote_idxs) % 2 != 0:
+        # Graceful recovery: an odd number of double-quotes means bad input
+        # (e.g. the model generated unbalanced quotes).  Remove the last
+        # unpaired quote so parsing can continue rather than crashing.
+        logger.warning(
+            f"Unexpected number of quotes in SQL: {string!r}. "
+            "Attempting recovery by removing the unpaired quote."
+        )
+        # Pair greedily from the left; the leftover is the unpaired one.
+        paired: set = set()
+        for i in range(0, len(quote_idxs) - 1, 2):
+            paired.add(quote_idxs[i])
+            paired.add(quote_idxs[i + 1])
+        unpaired = [idx for idx in quote_idxs if idx not in paired]
+        s_list = list(string)
+        for idx in sorted(unpaired, reverse=True):
+            s_list[idx] = " "
+        string = "".join(s_list)
+        quote_idxs = [idx for idx, char in enumerate(string) if char == '"']
+
+    # ------------------------------------------------------------------
+    # STEP 2: Extract quoted string literals and replace them with stable
+    # placeholder tokens BEFORE word_tokenize runs.
+    #
+    # word_tokenize would mangle things like  "St. John's"  or long values
+    # with punctuation.  We replace each "..." region with a simple token
+    # __STR_N__ that tokenize won't split, then restore afterwards.
+    # ------------------------------------------------------------------
+    vals: dict = {}
+    # Process right-to-left so replacements don't shift earlier indices.
+    str_idx = 0
     for i in range(len(quote_idxs) - 1, -1, -2):
         qidx1 = quote_idxs[i - 1]
         qidx2 = quote_idxs[i]
-        val = string[qidx1: qidx2 + 1]
-        key = f"__val_{qidx1}_{qidx2}__"
-        string = string[:qidx1] + key + string[qidx2 + 1:]
-        vals[key] = val
-    
-    # Use word_tokenize to get base tokens
+        # The raw value still has the APOS placeholder — restore it now.
+        raw_val = string[qidx1: qidx2 + 1].replace(APOS, "'")
+        placeholder = f"__STR{str_idx}__"
+        str_idx += 1
+        string = string[:qidx1] + placeholder + string[qidx2 + 1:]
+        vals[placeholder.lower()] = raw_val  # key in lowercase to match word_tokenize output
+
+    # ------------------------------------------------------------------
+    # STEP 3: Tokenize the placeholder-substituted string.
+    # ------------------------------------------------------------------
     toks = [word.lower() for word in word_tokenize(string)]
-    
-    # Replace with string value token
-    for i in range(len(toks)):
-        if toks[i] in vals:
-            toks[i] = vals[toks[i]]
-    
-    # CRITICAL FIX: Merge tokens that form column references (table.column)
-    # This fixes errors like "Error parsing column: t2", "'pets.stuid'", etc.
+
+    # Restore string literal tokens.
+    toks = [vals.get(tok, tok) for tok in toks]
+
+    # ------------------------------------------------------------------
+    # STEP 4: Merge  table . column  patterns into single tokens.
+    # Fixes "Error parsing column: t2", "'pets.stuid'", etc.
+    # ------------------------------------------------------------------
     merged_toks = []
     i = 0
     while i < len(toks):
-        # Check if this is part of a table.column pattern
-        if i + 2 < len(toks) and toks[i + 1] == '.':
-            # Pattern: identifier . identifier
-            # Examples: t1.name, pets.stuid, car_names.maker, cars_data.model
-            if (is_identifier(toks[i]) and is_identifier(toks[i + 2])):
-                # Merge into single token
-                merged_toks.append(f"{toks[i]}.{toks[i + 2]}")
-                i += 3
-                continue
-        
-        # Check for concatenation operator || (should stay as separate token, not merged)
+        # table.column pattern
+        if (i + 2 < len(toks)
+                and toks[i + 1] == '.'
+                and is_identifier(toks[i])
+                and is_identifier(toks[i + 2])):
+            merged_toks.append(f"{toks[i]}.{toks[i + 2]}")
+            i += 3
+            continue
+
+        # Concatenation operator ||
         if toks[i] == '|' and i + 1 < len(toks) and toks[i + 1] == '|':
             merged_toks.append('||')
             i += 2
             continue
-        
-        # Regular token
+
         merged_toks.append(toks[i])
         i += 1
-    
+
     toks = merged_toks
-    
-    # Find if there exists !=, >=, <=
+
+    # ------------------------------------------------------------------
+    # STEP 5: Merge  !=  >=  <=  into single tokens.
+    # ------------------------------------------------------------------
     eq_idxs = [idx for idx, tok in enumerate(toks) if tok == "="]
     eq_idxs.reverse()
     prefix = ('!', '>', '<')
-    
     for eq_idx in eq_idxs:
         if eq_idx > 0:
             pre_tok = toks[eq_idx - 1]
             if pre_tok in prefix:
                 toks = toks[:eq_idx - 1] + [pre_tok + "="] + toks[eq_idx + 1:]
-    
+
     return toks
 
 

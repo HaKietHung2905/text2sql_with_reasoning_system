@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 class SQLGenerator:
     """Generates SQL queries from natural language questions using Gemini"""
     
-    def __init__(self, model_name: str = "gemini-2.5-flash", api_key: Optional[str] = None):
+    def __init__(self, model_name: str = "deepseek-ai/deepseek-r1-0528-maas", api_key: Optional[str] = None):
         """
         Initialize SQL Generator
         

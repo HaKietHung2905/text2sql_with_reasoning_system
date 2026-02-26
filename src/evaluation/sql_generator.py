@@ -42,7 +42,7 @@ class SQLGenerator:
     
     try:
         llm = ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash-exp",
+            model="deepseek-ai/deepseek-r1-0528-maas",
             temperature=0.1,
             google_api_key=api_key,
             convert_system_message_to_human=True
