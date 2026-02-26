@@ -35,7 +35,8 @@ class SQLGenerator:
         self.model = GoogleGenAI(
             model_name=model_name, 
             api_key=api_key,
-            use_vertex_ai=use_vertex
+            use_vertex_ai=use_vertex,
+            location=os.getenv("VERTEX_AI_LOCATION", "us-central1")
         )
         
     def generate(self, question: str, db_path: str, schema_info: Optional[Dict] = None) -> str:

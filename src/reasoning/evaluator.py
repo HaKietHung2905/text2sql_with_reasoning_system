@@ -12,6 +12,8 @@ import json
 import re
 import time
 import re as _re
+import threading
+import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
@@ -58,6 +60,21 @@ except ImportError:
     EXEC_EVAL_AVAILABLE = False
     logger.warning("exec_eval not available - execution accuracy disabled")
 
+class RateLimiter:
+    def __init__(self, requests_per_minute=30):
+        self.rpm = requests_per_minute
+        self.min_interval = 60.0 / requests_per_minute
+        self.last_request = 0
+        self.lock = threading.Lock()
+    
+    def wait(self):
+        with self.lock:
+            elapsed = time.time() - self.last_request
+            if elapsed < self.min_interval:
+                time.sleep(self.min_interval - elapsed)
+            self.last_request = time.time()
+
+rate_limiter = RateLimiter(requests_per_minute=30)
 
 def evaluate(
     gold: str,
@@ -160,9 +177,6 @@ def evaluate(
         # Generate predictions with full pipeline
         logger.info("🤖 Generating SQL with enhanced pipeline...")
         
-        last_request_time = None
-        min_delay = 15.0 
-
         # Load questions
         with open(questions_file, 'r') as f:
             if questions_file.endswith('.json'):
@@ -183,10 +197,7 @@ def evaluate(
         
         for i, item in enumerate(tqdm(questions_data, desc="Generating SQL")):
             # Rate limiting
-            if last_request_time:
-                elapsed = (datetime.now() - last_request_time).total_seconds()
-                if elapsed < min_delay:
-                    time.sleep(min_delay - elapsed)
+            rate_limiter.wait()
                     
             question = item['question']
             db_id = item['db_id']
@@ -472,6 +483,7 @@ def generate_sql_with_pipeline(
         # Define SQL generator function with retry
         def sql_generator(q):
             max_retries = 3
+            rate_limiter.wait() 
             for attempt in range(max_retries):
                 try:
                     result = evaluator.generate_sql_from_question(q, db_path)
@@ -482,7 +494,7 @@ def generate_sql_with_pipeline(
                     # Check for rate limiting
                     if "429" in error_msg or "Resource exhausted" in error_msg:
                         if attempt < max_retries - 1:
-                            wait_time = (2 ** attempt) * 5  # 5s, 10s, 20s
+                            wait_time = (2 ** attempt) * 30  # 5s, 10s, 20s
                             logger.warning(f"Rate limited, waiting {wait_time}s before retry {attempt+1}/{max_retries}")
                             time.sleep(wait_time)
                         else:
