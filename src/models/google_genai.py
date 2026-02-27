@@ -114,9 +114,16 @@ class GoogleGenAI:
             "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
         }
+        
+        messages = self._wrap_prompt_for_maas(prompt)
+        
+        # Check if we used assistant pre-fill (last message is assistant role)
+        has_prefill = messages and messages[-1].get("role") == "assistant"
+        prefill_content = messages[-1].get("content", "") if has_prefill else ""
+        
         payload = {
             "model": self.model_name,
-            "messages": self._wrap_prompt_for_maas(prompt),
+            "messages": messages,
             "temperature": temperature,
             "max_tokens": max_output_tokens,
         }
@@ -124,47 +131,15 @@ class GoogleGenAI:
         resp.raise_for_status()
         content = resp.json()["choices"][0]["message"]["content"] or ""
 
-        # Strategy: extract the LAST SQL statement in the response.
-        # DeepSeek-V3 always puts the correct SQL at the end after reasoning.
-
-        # 1. Strip <think>...</think> blocks entirely
+        # Strip <think>...</think> reasoning blocks (DeepSeek R1)
         content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
-        # 2. Extract from markdown code block if present (take last one)
-        code_blocks = re.findall(r"```(?:sql)?\s*(.*?)```", content, re.DOTALL | re.IGNORECASE)
-        if code_blocks:
-            return code_blocks[-1].strip()
+        # If we pre-filled the assistant turn with "SELECT", the model's response
+        # is the continuation — prepend the pre-fill so extraction works normally.
+        if has_prefill and prefill_content and not content.upper().startswith("SELECT"):
+            content = prefill_content + " " + content
 
-        # 3. Find ALL SQL statements and return the last one
-        sql_pattern = re.compile(
-            r"((?:SELECT|INSERT|UPDATE|DELETE|WITH)\b[^;]*)",
-            re.DOTALL | re.IGNORECASE
-        )
-        matches = sql_pattern.findall(content)
-        if matches:
-            last_sql = matches[-1].strip()
-            # Clean trailing explanation text: stop at first line that looks like prose
-            lines = last_sql.split("\n")
-            sql_lines = []
-            prose_starters = {
-                "but", "note", "however", "explanation", "this", "the",
-                "here", "since", "therefore", "so", "alternatively",
-                "wait", "actually", "let", "we", "i", "if", "also"
-            }
-            for line in lines:
-                stripped = line.strip()
-                if not stripped:
-                    continue
-                first_word = stripped.split()[0].lower().rstrip(",:;")
-                if first_word in prose_starters and not any(
-                    kw in stripped.upper()
-                    for kw in ("SELECT", "FROM", "WHERE", "JOIN", "GROUP", "ORDER", "HAVING", "LIMIT", "WITH", "AND", "OR")
-                ):
-                    break
-                sql_lines.append(line)
-            return "\n".join(sql_lines).strip()
-
-        return content.strip()
+        return content
 
     # ------------------------------------------------------------------ #
     #  Google AI Studio backend                                           #
