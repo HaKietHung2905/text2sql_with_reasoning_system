@@ -79,18 +79,43 @@ def tokenize(string: str) -> List[str]:
     string = str(string)
 
     # ------------------------------------------------------------------
+    # STEP 0 (NEW): Pre-escape apostrophes that sit inside double-quoted
+    # string literals BEFORE any other processing.
+    #
+    # LLMs sometimes emit:  WHERE col = "St. John's"
+    # That apostrophe creates an odd number of quotes once we unify quote
+    # styles below, causing the recovery path to misfire.
+    #
+    # Strategy: scan character-by-character for double-quoted regions and
+    # replace any apostrophe found inside them with the APOS placeholder.
+    # ------------------------------------------------------------------
+    APOS = "__ESCAPEDAPOS__"
+
+    # Pre-escape apostrophes inside double-quoted regions
+    result = []
+    in_dquote = False
+    i = 0
+    while i < len(string):
+        ch = string[i]
+        if ch == '"':
+            in_dquote = not in_dquote
+            result.append(ch)
+        elif ch == "'" and in_dquote:
+            result.append(APOS)
+        else:
+            result.append(ch)
+        i += 1
+    string = "".join(result)
+
+    # ------------------------------------------------------------------
     # STEP 1: Normalize quotes.
     # The rest of this function works entirely with double-quote delimiters.
     # We need to convert single-quoted SQL strings to double-quoted ones,
     # but we must preserve apostrophes *inside* string literals first.
-    #
-    # Strategy: scan for single-quoted regions manually, then escape any
-    # apostrophe that sits inside a quoted value.
     # ------------------------------------------------------------------
 
     # Replace SQL-standard escaped apostrophes '' and \' with a safe placeholder
     # BEFORE we start scanning for quote pairs.
-    APOS = "\x00APOS\x00"
     string = string.replace("''", APOS)   # SQL standard:  'St. John''s' → 'St. John\x00APOS\x00s'
     string = string.replace("\\'", APOS)  # C-style escape: 'O\'Brien'   → 'O\x00APOS\x00Brien'
 
@@ -101,9 +126,9 @@ def tokenize(string: str) -> List[str]:
     quote_idxs = [idx for idx, char in enumerate(string) if char == '"']
 
     if len(quote_idxs) % 2 != 0:
-        # Graceful recovery: an odd number of double-quotes means bad input
-        # (e.g. the model generated unbalanced quotes).  Remove the last
-        # unpaired quote so parsing can continue rather than crashing.
+        # Graceful recovery: an odd number of double-quotes means bad input.
+        # Remove the last unpaired quote and insert a space to prevent the
+        # adjacent text from merging with the preceding placeholder token.
         logger.warning(
             f"Unexpected number of quotes in SQL: {string!r}. "
             "Attempting recovery by removing the unpaired quote."
@@ -116,6 +141,8 @@ def tokenize(string: str) -> List[str]:
         unpaired = [idx for idx in quote_idxs if idx not in paired]
         s_list = list(string)
         for idx in sorted(unpaired, reverse=True):
+            # Replace with a space instead of just removing to prevent token
+            # merging (e.g. "__STR0__s" should not become a single token).
             s_list[idx] = " "
         string = "".join(s_list)
         quote_idxs = [idx for idx, char in enumerate(string) if char == '"']
@@ -129,8 +156,8 @@ def tokenize(string: str) -> List[str]:
     # __STR_N__ that tokenize won't split, then restore afterwards.
     # ------------------------------------------------------------------
     vals: dict = {}
-    # Process right-to-left so replacements don't shift earlier indices.
     str_idx = 0
+    # Process right-to-left so replacements don't shift earlier indices.
     for i in range(len(quote_idxs) - 1, -1, -2):
         qidx1 = quote_idxs[i - 1]
         qidx2 = quote_idxs[i]
@@ -138,7 +165,9 @@ def tokenize(string: str) -> List[str]:
         raw_val = string[qidx1: qidx2 + 1].replace(APOS, "'")
         placeholder = f"__STR{str_idx}__"
         str_idx += 1
-        string = string[:qidx1] + placeholder + string[qidx2 + 1:]
+        # Surround placeholder with spaces to guarantee word_tokenize treats
+        # it as a standalone token even when adjacent to letters/digits.
+        string = string[:qidx1] + f" {placeholder} " + string[qidx2 + 1:]
         vals[placeholder.lower()] = raw_val  # key in lowercase to match word_tokenize output
 
     # ------------------------------------------------------------------

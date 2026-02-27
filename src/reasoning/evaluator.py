@@ -752,44 +752,41 @@ def evaluate_turn(
 
     g_str_normalized = normalize_sql_for_evaluation(g_str) if g_str else ""
 
-    # Parse SQL
     try:
         g_sql = get_sql(g_str_normalized, schema)
-        p_sql = get_sql(p_str_normalized, schema)
     except Exception as e:
         error_msg = str(e) if str(e) else "Unknown parse error"
+        logger.warning(f"Gold query failed on {db_path}")
         logger.warning(f"Parse error: {error_msg}")
         logger.debug(f"Gold SQL: {g_str}")
-        logger.debug(f"Predict SQL: {p_str}")
-
-        exec_score = 0
-        if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
-            try:
-                exec_score = eval_exec_match(
-                    db=db_path,
-                    p_str=p_str_normalized,
-                    g_str=g_str_normalized,
-                    plug_value=plug_value,
-                    keep_distinct=keep_distinct,
-                    progress_bar_for_each_datapoint=progress_bar
-                )
-            except Exception as exec_e:
-                logger.debug(f"Execution evaluation also failed: {exec_e}")
-
+        # Cannot score without a parseable gold SQL — return 0 but don't crash.
         return {
             'exact_score': 0,
-            'exec_score': exec_score,
+            'exec_score': 0,
             'hardness': 'unknown',
             'entry': {'goldSQL': g_str, 'predictSQL': p_str},
-            'parse_error': error_msg,
+            'parse_error': f"Gold SQL parse error: {error_msg}",
             'partial_scores': {}
         }
 
-    # Evaluate exact match
-    exact_score = evaluator.eval_exact_match(p_sql, g_sql)
-    partial_scores = evaluator.partial_scores
+    hardness = eval_hardness(g_sql)
 
-    # Evaluate execution
+    # ── Parse predicted SQL ─────────────────────────────────────────────────
+    # Reject truncated LLM outputs (no FROM clause) before they hit the parser.
+    # _parse_from raises ValueError on missing FROM, which shows as a confusing
+    # "Unknown parse error" and wrongly increments the 'unknown' hardness bucket.
+    if not _is_complete_sql(p_str_normalized):
+        logger.debug(f"Truncated predicted SQL, skipping parse: {p_str_normalized!r}")
+        p_sql = None
+    else:
+        try:
+            p_sql = get_sql(p_str_normalized, schema)
+        except Exception as e:
+            error_msg = str(e) if str(e) else "Unknown parse error"
+            logger.warning(f"Parse error: {error_msg}")
+            logger.debug(f"Predict SQL: {p_str}")
+            p_sql = None
+
     exec_score = 0
     if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
         try:
@@ -804,8 +801,18 @@ def evaluate_turn(
         except Exception as e:
             logger.debug(f"Execution error: {e}")
 
-    hardness = eval_hardness(g_sql)
+    if p_sql is None:
+        return {
+            'exact_score': 0,
+            'exec_score': exec_score,
+            'hardness': hardness,           # ← correctly bucketed from gold
+            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
+            'parse_error': 'Truncated or unparseable predicted SQL',
+            'partial_scores': {}
+        }
 
+    exact_score = evaluator.eval_exact_match(p_sql, g_sql)
+    partial_scores = evaluator.partial_scores
     return {
         'exact_score': exact_score,
         'exec_score': exec_score,
@@ -881,3 +888,20 @@ def preprocess_question(question: str) -> str:
     """Normalize and clean question"""
     question = ' '.join(question.split())
     return question
+
+def _is_complete_sql(sql: str) -> bool:
+    """
+    Return True only if sql looks like a complete, parseable SELECT statement.
+
+    Rejects truncated LLM outputs such as:
+        SELECT capital___endonym__
+        SELECT division
+        SELECT u_s__
+
+    A valid WikiSQL/Spider SELECT must have at least a FROM clause.
+    Subqueries are always wrapped in an outer FROM so this check is safe.
+    """
+    if not sql:
+        return False
+    sql_upper = sql.upper().split()
+    return 'SELECT' in sql_upper and 'FROM' in sql_upper
