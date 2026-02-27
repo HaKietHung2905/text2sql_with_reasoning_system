@@ -163,7 +163,7 @@ class SQLGenerator:
             "Q: What player played guard for Toronto in 1996-97?\n"
             "A: SELECT player FROM table_name WHERE position = 'guard' AND years_in_toronto = '1996-97'\n\n"
             f"Question: {question}\n"
-            "SQL: SELECT"
+            "SQL Query:"
         )
 
     # ------------------------------------------------------------------
@@ -202,13 +202,18 @@ class SQLGenerator:
             return self._finalize(m.group(1))
 
         # 3. Lines starting with SELECT — take the last one
-        select_lines = [
-            ln.strip()
-            for ln in text.splitlines()
-            if re.match(r"^\s*SELECT\b", ln, re.IGNORECASE)
-        ]
-        if select_lines:
-            return self._finalize(select_lines[-1])
+        lines = text.splitlines()
+        last_select_idx = None
+        for i, ln in enumerate(lines):
+            if re.match(r"^\s*SELECT\b", ln.strip(), re.IGNORECASE):
+                last_select_idx = i
+
+        if last_select_idx is not None:
+            # Join from that SELECT line to the next blank line (prose boundary)
+            remainder = "\n".join(lines[last_select_idx:])
+            candidate = remainder.split("\n\n")[0].strip()
+            return self._finalize(candidate)
+
 
         # 4. "SQL:" / "Final SQL:" label
         m = re.search(
@@ -222,7 +227,9 @@ class SQLGenerator:
         #    so output starts with a non-SELECT token like COUNT / *  etc.
         first_line = text.splitlines()[0].strip()
         if re.match(r"^(COUNT|SUM|AVG|MIN|MAX|DISTINCT|\*)\b", first_line, re.IGNORECASE):
-            return self._finalize("SELECT " + first_line)
+            # The whole text is the continuation after the primed "SELECT"
+            full_continuation = text.split("\n\n")[0].strip()  # stop at blank line (prose boundary)
+            return self._finalize("SELECT " + full_continuation)
 
         # 6. Any SELECT substring
         m = re.search(r"(SELECT\b.*?)(?:;|\Z)", text, re.IGNORECASE | re.DOTALL)
@@ -404,10 +411,9 @@ def _construct_prompt(self, question: str, schema_str: str) -> str:
         )
         # Append "SELECT" to prime the model to continue mid-statement,
         # suppressing CoT reasoning preamble entirely.
-        primed_prompt = prompt.rstrip() + "\nSELECT"
+        # primed_prompt = prompt.rstrip() + "\nSELECT"
         return [
             {"role": "system", "content": system},
-            {"role": "user", "content": primed_prompt},
-            # Assistant turn pre-fill: forces model to continue from SELECT
-            {"role": "assistant", "content": "SELECT"},
+            {"role": "user", "content": prompt},
+            {"role": "assistant", "content": "SELECT "},
         ]

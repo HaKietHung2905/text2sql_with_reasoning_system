@@ -138,10 +138,9 @@ class SQLGenerator:
     def _first_select(self, text: str) -> str:
         """Pull the first complete SELECT statement from arbitrary text."""
         # Stop at first blank line — prose usually follows
-        m = re.search(r"(SELECT\b.*?)(?:\n\n|\Z)", text, re.IGNORECASE | re.DOTALL)
+        m = re.search(r"(SELECT\b.+?)(?:\n{2,}|\Z)", text, re.IGNORECASE | re.DOTALL)
         if m:
             return m.group(1).strip()
-        # Fallback: stop at semicolon
         m = re.search(r"(SELECT\b[^;]*)", text, re.IGNORECASE | re.DOTALL)
         if m:
             return m.group(1).strip()
