@@ -19,7 +19,11 @@ logger = get_logger(__name__)
 class SQLGenerator:
     """Generates SQL queries from natural language questions using Gemini"""
 
-    def __init__(self, model_name: str = "deepseek-ai/deepseek-r1-0528-maas", api_key: Optional[str] = None):
+    def __init__(self, model_name = (
+            os.getenv("MODEL_NAME")
+            or os.getenv("GEMINI_MODEL")
+            or "meta/llama-4-maverick-17b-128e-instruct-maas"
+        ), api_key: Optional[str] = None):
         self.model_name = model_name
         self.api_key = api_key
 

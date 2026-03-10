@@ -3,7 +3,7 @@ Google Generative AI Model Wrapper
 Supports:
   - Google AI Studio (API key)
   - Vertex AI Gemini (ADC)
-  - Vertex AI MaaS / DeepSeek (requests-based, no openai pkg needed)
+  - Vertex AI MaaS / Llama / DeepSeek (requests-based, no openai pkg needed)
 """
 
 import re
@@ -11,23 +11,24 @@ import time
 import os
 import subprocess
 from typing import Optional, List
+from dotenv import load_dotenv
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from google.api_core import exceptions as google_exceptions
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-
+load_dotenv()
 
 class GoogleGenAI:
-    """Wrapper for Google's Generative AI models (Gemini + DeepSeek MaaS)"""
+    """Wrapper for Google's Generative AI models (Gemini + MaaS)"""
 
     def __init__(
         self,
-        model_name: str = "deepseek-ai/deepseek-r1-0528-maas",
+        model_name: str = "meta/llama-4-maverick-17b-128e-instruct-maas",
         api_key: Optional[str] = None,
         use_vertex_ai: bool = False,
         project_id: Optional[str] = None,
-        location: str = "us-central1"
+        location: str = "us-east5"
     ):
         self.model_name = model_name
         self.project_id = project_id or os.getenv("GOOGLE_CLOUD_PROJECT")
@@ -49,7 +50,7 @@ class GoogleGenAI:
     #  MaaS backend — pure requests, no openai package needed             #
     # ------------------------------------------------------------------ #
     def _init_maas(self):
-        import requests  # stdlib-adjacent, always available
+        import requests
         self.backend = "Vertex AI MaaS"
         self._requests = requests
         if not self.project_id:
@@ -61,18 +62,37 @@ class GoogleGenAI:
         )
         self._token = self._get_access_token()
         self._token_expiry = time.time() + 3500
-        logger.info(f"Initialized Vertex AI MaaS: model={self.model_name}, project={self.project_id}")
+        logger.info(f"Initialized Vertex AI MaaS: model={self.model_name}, project={self.project_id}, location={self.location}")
 
     def _get_access_token(self) -> str:
-        """Get ADC access token — tries gcloud first, falls back to google-auth"""
+        """Get access token — tries gcloud print-access-token first, falls back to google-auth"""
+        # 1. gcloud print-access-token (matches what works in curl)
+        try:
+            result = subprocess.run(
+                ["gcloud", "auth", "print-access-token"],
+                capture_output=True, text=True, check=True
+            )
+            token = result.stdout.strip()
+            if token:
+                logger.debug("Access token obtained via gcloud auth print-access-token")
+                return token
+        except Exception as e:
+            logger.debug(f"gcloud print-access-token failed: {e}")
+
+        # 2. application-default fallback
         try:
             result = subprocess.run(
                 ["gcloud", "auth", "application-default", "print-access-token"],
                 capture_output=True, text=True, check=True
             )
-            return result.stdout.strip()
-        except Exception:
-            pass
+            token = result.stdout.strip()
+            if token:
+                logger.debug("Access token obtained via application-default")
+                return token
+        except Exception as e:
+            logger.debug(f"gcloud application-default failed: {e}")
+
+        # 3. google-auth library last resort
         try:
             import google.auth
             import google.auth.transport.requests
@@ -80,9 +100,16 @@ class GoogleGenAI:
                 scopes=["https://www.googleapis.com/auth/cloud-platform"]
             )
             creds.refresh(google.auth.transport.requests.Request())
-            return creds.token
+            if creds.token:
+                logger.debug("Access token obtained via google-auth library")
+                return creds.token
         except Exception as e:
-            raise RuntimeError(f"Could not obtain GCP access token: {e}")
+            logger.debug(f"google-auth library failed: {e}")
+
+        raise RuntimeError(
+            "Could not obtain GCP access token. "
+            "Run: gcloud auth login && gcloud auth application-default login"
+        )
 
     def _refresh_token_if_needed(self):
         if time.time() > self._token_expiry:
@@ -114,13 +141,13 @@ class GoogleGenAI:
             "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
         }
-        
+
         messages = self._wrap_prompt_for_maas(prompt)
-        
+
         # Check if we used assistant pre-fill (last message is assistant role)
         has_prefill = messages and messages[-1].get("role") == "assistant"
         prefill_content = messages[-1].get("content", "") if has_prefill else ""
-        
+
         payload = {
             "model": self.model_name,
             "messages": messages,
@@ -134,8 +161,7 @@ class GoogleGenAI:
         # Strip <think>...</think> reasoning blocks (DeepSeek R1)
         content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
 
-        # If we pre-filled the assistant turn with "SELECT", the model's response
-        # is the continuation — prepend the pre-fill so extraction works normally.
+        # If we pre-filled the assistant turn with "SELECT", prepend it
         if has_prefill and prefill_content and not content.upper().startswith("SELECT"):
             content = prefill_content + " " + content
 
@@ -169,10 +195,10 @@ class GoogleGenAI:
             temperature=temperature, stop_sequences=stop_sequences
         )
         safety = [
-            {"category": "HARM_CATEGORY_HARASSMENT",       "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH",      "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT","threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT","threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HARASSMENT",        "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_HATE_SPEECH",       "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
         ]
         try:
             r = self.model.generate_content(prompt, generation_config=gen_cfg, safety_settings=safety)
