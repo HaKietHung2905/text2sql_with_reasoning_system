@@ -141,6 +141,11 @@ class GoogleGenAI:
             "Authorization": f"Bearer {self._token}",
             "Content-Type": "application/json",
         }
+        import requests as _req
+
+        MAX_RETRIES = 5
+        BASE_WAIT   = 30   
+        MAX_WAIT    = 120  
 
         messages = self._wrap_prompt_for_maas(prompt)
 
@@ -154,18 +159,79 @@ class GoogleGenAI:
             "temperature": temperature,
             "max_tokens": max_output_tokens,
         }
-        resp = self._requests.post(self._maas_url, headers=headers, json=payload, timeout=120)
-        resp.raise_for_status()
-        content = resp.json()["choices"][0]["message"]["content"] or ""
+        last_exc = None
+        for attempt in range(MAX_RETRIES):
+            try:
+                # Refresh token on every retry in case it expired during a long wait
+                if attempt > 0:
+                    self._refresh_token_if_needed()
 
-        # Strip <think>...</think> reasoning blocks (DeepSeek R1)
-        content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+                headers = {
+                    "Authorization": f"Bearer {self._token}",
+                    "Content-Type":  "application/json",
+                }
 
-        # If we pre-filled the assistant turn with "SELECT", prepend it
-        if has_prefill and prefill_content and not content.upper().startswith("SELECT"):
-            content = prefill_content + " " + content
+                resp = self._requests.post(
+                    self._maas_url, headers=headers, json=payload, timeout=120
+                )
 
-        return content
+                # ── Handle 429 explicitly ────────────────────────────────
+                if resp.status_code == 429:
+                    wait = min(BASE_WAIT * (2 ** attempt), MAX_WAIT)
+                    # Honour Retry-After header if the server provides it
+                    retry_after = resp.headers.get("Retry-After")
+                    if retry_after:
+                        try:
+                            wait = max(wait, int(retry_after))
+                        except ValueError:
+                            pass
+                    if attempt < MAX_RETRIES - 1:
+                        logger.warning(
+                            f"MaaS 429 rate-limited (attempt {attempt + 1}/{MAX_RETRIES}). "
+                            f"Waiting {wait}s before retry…"
+                        )
+                        time.sleep(wait)
+                        continue
+                    else:
+                        resp.raise_for_status()   # will raise HTTPError
+
+                # ── Raise on other 4xx / 5xx ─────────────────────────────
+                resp.raise_for_status()
+
+                # ── Happy path ───────────────────────────────────────────
+                content = resp.json()["choices"][0]["message"]["content"] or ""
+
+                # Strip <think>…</think> reasoning blocks (DeepSeek R1)
+                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
+
+                # Re-attach assistant pre-fill prefix when the model omits it
+                if has_prefill and prefill_content and not content.upper().startswith("SELECT"):
+                    content = prefill_content + " " + content
+
+                return content
+
+            except _req.exceptions.HTTPError as e:
+                last_exc = e
+                if "429" in str(e) and attempt < MAX_RETRIES - 1:
+                    wait = min(BASE_WAIT * (2 ** attempt), MAX_WAIT)
+                    logger.warning(
+                        f"MaaS HTTPError 429 (attempt {attempt + 1}/{MAX_RETRIES}). "
+                        f"Waiting {wait}s…"
+                    )
+                    time.sleep(wait)
+                else:
+                    raise
+
+            except _req.exceptions.Timeout:
+                last_exc = Exception("Request timed out")
+                wait = min(BASE_WAIT * (2 ** attempt), MAX_WAIT)
+                logger.warning(f"MaaS timeout (attempt {attempt + 1}). Retrying in {wait}s…")
+                if attempt < MAX_RETRIES - 1:
+                    time.sleep(wait)
+                else:
+                    raise
+
+        raise last_exc or RuntimeError("MaaS request failed after max retries")
 
     # ------------------------------------------------------------------ #
     #  Google AI Studio backend                                           #

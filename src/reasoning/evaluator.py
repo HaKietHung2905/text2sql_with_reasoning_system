@@ -13,7 +13,6 @@ import re
 import time
 import re as _re
 import threading
-import time
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 from tqdm import tqdm
@@ -179,6 +178,22 @@ def _is_valid_sql(sql: str) -> bool:
     return bool(re.match(r"^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)\b", sql, re.IGNORECASE))
 
 
+def _is_complete_sql(sql: str) -> bool:
+    """
+    Return True only if sql looks like a complete, parseable SELECT statement.
+
+    Rejects truncated LLM outputs such as:
+        SELECT capital___endonym__
+        SELECT division
+
+    A valid WikiSQL/Spider SELECT must have at least a FROM clause.
+    """
+    if not sql:
+        return False
+    sql_upper = sql.upper().split()
+    return 'SELECT' in sql_upper and 'FROM' in sql_upper
+
+
 # ---------------------------------------------------------------------------
 
 
@@ -317,7 +332,7 @@ def evaluate(
 
                 sql = result.get('sql', '').strip()
 
-                # ── FIX: post-process SQL if the LLM leaked prose ──────────
+                # Post-process SQL if the LLM leaked prose
                 if sql and not _is_valid_sql(sql):
                     logger.warning(f"[{i}] Non-SQL output detected, attempting extraction")
                     sql = _extract_sql_from_output(sql)
@@ -391,19 +406,23 @@ def evaluate(
         )
 
         if res:
+            # FIX: gold parse errors are excluded from EM/EX denominators
+            skip = res.get('skip_from_denominator', False)
+
             hardness = res.get('hardness', 'all')
             for level in set(['all', hardness]):
                 if level in scores:
-                    scores[level]['count'] += 1
-                    scores[level]['exact'] += res['exact_score']
-                    scores[level]['exec'] += res.get('exec_score', 0)
+                    if not skip:
+                        scores[level]['count'] += 1
+                        scores[level]['exact'] += res['exact_score']
+                        scores[level]['exec'] += res.get('exec_score', 0)
 
-                    if 'partial_scores' in res and res['partial_scores']:
-                        for type_, p_score in res['partial_scores'].items():
-                            if type_ in scores[level]['partial']:
-                                scores[level]['partial'][type_]['acc'] += p_score['acc']
-                                scores[level]['partial'][type_]['rec'] += p_score['rec']
-                                scores[level]['partial'][type_]['f1'] += p_score['f1']
+                        if 'partial_scores' in res and res['partial_scores']:
+                            for type_, p_score in res['partial_scores'].items():
+                                if type_ in scores[level]['partial']:
+                                    scores[level]['partial'][type_]['acc'] += p_score['acc']
+                                    scores[level]['partial'][type_]['rec'] += p_score['rec']
+                                    scores[level]['partial'][type_]['f1'] += p_score['f1']
 
             # Update trajectory with evaluation results
             trajectory_id = trajectory_map.get(i)
@@ -431,17 +450,20 @@ def evaluate(
                 questions_data[i]['question']
                 if use_langchain and i < len(questions_data) else ''
             )
+            # Always append to detailed_results (even skipped entries, for auditing)
+            entry = res.get('entry') or {}
             detailed_results.append({
                 'question': question,
-                'gold_sql': res['entry']['goldSQL'],
-                'predicted_sql': res['entry']['predictSQL'],
+                'gold_sql': entry.get('goldSQL', ''),
+                'predicted_sql': entry.get('predictSQL', ''),
                 'db_id': db_id,
-                'exact_match': bool(res['exact_score']),
-                'execution_match': res.get('exec_score', 0) > 0,
+                'exact_match': bool(res['exact_score']) if not skip else None,
+                'execution_match': res.get('exec_score', 0) > 0 if not skip else None,
                 'hardness': res.get('hardness', 'unknown'),
                 'error': res.get('error'),
                 'parse_error': res.get('parse_error'),
-                'trajectory_id': trajectory_map.get(i)
+                'trajectory_id': trajectory_map.get(i),
+                'skipped': skip,
             })
 
     # === FINALIZE SCORES ===
@@ -561,50 +583,40 @@ def generate_sql_with_pipeline(
     # Step 2: ReasoningBank enhancement with retry logic
     if reasoning_pipeline:
 
-        def sql_generator(q):
+        def sql_generator(q: str) -> str:
             max_retries = 3
             rate_limiter.wait()
+
             for attempt in range(max_retries):
                 try:
                     raw = evaluator.generate_sql_from_question(q, db_path)
 
-                    # Empty string means the generator gave up cleanly (prose
-                    # output or LLM failure).  Don't retry — the model will
-                    # produce the same prose again.  Return "" immediately so
-                    # the ReasoningBank pipeline or outer caller can substitute
-                    # SELECT 1.
                     if not raw or not raw.strip():
                         return ""
 
-                    # If it looks like valid SQL, return it directly
                     if _is_valid_sql(raw):
                         return raw
 
-                    # Try to recover SQL from prose output
-                    sql = _extract_sql_from_output(raw)
-                    if _is_valid_sql(sql):
-                        return sql
+                    extracted = _extract_sql_from_output(raw)
+                    if _is_valid_sql(extracted):
+                        return extracted
 
-                    # Extraction also failed — same model will keep producing
-                    # prose, so give up immediately instead of burning retries.
                     logger.warning(
-                        f"Could not extract SQL for: {q!r} — using SELECT 1"
+                        f"Could not extract SQL for: {q!r} (attempt {attempt+1})"
                     )
                     return ""
 
                 except Exception as e:
                     err = str(e)
-                    if "429" in err or "Resource exhausted" in err:
+                    if "429" in err or "Resource exhausted" in err or "rate" in err.lower():
+                        wait_time = min(60 * (2 ** attempt), 300)
+                        logger.warning(
+                            f"Rate limit escaped to sql_generator "
+                            f"(attempt {attempt+1}/{max_retries}). "
+                            f"Waiting {wait_time}s…"
+                        )
                         if attempt < max_retries - 1:
-                            wait_time = (2 ** attempt) * 30
-                            logger.warning(
-                                f"Rate limited, waiting {wait_time}s "
-                                f"before retry {attempt + 1}/{max_retries}"
-                            )
                             time.sleep(wait_time)
-                        else:
-                            logger.error("Max retries reached for rate limiting")
-                            return ""
                     else:
                         logger.error(f"Generation error: {e}")
                         if attempt < max_retries - 1:
@@ -612,6 +624,23 @@ def generate_sql_with_pipeline(
                         else:
                             return ""
             return ""
+
+        def _coerce_sql(raw_sql: str, q: str, db_pth: str, s_info: Dict) -> str:
+            """Return raw_sql if valid, else try pattern generate, else SELECT 1."""
+            if raw_sql and _is_valid_sql(raw_sql) and raw_sql.strip().upper() != "SELECT 1":
+                return raw_sql
+
+            try:
+                from src.evaluation.sql_generator import WikiSQLGenerator
+                gen = WikiSQLGenerator.__new__(WikiSQLGenerator)
+                pattern_sql = gen._pattern_generate(q, s_info)
+                if pattern_sql and _is_valid_sql(pattern_sql):
+                    logger.info(f"Upgraded SELECT 1 → pattern SQL: {pattern_sql!r}")
+                    return pattern_sql
+            except Exception:
+                pass
+
+            return raw_sql or "SELECT 1"
 
         try:
             result = reasoning_pipeline.enhance_sql_generation(
@@ -623,7 +652,6 @@ def generate_sql_with_pipeline(
                 sql_generator=sql_generator
             )
 
-            # Ensure the SQL in the result is clean
             raw_sql = result.get('sql', '')
             if raw_sql and not _is_valid_sql(raw_sql):
                 extracted = _extract_sql_from_output(raw_sql)
@@ -631,10 +659,7 @@ def generate_sql_with_pipeline(
                     result['sql'] = extracted
                     logger.debug(f"Post-processed SQL: {raw_sql[:80]!r} → {extracted!r}")
                 else:
-                    # Extraction failed — use safe fallback
-                    logger.warning(
-                        f"Could not extract SQL from output: {raw_sql[:80]!r}"
-                    )
+                    logger.warning(f"Could not extract SQL from output: {raw_sql[:80]!r}")
                     result['sql'] = "SELECT 1"
 
             if not result.get('sql'):
@@ -716,19 +741,26 @@ def evaluate_turn(
     evaluator, plug_value: bool, keep_distinct: bool,
     progress_bar: bool
 ) -> Optional[Dict]:
-    """Evaluate a single turn"""
+    """
+    Evaluate a single (predicted, gold) SQL pair.
 
-    p_str = p_turn[0] if len(p_turn) > 0 else ""
-    g_str = g_turn[0] if len(g_turn) > 0 else ""
+    Returns a dict with keys:
+      exact_score, exec_score, hardness, entry, partial_scores
+      parse_error (optional), error (optional)
+      skip_from_denominator (True only when gold SQL itself is unparseable)
+    """
+
+    p_str   = p_turn[0] if len(p_turn) > 0 else ""
+    g_str   = g_turn[0] if len(g_turn) > 0 else ""
     db_name = g_turn[1] if len(g_turn) > 1 else None
 
     if not db_name:
         return None
 
     db_path = os.path.join(db_dir, db_name, f"{db_name}.sqlite")
-    schema = load_schema(db_path)
+    schema  = load_schema(db_path)
 
-    # Check for placeholder queries
+    # Placeholder queries get 0 without hitting the parser
     if p_str.strip().upper() == "SELECT 1":
         return {
             'exact_score': 0,
@@ -739,10 +771,9 @@ def evaluate_turn(
             'partial_scores': {}
         }
 
-    # Normalize queries
-    p_str_normalized = normalize_sql_for_evaluation(p_str) if p_str else ""
+    # ── Normalize ────────────────────────────────────────────────────────────
+    p_str_normalized = normalize_sql_for_evaluation(p_str) or ""
     p_str_normalized = p_str_normalized.strip('`').replace('`', '')
-
     p_str_normalized = _re.sub(
         r'\bFROM\s+table\b', 'FROM wikisql_data', p_str_normalized, flags=_re.IGNORECASE
     )
@@ -750,31 +781,31 @@ def evaluate_turn(
         r'\bJOIN\s+table\b', 'JOIN wikisql_data', p_str_normalized, flags=_re.IGNORECASE
     )
 
-    g_str_normalized = normalize_sql_for_evaluation(g_str) if g_str else ""
+    g_str_normalized = normalize_sql_for_evaluation(g_str) or ""
 
+    # ── Parse gold SQL ────────────────────────────────────────────────────────
     try:
         g_sql = get_sql(g_str_normalized, schema)
     except Exception as e:
         error_msg = str(e) if str(e) else "Unknown parse error"
-        logger.warning(f"Gold query failed on {db_path}")
-        logger.warning(f"Parse error: {error_msg}")
+        logger.warning(f"Gold query parse failed on {db_path}: {error_msg}")
         logger.debug(f"Gold SQL: {g_str}")
-        # Cannot score without a parseable gold SQL — return 0 but don't crash.
+        # FIX: mark skip_from_denominator=True so this entry is excluded from
+        # EM/EX score calculation — unevaluable examples should not count as 0.
         return {
             'exact_score': 0,
             'exec_score': 0,
             'hardness': 'unknown',
             'entry': {'goldSQL': g_str, 'predictSQL': p_str},
             'parse_error': f"Gold SQL parse error: {error_msg}",
-            'partial_scores': {}
+            'partial_scores': {},
+            'skip_from_denominator': True,
         }
 
     hardness = eval_hardness(g_sql)
 
-    # ── Parse predicted SQL ─────────────────────────────────────────────────
-    # Reject truncated LLM outputs (no FROM clause) before they hit the parser.
-    # _parse_from raises ValueError on missing FROM, which shows as a confusing
-    # "Unknown parse error" and wrongly increments the 'unknown' hardness bucket.
+    # ── Parse predicted SQL ───────────────────────────────────────────────────
+    # Reject truncated outputs (no FROM clause) before hitting the parser.
     if not _is_complete_sql(p_str_normalized):
         logger.debug(f"Truncated predicted SQL, skipping parse: {p_str_normalized!r}")
         p_sql = None
@@ -783,10 +814,11 @@ def evaluate_turn(
             p_sql = get_sql(p_str_normalized, schema)
         except Exception as e:
             error_msg = str(e) if str(e) else "Unknown parse error"
-            logger.warning(f"Parse error: {error_msg}")
+            logger.warning(f"Predicted SQL parse error: {error_msg}")
             logger.debug(f"Predict SQL: {p_str}")
             p_sql = None
 
+    # ── Execution accuracy ────────────────────────────────────────────────────
     exec_score = 0
     if EXEC_EVAL_AVAILABLE and etype in ['all', 'exec']:
         try:
@@ -805,14 +837,15 @@ def evaluate_turn(
         return {
             'exact_score': 0,
             'exec_score': exec_score,
-            'hardness': hardness,           # ← correctly bucketed from gold
+            'hardness': hardness,
             'entry': {'goldSQL': g_str, 'predictSQL': p_str},
             'parse_error': 'Truncated or unparseable predicted SQL',
             'partial_scores': {}
         }
 
-    exact_score = evaluator.eval_exact_match(p_sql, g_sql)
+    exact_score    = evaluator.eval_exact_match(p_sql, g_sql)
     partial_scores = evaluator.partial_scores
+
     return {
         'exact_score': exact_score,
         'exec_score': exec_score,
@@ -877,31 +910,7 @@ def finalize_scores(scores: Dict, etype: str):
             scores['all']['exec'] /= count
 
 
-def load_schema_for_db(db_id: str, db_dir: str) -> Dict:
-    """Load schema from database"""
-    schema_path = os.path.join(db_dir, db_id, f"{db_id}.sqlite")
-    schema = Schema(get_schema(schema_path))
-    return schema.schema
-
-
 def preprocess_question(question: str) -> str:
     """Normalize and clean question"""
     question = ' '.join(question.split())
     return question
-
-def _is_complete_sql(sql: str) -> bool:
-    """
-    Return True only if sql looks like a complete, parseable SELECT statement.
-
-    Rejects truncated LLM outputs such as:
-        SELECT capital___endonym__
-        SELECT division
-        SELECT u_s__
-
-    A valid WikiSQL/Spider SELECT must have at least a FROM clause.
-    Subqueries are always wrapped in an outer FROM so this check is safe.
-    """
-    if not sql:
-        return False
-    sql_upper = sql.upper().split()
-    return 'SELECT' in sql_upper and 'FROM' in sql_upper

@@ -103,3 +103,4 @@ data/**/*
 questions/*
 !questions/.gitkeep
 evaluation_results.json
+memory/

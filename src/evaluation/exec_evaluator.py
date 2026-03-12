@@ -467,87 +467,68 @@ def result_eq(result1: List[Tuple], result2: List[Tuple], order_matters: bool) -
     
     return False
 
-
 def eval_exec_match(
-    db: str, 
-    p_str: str, 
-    g_str: str, 
-    plug_value: bool, 
-    keep_distinct: bool, 
-    progress_bar_for_each_datapoint: bool
+    db: str,
+    p_str: str,
+    g_str: str,
+    plug_value: bool,
+    keep_distinct: bool,
+    progress_bar_for_each_datapoint: bool = False,
 ) -> int:
     """
-    Evaluate execution match between predicted and gold queries
-    
+    Evaluate execution match between predicted and gold SQL.
+
+    FIX: The original code scanned ALL .sqlite files in the db directory,
+    causing ~70s/query on WikiSQL (hundreds of per-question databases).
+    Now it only tests the SINGLE database passed via `db`.
+
     Args:
-        db: Database file path
-        p_str: Predicted SQL query
-        g_str: Gold SQL query
-        plug_value: Whether to plug gold values into prediction
+        db:           Full path to the specific .sqlite file for this question
+        p_str:        Predicted SQL string
+        g_str:        Gold SQL string
+        plug_value:   Whether to plug gold values into prediction
         keep_distinct: Whether to keep DISTINCT keyword
-        progress_bar_for_each_datapoint: Show progress bar
-        
+        progress_bar_for_each_datapoint: (unused, kept for API compatibility)
+
     Returns:
-        1 if match, 0 otherwise
+        1 if execution results match, 0 otherwise
     """
     # Postprocess queries
     p_str, g_str = postprocess(p_str), postprocess(g_str)
-    
+
     if not keep_distinct:
         p_str = remove_distinct(p_str)
         g_str = remove_distinct(g_str)
-    
+
     order_matters = 'order by' in g_str.lower()
-    
-    # Find all databases in directory
-    db_dir = os.path.dirname(db)
-    db_paths = [
-        os.path.join(db_dir, basename) 
-        for basename in os.listdir(db_dir) 
-        if '.sqlite' in basename
-    ]
-    
+
+    db_paths = [db]
+
     preds = [p_str]
-    
-    # Plug in values if requested
     if plug_value:
         _, preds = get_all_preds_for_execution(g_str, p_str)
         preds = chain([p_str], preds)
-    
-    # Try each prediction
+
     for pred in preds:
         pred_passes = 1
-        
-        # Setup progress bar
-        if progress_bar_for_each_datapoint and TQDM_AVAILABLE:
-            ranger = tqdm.tqdm(db_paths, desc="Testing databases")
-        else:
-            ranger = db_paths
-        
-        # Test on each database
-        for db_path in ranger:
+
+        for db_path in db_paths:
             g_flag, g_denotation = asyncio.run(exec_on_db(db_path, g_str))
             p_flag, p_denotation = asyncio.run(exec_on_db(db_path, pred))
-            
-            # Gold query should execute successfully
+
             if g_flag == 'exception':
                 logger.warning(f"Gold query failed on {db_path}")
                 return 0
-            
-            # Prediction execution failed
+
             if p_flag == 'exception':
                 pred_passes = 0
-            
-            # Results not equivalent
             elif not result_eq(g_denotation, p_denotation, order_matters=order_matters):
                 pred_passes = 0
-            
+
             if pred_passes == 0:
                 break
-        
-        # Prediction passed all databases
+
         if pred_passes == 1:
             return 1
-    
-    # None of the predictions passed
+
     return 0

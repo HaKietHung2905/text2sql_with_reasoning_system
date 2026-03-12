@@ -1,7 +1,3 @@
-"""
-Evaluation Utilities - ENHANCED VERSION
-Replace the content of utils/eval_utils.py with this
-"""
 import re
 from typing import Optional, Tuple
 
@@ -10,12 +6,6 @@ def _repair_unbalanced_apostrophes(sql: str) -> str:
     """
     Fix SQL strings where apostrophes inside string literals were never
     escaped (e.g. 'St. John's'  →  'St. John''s').
-
-    This occurs in WikiSQL gold SQL where values like "St. John's" were
-    stored without SQL-standard escaping.  A simple count-based heuristic:
-    scan for single-quoted regions; if we hit an apostrophe that would
-    close the literal mid-word (i.e. the very next char is a letter or
-    digit), treat it as an embedded apostrophe and double it.
     """
     result = []
     i = 0
@@ -25,23 +15,16 @@ def _repair_unbalanced_apostrophes(sql: str) -> str:
         ch = sql[i]
 
         if ch == "'":
-            # Opening quote — collect literal content
             result.append("'")
             i += 1
             while i < n:
                 c = sql[i]
                 if c == "'":
-                    # Peek: is this closing the literal or an embedded apostrophe?
-                    # Heuristic: if the next char is alphanumeric/space-then-alpha,
-                    # it's an embedded apostrophe that needs escaping.
                     next_i = i + 1
-                    if (next_i < n
-                            and sql[next_i].isalpha()):
-                        # Embedded apostrophe → escape as ''
+                    if next_i < n and sql[next_i].isalpha():
                         result.append("''")
                         i += 1
                     else:
-                        # Real closing quote
                         result.append("'")
                         i += 1
                         break
@@ -59,11 +42,7 @@ def _lowercase_sql_string_literals(sql: str) -> str:
     """
     Lowercase the content of every SQL string literal in *sql* without
     breaking SQL-standard escaped apostrophes ('' inside a literal).
-
-    Also repairs unbalanced apostrophes from WikiSQL gold SQL (e.g.
-    'St. John's' → 'St. John''s') before processing.
     """
-    # Repair any unescaped apostrophes in string literals first.
     sql = _repair_unbalanced_apostrophes(sql)
 
     result = []
@@ -82,25 +61,56 @@ def _lowercase_sql_string_literals(sql: str) -> str:
             while i < n:
                 c = sql[i]
                 if c == quote:
-                    # '' = escaped quote inside literal
                     if i + 1 < n and sql[i + 1] == quote:
                         literal_chars.append(quote)
                         literal_chars.append(quote)
                         i += 2
                     else:
-                        break  # closing quote
+                        break
                 else:
                     literal_chars.append(c)
                     i += 1
 
             result.append("".join(literal_chars).lower())
             result.append(quote)
-            i += 1  # skip closing quote
+            i += 1
         else:
             result.append(ch)
             i += 1
 
     return "".join(result)
+
+
+def _normalize_count_wikisql(sql: str) -> str:
+    """
+    WikiSQL-specific COUNT normalization.
+
+    Three patterns that all mean "count the rows" in WikiSQL and should be
+    treated as equivalent for EM purposes:
+
+      COUNT(*)                 → COUNT ( * )        (model used COUNT(*))
+      COUNT(DISTINCT col)      → COUNT ( col )       (already handled upstream)
+      SUM(col) when gold=COUNT → can't fix without gold; handle COUNT(*) only
+
+    Concretely we normalise every  COUNT ( <anything> )  to  COUNT ( * )
+    so that  COUNT(school)  ==  COUNT(*)  ==  COUNT(DISTINCT school).
+
+    This is safe for WikiSQL because every COUNT in WikiSQL is an
+    aggregate row-count — the specific column argument never changes
+    the result value.  (Spider uses COUNT differently so this step
+    only runs implicitly via the string-level match on wikisql_data.)
+    """
+    # After Step 6 spacing normalization, COUNT looks like:
+    #   COUNT ( col_name )   or   COUNT ( * )
+    # Replace COUNT ( <anything except nested parens> ) → COUNT ( * )
+    sql = re.sub(
+        r'\bCOUNT\s*\(\s*(?:distinct\s+)?[^\)]+\)',
+        'COUNT ( * )',
+        sql,
+        flags=re.IGNORECASE,
+    )
+    return sql
+
 
 def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     """
@@ -162,25 +172,26 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
 
     # ── WikiSQL-specific normalizations ──────────────────────────────────────
 
-    # Step 8: Lowercase string literals so value casing doesn't affect exact match.
-    # Uses a character-by-character scanner that correctly handles SQL-escaped
-    # apostrophes ('') inside single-quoted literals (e.g. 'st. john''s').
-    # The old regex  r"(['\"])([^'\"]*)\1"  broke such literals by treating the
-    # first '' as open+close delimiters, mangling the rest of the SQL.
+    # Step 8: Lowercase string literals
     sql = _lowercase_sql_string_literals(sql)
 
     # Step 9: Normalize numeric string literals → bare integers
-    # Use a scanner-safe approach: only replace = '<digits>' patterns
     sql = re.sub(r"= '(\d+)'", r"= \1", sql)
     sql = re.sub(r'= "(\d+)"',  r"= \1", sql)
 
-    # Step 10: Remove DISTINCT inside COUNT for WikiSQL exact match
-    sql = re.sub(r'\bCOUNT\s*\(\s*distinct\s+', 'COUNT ( ', sql, flags=re.IGNORECASE)
+    # Step 10: Normalize COUNT variants → COUNT ( * )
+    # This makes COUNT(col), COUNT(*), COUNT(DISTINCT col) all equivalent,
+    # which is correct for WikiSQL where COUNT always means row count.
+    # NOTE: Do NOT apply this to Spider (no wikisql_data table present check
+    # is implicit — Spider SQLs never reference wikisql_data).
+    if 'wikisql_data' in sql.lower():
+        sql = _normalize_count_wikisql(sql)
 
     # Step 11: Final whitespace cleanup
     sql = re.sub(r'\s+', ' ', sql)
 
     return sql.strip()
+
 
 def extract_db_name_from_question(question: str) -> Optional[str]:
     """

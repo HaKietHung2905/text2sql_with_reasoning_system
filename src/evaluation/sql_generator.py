@@ -61,40 +61,61 @@ class SQLGenerator:
     # Public API
     # ------------------------------------------------------------------
 
-    def generate(self, question: str, db_path: str) -> str:
+    
+def generate(
+        self,
+        question: str,
+        db_path: str,
+        schema_info: Optional[Dict] = None,
+    ) -> str:
         """
-        Generate SQL from question.
+        Generate SQL for a question.
 
-        Attempt order:
-          1. Full structured prompt  → _clean_sql
-          2. Simple/direct prompt   → _clean_sql
-          3. _pattern_generate heuristic (schema-aware keyword matching)
+        Pipeline:
+          1. LLM generation  (with retry inside _generate_maas)
+          2. SQL extraction  (_clean_sql)
+          3. Pattern-based heuristic fallback  (_pattern_generate)
+          4. Hard fallback   SELECT 1   (last resort, should be rare)
+
+        Returns a non-empty string.  Never returns "".
         """
         if not os.path.exists(db_path):
             logger.error(f"Database not found: {db_path}")
             return "SELECT 1"
 
-        schema_info = self._get_db_schema(db_path)
-        if not schema_info:
-            logger.error("Could not extract schema")
+        if schema_info is None:
+            schema_info = self._load_schema_info(db_path)
+
+        schema_str = self._get_schema_string(db_path)
+        prompt     = self._construct_prompt(question, schema_str)
+
+        # ── Step 1 + 2: LLM → extract SQL ───────────────────────────────
+        sql = ""
+        try:
+            raw = self.model.generate(prompt)
+            if raw and raw.strip():
+                sql = self._clean_sql(raw)
+        except Exception as e:
+            logger.error(f"LLM generation failed: {e}")
+
+        # ── Step 3: Pattern-based fallback when LLM produced nothing ────
+        if not sql:
+            logger.warning(
+                f"LLM returned no valid SQL for: {question!r}  → using pattern fallback"
+            )
+            try:
+                sql = self._pattern_generate(question, schema_info)
+            except Exception as e:
+                logger.error(f"Pattern fallback failed: {e}")
+
+        # ── Step 4: Hard fallback (should almost never happen) ───────────
+        if not sql:
+            logger.error(
+                f"All generation methods failed for: {question!r}  → SELECT 1"
+            )
             return "SELECT 1"
 
-        schema_text = self._format_schema(schema_info)
-
-        # Attempt 1: full prompt
-        sql = self._invoke(question, schema_text, simple=False)
-        if sql:
-            return sql
-
-        # Attempt 2: simple prompt
-        logger.warning(f"Full prompt produced no SQL for: {question!r} — retrying simple")
-        sql = self._invoke(question, schema_text, simple=True)
-        if sql:
-            return sql
-
-        # Attempt 3: heuristic fallback
-        logger.warning(f"Both LLM prompts failed — using heuristic for: {question!r}")
-        return self._pattern_generate(question, schema_info)
+        return self._normalize_for_spider(sql)
 
     # ------------------------------------------------------------------
     # Internal helpers

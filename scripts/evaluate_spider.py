@@ -330,31 +330,33 @@ def main():
         # === SAVE RESULTS ===
         output_file = Path(args.output)
         output_file.parent.mkdir(parents=True, exist_ok=True)
-        
-        with open(output_file, 'w') as f:
+        with open(output_file, "w") as f:
             json.dump(results, f, indent=2)
-        
         logger.info(f"\n✓ Results saved to: {output_file}")
-        
-        # === PRINT SUMMARY ===
-        logger.info("\n" + "="*80)
-        logger.info("EVALUATION SUMMARY")
-        logger.info("="*80)
-        logger.info(f"Exact Match Accuracy: {results['exact_match_accuracy']:.2%}")
-        logger.info(f"Execution Accuracy: {results['execution_accuracy']:.2%}")
-        
-        if 'semantic_statistics' in results:
+
+        # === SAVE HUMAN-READABLE SUMMARY ===
+        #   change dataset= to "Spider" inside evaluate_spider.py
+        txt_file = save_summary_report(results, str(output_file), dataset="WikiSQL")
+        logger.info(f"✓ Summary report  : {txt_file}")
+
+        # === PRINT SUMMARY (terminal) ===
+        logger.info("\n" + "=" * 80)
+        logger.info("WIKISQL EVALUATION SUMMARY")
+        logger.info("=" * 80)
+        logger.info(f"Exact Match Accuracy : {results.get('exact_match_accuracy', 0):.2%}")
+        logger.info(f"Execution Accuracy   : {results.get('execution_accuracy',   0):.2%}")
+
+        if "semantic_statistics" in results:
             logger.info("\nSemantic Layer Statistics:")
-            for key, value in results['semantic_statistics'].items():
-                logger.info(f"  {key}: {value}")
-        
-        if 'reasoning_statistics' in results:
+            for k, v in results["semantic_statistics"].items():
+                logger.info(f"  {k}: {v}")
+
+        if "reasoning_statistics" in results:
             logger.info("\nReasoningBank Statistics:")
-            for key, value in results['reasoning_statistics'].items():
-                logger.info(f"  {key}: {value}")
-        
-        logger.info("="*80)
-        
+            for k, v in results["reasoning_statistics"].items():
+                logger.info(f"  {k}: {v}")
+
+        logger.info("=" * 80)
         return 0
         
     except Exception as e:
@@ -432,6 +434,74 @@ def print_configuration(args):
     
     print("="*70 + "\n")
 
+def save_summary_report(results: dict, output_json_path: str, dataset: str = "WikiSQL") -> str:
+    """
+    Save a human-readable .txt summary next to the JSON results file.
+    
+    Args:
+        results:          The results dict returned by evaluate()
+        output_json_path: Path to the JSON file already saved (e.g. results/wikisql_results.json)
+        dataset:          Dataset name shown in the header ("WikiSQL" or "Spider")
+    
+    Returns:
+        Path to the saved .txt file
+    """
+    from datetime import datetime
+
+    txt_path = Path(output_json_path).with_suffix(".txt")
+
+    em  = results.get("exact_match_accuracy", 0)
+    ex  = results.get("execution_accuracy",   0)
+    n   = results.get("total_evaluated",      0)
+
+    lines = [
+        "=" * 80,
+        f"{dataset.upper()} EVALUATION SUMMARY REPORT",
+        f"Generated : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+        f"Results   : {output_json_path}",
+        "=" * 80,
+        "",
+        "MAIN METRICS",
+        "-" * 40,
+        f"  Exact Match Accuracy : {em:.2%}  ({em*100:.1f}%)",
+        f"  Execution Accuracy   : {ex:.2%}  ({ex*100:.1f}%)",
+        f"  Total Evaluated      : {n}",
+        "",
+    ]
+
+    # ── Semantic Layer stats ──────────────────────────────────────────────
+    if "semantic_statistics" in results:
+        lines += ["SEMANTIC LAYER STATISTICS", "-" * 40]
+        for k, v in results["semantic_statistics"].items():
+            lines.append(f"  {k}: {v}")
+        lines.append("")
+
+    # ── ReasoningBank stats ───────────────────────────────────────────────
+    if "reasoning_statistics" in results:
+        lines += ["REASONINGBANK STATISTICS", "-" * 40]
+        for k, v in results["reasoning_statistics"].items():
+            lines.append(f"  {k}: {v}")
+        lines.append("")
+
+    # ── Per-difficulty breakdown (Spider has this) ────────────────────────
+    scores = results.get("scores", {})
+    if scores:
+        lines += ["PER-DIFFICULTY BREAKDOWN", "-" * 40]
+        for level in ["easy", "medium", "hard", "extra", "all"]:
+            if level in scores:
+                lvl = scores[level]
+                cnt = lvl.get("count", 0)
+                exact = lvl.get("exact", 0)
+                exec_ = lvl.get("exec",  0)
+                lines.append(
+                    f"  {level:<8} | count={cnt:<5} | EM={exact:.2%} | EX={exec_:.2%}"
+                )
+        lines.append("")
+
+    lines += ["=" * 80, "END OF REPORT", "=" * 80]
+
+    txt_path.write_text("\n".join(lines), encoding="utf-8")
+    return str(txt_path)
 
 def save_results(results: dict, output_path: str):
     """Save results to file"""
