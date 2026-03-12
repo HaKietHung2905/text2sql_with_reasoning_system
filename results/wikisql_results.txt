@@ -1,22 +1,22 @@
 ================================================================================
 WIKISQL EVALUATION SUMMARY REPORT
-Generated : 2026-03-12 15:49:33
+Generated : 2026-03-12 16:38:52
 Results   : results/wikisql_results.json
 ================================================================================
 
 MAIN METRICS
 ----------------------------------------
-  Exact Match Accuracy : 75.44%  (75.4%)
-  Execution Accuracy   : 89.11%  (89.1%)
+  Exact Match Accuracy : 75.00%  (75.0%)
+  Execution Accuracy   : 88.75%  (88.8%)
   Total Evaluated      : 0
 
 PER-DIFFICULTY BREAKDOWN
 ----------------------------------------
   easy     | count=3     | EM=100.00% | EX=100.00%
-  medium   | count=392   | EM=75.26% | EX=89.03%
+  medium   | count=397   | EM=74.81% | EX=88.66%
   hard     | count=0     | EM=0.00% | EX=0.00%
   extra    | count=0     | EM=0.00% | EX=0.00%
-  all      | count=395   | EM=75.44% | EX=89.11%
+  all      | count=400   | EM=75.00% | EX=88.75%
 
 ================================================================================
 END OF REPORT

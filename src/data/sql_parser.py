@@ -69,79 +69,90 @@ class SQLParser:
         _, sql = self._parse_sql(toks, 0, tables_with_alias)
         return sql
     
-    def _parse_col(
-        self,
-        toks: List[str],
-        start_idx: int,
-        tables_with_alias: Dict[str, str],
-        default_tables: Optional[List[str]] = None
-    ) -> Tuple[int, str]:
-        """Parse column reference"""
+    def _parse_col(self, toks, start_idx, tables_with_alias, default_tables=None):
         tok = toks[start_idx]
-        
+
         if tok == "*":
             return start_idx + 1, self.schema.idMap[tok]
-        
+
+        if tok.startswith('"') or tok.startswith("'") or tok.lower() == 'null':
+            raise ValueError(f"Error parsing column: {tok}")
+
         if '.' in tok:
-            alias, col = tok.split('.')
-            key = tables_with_alias[alias] + "." + col
-            return start_idx + 1, self.schema.idMap[key]
-        
+            # maxsplit=1 prevents crash on tokens like "a.b.c"
+            alias, col = tok.split('.', 1)
+            # Also guard: if alias part starts with quote, it's a string literal
+            if alias.startswith('"') or alias.startswith("'"):
+                raise ValueError(f"Error parsing column: {tok}")
+            table = tables_with_alias.get(alias, alias)
+            key = table + "." + col
+            if key in self.schema.idMap:
+                return start_idx + 1, self.schema.idMap[key]
+            if key.lower() in self.schema.idMap:
+                return start_idx + 1, self.schema.idMap[key.lower()]
+            raise ValueError(f"Error parsing column: {tok}")
+
         assert default_tables is not None and len(default_tables) > 0
-        
+
         for alias in default_tables:
             table = tables_with_alias[alias]
             if tok in self.schema.schema[table]:
                 key = table + "." + tok
                 return start_idx + 1, self.schema.idMap[key]
-        
+
         raise ValueError(f"Error parsing column: {tok}")
     
+    
     def _parse_col_unit(
-        self,
-        toks: List[str],
-        start_idx: int,
-        tables_with_alias: Dict[str, str],
-        default_tables: Optional[List[str]] = None
-    ) -> Tuple[int, Tuple[int, str, bool]]:
-        """Parse column unit with aggregation"""
-        idx = start_idx
-        len_ = len(toks)
-        isBlock = False
-        isDistinct = False
-        
-        if toks[idx] == '(':
-            isBlock = True
-            idx += 1
-        
-        if toks[idx] in AGG_OPS:
-            agg_id = AGG_OPS.index(toks[idx])
-            idx += 1
-            assert idx < len_ and toks[idx] == '('
-            idx += 1
-            
+            self,
+            toks: List[str],
+            start_idx: int,
+            tables_with_alias: Dict[str, str],
+            default_tables: Optional[List[str]] = None
+        ) -> Tuple[int, Tuple[int, str, bool]]:
+            """Parse column unit with aggregation"""
+            idx = start_idx
+            len_ = len(toks)
+            isBlock = False
+            isDistinct = False
+
+            if toks[idx] == '(':
+                isBlock = True
+                idx += 1
+
+            # Guard: if we somehow receive 'not' here it means the caller's
+            # not_op check fired late.  Treat it as a pre-column NOT and skip.
+            if idx < len_ and toks[idx] == 'not':
+                idx += 1
+
+            if toks[idx] in AGG_OPS:
+                agg_id = AGG_OPS.index(toks[idx])
+                idx += 1
+                assert idx < len_ and toks[idx] == '('
+                idx += 1
+
+                if toks[idx] == "distinct":
+                    idx += 1
+                    isDistinct = True
+
+                idx, col_id = self._parse_col(toks, idx, tables_with_alias, default_tables)
+                assert idx < len_ and toks[idx] == ')'
+                idx += 1
+
+                return idx, (agg_id, col_id, isDistinct)
+
             if toks[idx] == "distinct":
                 idx += 1
                 isDistinct = True
-            
+
+            agg_id = AGG_OPS.index("none")
             idx, col_id = self._parse_col(toks, idx, tables_with_alias, default_tables)
-            assert idx < len_ and toks[idx] == ')'
-            idx += 1
-            
+
+            if isBlock:
+                assert toks[idx] == ')'
+                idx += 1
+
             return idx, (agg_id, col_id, isDistinct)
-        
-        if toks[idx] == "distinct":
-            idx += 1
-            isDistinct = True
-        
-        agg_id = AGG_OPS.index("none")
-        idx, col_id = self._parse_col(toks, idx, tables_with_alias, default_tables)
-        
-        if isBlock:
-            assert toks[idx] == ')'
-            idx += 1
-        
-        return idx, (agg_id, col_id, isDistinct)
     
     def _parse_val_unit(
         self,
@@ -199,42 +210,56 @@ class SQLParser:
         toks: List[str],
         start_idx: int,
         tables_with_alias: Dict[str, str],
-        default_tables: Optional[List[str]] = None
-    ) -> Tuple[int, Any]:
-        """Parse value (number, string, or subquery)"""
+        default_tables=None
+    ):
         idx = start_idx
         len_ = len(toks)
         isBlock = False
-        
+
         if toks[idx] == '(':
             isBlock = True
             idx += 1
-        
+
         if toks[idx] == 'select':
             idx, val = self._parse_sql(toks, idx, tables_with_alias)
-        elif "\"" in toks[idx]:
+
+        # NULL literal — must come before float() attempt
+        elif toks[idx].lower() == 'null':
+            val = None
+            idx += 1
+
+        # Double-quoted string literal (standard path)
+        elif '"' in toks[idx]:
             val = toks[idx]
             idx += 1
+
+        # Single-quoted string that survived tokenization
+        elif toks[idx].startswith("'"):
+            val = toks[idx]
+            idx += 1
+
         else:
             try:
                 val = float(toks[idx])
                 idx += 1
-            except:
+            except (ValueError, TypeError):
                 end_idx = idx
-                while (end_idx < len_ and toks[end_idx] != ',' and toks[end_idx] != ')' and
-                       toks[end_idx] != 'and' and toks[end_idx] not in CLAUSE_KEYWORDS and
-                       toks[end_idx] not in JOIN_KEYWORDS):
+                while (end_idx < len_
+                       and toks[end_idx] != ','
+                       and toks[end_idx] != ')'
+                       and toks[end_idx] != 'and'
+                       and toks[end_idx] not in CLAUSE_KEYWORDS
+                       and toks[end_idx] not in JOIN_KEYWORDS):
                     end_idx += 1
-                
                 idx, val = self._parse_col_unit(
-                    toks[start_idx: end_idx], 0, tables_with_alias, default_tables
+                    toks[start_idx:end_idx], 0, tables_with_alias, default_tables
                 )
                 idx = end_idx
-        
+
         if isBlock:
             assert toks[idx] == ')'
             idx += 1
-        
+
         return idx, val
     
     def _parse_condition(
@@ -248,21 +273,26 @@ class SQLParser:
         idx = start_idx
         len_ = len(toks)
         conds = []
-        
+
         while idx < len_:
-            idx, val_unit = self._parse_val_unit(toks, idx, tables_with_alias, default_tables)
             not_op = False
-            
-            if toks[idx] == 'not':
+            if idx < len_ and toks[idx] == 'not':
                 not_op = True
                 idx += 1
-            
-            assert idx < len_ and toks[idx] in WHERE_OPS
+
+            idx, val_unit = self._parse_val_unit(toks, idx, tables_with_alias, default_tables)
+
+            if not not_op and idx < len_ and toks[idx] == 'not':
+                not_op = True
+                idx += 1
+
+            assert idx < len_ and toks[idx] in WHERE_OPS, \
+                f"Expected WHERE operator at token {idx!r}, got {toks[idx] if idx < len_ else 'EOF'!r}"
             op_id = WHERE_OPS.index(toks[idx])
             idx += 1
-            
+
             val1 = val2 = None
-            
+
             if op_id == WHERE_OPS.index('between'):
                 idx, val1 = self._parse_value(toks, idx, tables_with_alias, default_tables)
                 assert toks[idx] == 'and'
@@ -271,17 +301,17 @@ class SQLParser:
             else:
                 idx, val1 = self._parse_value(toks, idx, tables_with_alias, default_tables)
                 val2 = None
-            
+
             conds.append((not_op, op_id, val_unit, val1, val2))
-            
+
             if idx < len_ and (toks[idx] in CLAUSE_KEYWORDS or toks[idx] in (")", ";") or
                              toks[idx] in JOIN_KEYWORDS):
                 break
-            
+
             if idx < len_ and toks[idx] in COND_OPS:
                 conds.append(toks[idx])
                 idx += 1
-        
+
         return idx, conds
     
     def _parse_select(
