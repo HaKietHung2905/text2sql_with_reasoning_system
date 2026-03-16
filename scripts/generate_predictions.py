@@ -24,6 +24,7 @@ import json
 import argparse
 import logging
 import warnings
+import time
 from pathlib import Path
 from tqdm import tqdm
 from dotenv import load_dotenv
@@ -84,18 +85,33 @@ def _is_server_error(exc: Exception) -> bool:
 
 def _stop_on_server_error(exc: Exception, out_f, already_done: int, i: int,
                            output_path: str) -> None:
-    """Flush checkpoint and exit if exc is a 5xx error."""
-    if _is_server_error(exc):
-        out_f.flush()
-        done_so_far = already_done + i
-        logger.error(
-            f"\n{'='*60}\n"
-            f"❌  Server error (5xx) at question {done_so_far}.\n"
-            f"    Checkpoint saved: {output_path} ({done_so_far} lines)\n"
-            f"    Resume with:  --resume\n"
-            f"{'='*60}"
-        )
-        sys.exit(1)
+    """
+    On a 5xx server error: flush the checkpoint, wait, then re-exec this
+    process with --resume so generation continues automatically.
+    """
+    if not _is_server_error(exc):
+        return
+    out_f.flush()
+    done_so_far = already_done + i
+    wait_seconds = 60
+
+    logger.error(
+        f"\n{'='*60}\n"
+        f"❌  Server error (5xx) at question {done_so_far}.\n"
+        f"    Checkpoint saved: {output_path} ({done_so_far} lines)\n"
+        f"    Waiting {wait_seconds}s then auto-resuming...\n"
+        f"{'='*60}"
+    )
+
+    time.sleep(wait_seconds)
+
+    new_argv = sys.argv[:]
+    if '--resume' not in new_argv:
+        new_argv.append('--resume')
+
+    logger.info(f"🔄 Auto-resuming: {' '.join(new_argv)}")
+    os.execv(sys.executable, [sys.executable] + new_argv)
+    # os.execv replaces the current process — nothing after this runs
 
 
 def main():

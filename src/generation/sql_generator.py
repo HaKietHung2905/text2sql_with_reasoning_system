@@ -16,10 +16,44 @@ from utils.logging_utils import get_logger
 logger = get_logger(__name__)
 
 
+def _is_server_error(exc: Exception) -> bool:
+    """
+    Return True if exc (or any chained cause) is an HTTP 5xx server error.
+    Checks requests.HTTPError by status code first (most reliable),
+    then falls back to string matching.
+    """
+    _5xx_strings = ("500", "502", "503", "504",
+                    "Internal Server Error", "Bad Gateway",
+                    "Service Unavailable", "Gateway Timeout")
+    try:
+        import requests
+        _http_error_cls = requests.exceptions.HTTPError
+    except ImportError:
+        _http_error_cls = None
+
+    seen = set()
+    node = exc
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        if _http_error_cls and isinstance(node, _http_error_cls):
+            try:
+                if node.response is not None and node.response.status_code >= 500:
+                    return True
+            except Exception:
+                pass
+        if any(code in str(node) for code in _5xx_strings):
+            return True
+        if any(code in repr(node) for code in _5xx_strings):
+            return True
+        node = node.__cause__ or node.__context__
+
+    return False
+
+
 class SQLGenerator:
     """Generates SQL queries from natural language questions using Gemini"""
 
-    def __init__(self, model_name = (
+    def __init__(self, model_name=(
             os.getenv("MODEL_NAME")
             or os.getenv("GEMINI_MODEL")
             or "meta/llama-4-maverick-17b-128e-instruct-maas"
@@ -39,13 +73,16 @@ class SQLGenerator:
         """
         Generate SQL for a question and database.
 
+        5xx HTTP errors are re-raised immediately so that the caller
+        (generate_predictions.py) can checkpoint and exit cleanly.
+
         Args:
             question: Natural language question
             db_path: Path to SQLite database
             schema_info: Optional pre-loaded schema info
 
         Returns:
-            Generated SQL query string
+            Generated SQL query string, or "" on non-fatal failure.
         """
         if not os.path.exists(db_path):
             logger.error(f"Database not found at {db_path}")
@@ -62,9 +99,11 @@ class SQLGenerator:
                 logger.error(f"Could not extract SQL for: {question}")
                 return ""
 
-            sql = self._normalize_for_spider(sql)
-            return sql
+            return self._normalize_for_spider(sql)
+
         except Exception as e:
+            if _is_server_error(e):
+                raise  # propagate 5xx — let generate_predictions.py checkpoint and exit
             logger.error(f"Generation failed: {e}")
             return ""
 
@@ -130,18 +169,15 @@ class SQLGenerator:
         if sql:
             return self._finalize(sql)
 
-        # 6. Last resort — run _finalize on the full text, then apply the
-        #    prose guard: if the result doesn't start with a SQL keyword,
-        #    return "" so the caller can fall back to SELECT 1 cleanly.
+        # 6. Last resort — run _finalize on full text; reject if no SQL keyword
         candidate = self._finalize(text)
         if candidate and not re.match(r'^\s*SELECT\b', candidate, re.IGNORECASE):
             logger.warning(f"Could not extract SQL from output: {text[:200]!r}")
-            return ""  # signal extraction failure → caller uses SELECT 1
+            return ""
         return candidate
 
     def _first_select(self, text: str) -> str:
         """Pull the first complete SELECT statement from arbitrary text."""
-        # Stop at first blank line — prose usually follows
         m = re.search(r"(SELECT\b.+?)(?:\n{2,}|\Z)", text, re.IGNORECASE | re.DOTALL)
         if m:
             return m.group(1).strip()
@@ -161,26 +197,16 @@ class SQLGenerator:
         if not sql:
             return ""
 
-        # Stop at first blank line — prose usually follows after here
         sql = sql.split("\n\n")[0]
-
-        # Remove trailing semicolon
         sql = sql.split(";")[0]
-
-        # Drop inline prose footnotes that DeepSeek R1 appends
         sql = re.sub(
             r"\s+\b(But|However|Note|Therefore|Also|Alternatively|Wait)\b[^\"']*$",
             "",
             sql,
             flags=re.IGNORECASE | re.DOTALL,
         )
-
-        # Remove backticks
         sql = sql.replace("`", "")
-
-        # Collapse whitespace
         sql = " ".join(sql.split())
-
         return sql.strip()
 
     # ------------------------------------------------------------------
@@ -193,13 +219,8 @@ class SQLGenerator:
         sql = re.sub(r'\bINNER\s+JOIN\b', 'JOIN', sql, flags=re.IGNORECASE)
         sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'LEFT JOIN', sql, flags=re.IGNORECASE)
         sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b', 'RIGHT JOIN', sql, flags=re.IGNORECASE)
-
-        # Remove trailing semicolon (belt-and-suspenders, _finalize already does this)
         sql = sql.rstrip(';').strip()
-
-        # Collapse whitespace
         sql = ' '.join(sql.split())
-
         return sql
 
     def _get_schema_string(self, db_path: str) -> str:

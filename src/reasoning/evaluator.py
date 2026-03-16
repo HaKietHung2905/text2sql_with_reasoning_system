@@ -77,34 +77,83 @@ rate_limiter = RateLimiter(requests_per_minute=30)
 
 
 # ---------------------------------------------------------------------------
+# SQL normalisation helpers
+# ---------------------------------------------------------------------------
+
+def _normalize_not_operators(sql: str) -> str:
+    """
+    Normalise NOT-related patterns and model artifact clauses in predicted SQL
+    before parsing.
+
+    Handles:
+    1. AND col IS NOT NULL / AND col IS NULL  — model artifact for COUNT(col)
+    2. WHERE col IS NOT NULL (standalone, no AND before it) → WHERE 1=1
+    3. AND lower(col) = 'val'  — unsupported function artifact
+    4. Scientific notation values like  = 71.1e  → quoted string  = '71.1e'
+    5. NOT IN / NOT LIKE / NOT BETWEEN — lowercase for Spider parser.
+    """
+    if not sql:
+        return sql
+
+    # ── Strip IS NOT NULL / IS NULL artifact clauses ─────────────────────────
+
+    # AND-prefixed variants (col or table.col)
+    sql = _re.sub(r'\bAND\s+\w+\s+is\s+not\s+null\b',      '', sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bAND\s+\w+\s+is\s+null\b',            '', sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bAND\s+\w+\.\w+\s+is\s+not\s+null\b', '', sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bAND\s+\w+\.\w+\s+is\s+null\b',       '', sql, flags=_re.IGNORECASE)
+
+    # Standalone WHERE col IS NOT NULL / WHERE col IS NULL
+    sql = _re.sub(r'\bWHERE\s+\w+\s+is\s+not\s+null\b',      'WHERE 1=1', sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bWHERE\s+\w+\s+is\s+null\b',            'WHERE 1=1', sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+not\s+null\b', 'WHERE 1=1', sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+null\b',       'WHERE 1=1', sql, flags=_re.IGNORECASE)
+
+    # Remove  AND lower(col) = 'val'  — unsupported function artifact
+    sql = _re.sub(
+        r'\bAND\s+lower\s*\(\s*\w+\s*\)\s*=\s*(?:\'[^\']*\'|"[^"]*"|\S+)',
+        '', sql, flags=_re.IGNORECASE
+    )
+
+    # ── Fix scientific notation values  = 71.1e  → = '71.1e' ─────────────────
+    sql = _re.sub(
+        r'=\s*(\d+\.\d+[eE])\b',
+        lambda m: f"= '{m.group(1)}'",
+        sql
+    )
+
+    # ── Lowercase NOT IN / NOT LIKE / NOT BETWEEN ─────────────────────────────
+    sql = _re.sub(r'\bNOT\s+IN\b',      'not in',      sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bNOT\s+LIKE\b',    'not like',    sql, flags=_re.IGNORECASE)
+    sql = _re.sub(r'\bNOT\s+BETWEEN\b', 'not between', sql, flags=_re.IGNORECASE)
+
+    # ── Final whitespace cleanup ──────────────────────────────────────────────
+    sql = _re.sub(r'\s+', ' ', sql).strip()
+
+    return sql
+
+
+# ---------------------------------------------------------------------------
 # Utility: extract a valid SELECT statement from raw LLM output
 # ---------------------------------------------------------------------------
 
 def _extract_sql_from_output(text: str) -> str:
     """
     Robustly extract a clean SQL SELECT statement from arbitrary LLM output.
-
-    Handles:
-      - ```sql … ``` code fences
-      - "SQL:" / "Final SQL:" label prefixes
-      - DeepSeek / CoT reasoning prose surrounding the real query
     """
     if not text or not text.strip():
         return ""
 
     text = text.strip()
 
-    # 1. ```sql ... ``` block
     m = re.search(r"```sql\s*(.*?)\s*```", text, re.IGNORECASE | re.DOTALL)
     if m:
         return _finalize_sql(m.group(1))
 
-    # 2. Generic ``` ... ``` that opens with SELECT
     m = re.search(r"```\s*(SELECT\b.*?)\s*```", text, re.IGNORECASE | re.DOTALL)
     if m:
         return _finalize_sql(m.group(1))
 
-    # 3. Common label prefixes
     for prefix in (
         r"final\s+sql\s*query\s*:",
         r"final\s+sql\s*:",
@@ -120,7 +169,6 @@ def _extract_sql_from_output(text: str) -> str:
             if sql:
                 return _finalize_sql(sql)
 
-    # 4. Last SELECT-starting line (prefer last — CoT draft then final)
     select_lines = [
         line.strip()
         for line in text.splitlines()
@@ -129,7 +177,6 @@ def _extract_sql_from_output(text: str) -> str:
     if select_lines:
         return _finalize_sql(select_lines[-1])
 
-    # 5. First SELECT block anywhere
     sql = _first_select(text)
     if sql:
         return _finalize_sql(sql)
@@ -138,7 +185,6 @@ def _extract_sql_from_output(text: str) -> str:
 
 
 def _first_select(text: str) -> str:
-    """Pull the first complete SELECT statement from arbitrary text."""
     m = re.search(r"(SELECT\b.*?)(?:\n\n|\Z)", text, re.IGNORECASE | re.DOTALL)
     if m:
         return m.group(1).strip()
@@ -149,45 +195,26 @@ def _first_select(text: str) -> str:
 
 
 def _finalize_sql(sql: str) -> str:
-    """Normalise extracted SQL: trim prose, remove backticks, collapse whitespace."""
     if not sql:
         return ""
-
-    # Stop at first blank line
     sql = sql.split("\n\n")[0]
-    # Remove trailing semicolon
     sql = sql.split(";")[0]
-    # Drop DeepSeek prose footnotes: "But wait: ...", "However, note: ..."
     sql = re.sub(
         r"\s+\b(But|However|Note|Therefore|Also|Alternatively|Wait)\b[^\"']*$",
-        "",
-        sql,
-        flags=re.IGNORECASE | re.DOTALL,
+        "", sql, flags=re.IGNORECASE | re.DOTALL,
     )
-    # Remove backticks
     sql = sql.replace("`", "")
-    # Collapse whitespace
     sql = " ".join(sql.split())
     return sql.strip()
 
 
 def _is_valid_sql(sql: str) -> bool:
-    """Quick check: does the string look like a real SQL statement?"""
     if not sql:
         return False
     return bool(re.match(r"^\s*(SELECT|INSERT|UPDATE|DELETE|WITH)\b", sql, re.IGNORECASE))
 
 
 def _is_complete_sql(sql: str) -> bool:
-    """
-    Return True only if sql looks like a complete, parseable SELECT statement.
-
-    Rejects truncated LLM outputs such as:
-        SELECT capital___endonym__
-        SELECT division
-
-    A valid WikiSQL/Spider SELECT must have at least a FROM clause.
-    """
     if not sql:
         return False
     sql_upper = sql.upper().split()
@@ -218,16 +245,12 @@ def evaluate(
     reasoning_config: Optional[Dict] = None,
     limit: Optional[int] = None
 ) -> Dict:
-    """
-    Main evaluation function with full pipeline integration
-    """
+    """Main evaluation function with full pipeline integration"""
 
-    # === INITIALIZATION ===
     logger.info("=" * 80)
     logger.info("TEXT-TO-SQL EVALUATION WITH REASONINGBANK")
     logger.info("=" * 80)
 
-    # Create base evaluator
     evaluator = create_evaluator(
         prompt_type=prompt_type,
         enable_debugging=enable_debugging,
@@ -236,7 +259,6 @@ def evaluate(
         use_semantic=use_semantic
     )
 
-    # Initialize Semantic Pipeline
     semantic_pipeline = None
     if use_semantic and SEMANTIC_PIPELINE_AVAILABLE:
         try:
@@ -245,7 +267,6 @@ def evaluate(
         except Exception as e:
             logger.warning(f"Failed to initialize semantic pipeline: {e}")
 
-    # Initialize ReasoningBank Pipeline
     reasoning_pipeline = None
     if use_reasoning_bank and REASONING_PIPELINE_AVAILABLE:
         try:
@@ -273,7 +294,6 @@ def evaluate(
         glist = glist[:limit]
         logger.info(f"Limiting evaluation to {limit} examples")
 
-    # Load schema mapping
     schema_mapping = {}
     for g_turn in glist:
         db_id = g_turn[1] if len(g_turn) > 1 else None
@@ -284,7 +304,7 @@ def evaluate(
 
     # === GENERATION OR LOAD PREDICTIONS ===
     plist = []
-    trajectory_map: Dict[int, str] = {}  # index -> trajectory_id
+    trajectory_map: Dict[int, str] = {}
 
     if use_langchain and questions_file:
         logger.info("🤖 Generating SQL with enhanced pipeline...")
@@ -309,8 +329,8 @@ def evaluate(
             rate_limiter.wait()
 
             question = item['question']
-            db_id = item['db_id']
-            db_path = os.path.join(db_dir, db_id, f"{db_id}.sqlite")
+            db_id    = item['db_id']
+            db_path  = os.path.join(db_dir, db_id, f"{db_id}.sqlite")
             gold_sql = glist[i][0] if i < len(glist) else None
 
             try:
@@ -332,7 +352,6 @@ def evaluate(
 
                 sql = result.get('sql', '').strip()
 
-                # Post-process SQL if the LLM leaked prose
                 if sql and not _is_valid_sql(sql):
                     logger.warning(f"[{i}] Non-SQL output detected, attempting extraction")
                     sql = _extract_sql_from_output(sql)
@@ -361,10 +380,11 @@ def evaluate(
             logger.warning(f"⚠️  {failed_predictions} predictions failed or were empty")
 
         plist = [predictions]
+        questions_data_ref = questions_data
 
     elif predict:
         plist = load_predictions(predict)
-        questions_data = []
+        questions_data_ref = []
     else:
         raise ValueError("Either use_langchain+questions_file or predict file required")
 
@@ -406,7 +426,6 @@ def evaluate(
         )
 
         if res:
-            # FIX: gold parse errors are excluded from EM/EX denominators
             skip = res.get('skip_from_denominator', False)
 
             hardness = res.get('hardness', 'all')
@@ -415,16 +434,15 @@ def evaluate(
                     if not skip:
                         scores[level]['count'] += 1
                         scores[level]['exact'] += res['exact_score']
-                        scores[level]['exec'] += res.get('exec_score', 0)
+                        scores[level]['exec']  += res.get('exec_score', 0)
 
                         if 'partial_scores' in res and res['partial_scores']:
                             for type_, p_score in res['partial_scores'].items():
                                 if type_ in scores[level]['partial']:
                                     scores[level]['partial'][type_]['acc'] += p_score['acc']
                                     scores[level]['partial'][type_]['rec'] += p_score['rec']
-                                    scores[level]['partial'][type_]['f1'] += p_score['f1']
+                                    scores[level]['partial'][type_]['f1']  += p_score['f1']
 
-            # Update trajectory with evaluation results
             trajectory_id = trajectory_map.get(i)
             if reasoning_pipeline and trajectory_id:
                 try:
@@ -433,37 +451,35 @@ def evaluate(
                         success=bool(res['exact_score']),
                         execution_success=res.get('exec_score', 0) > 0,
                         metadata={
-                            'exact_match': bool(res['exact_score']),
-                            'execution_match': res.get('exec_score', 0) > 0,
-                            'hardness': res.get('hardness', 'unknown'),
+                            'exact_match':      bool(res['exact_score']),
+                            'execution_match':  res.get('exec_score', 0) > 0,
+                            'hardness':         res.get('hardness', 'unknown'),
                             'component_scores': res.get('component_scores'),
-                            'partial_scores': res.get('partial_scores'),
-                            'error': res.get('error'),
-                            'parse_error': res.get('parse_error')
+                            'partial_scores':   res.get('partial_scores'),
+                            'error':            res.get('error'),
+                            'parse_error':      res.get('parse_error')
                         }
                     )
-                    logger.debug(f"Updated trajectory {trajectory_id} with results")
                 except Exception as e:
                     logger.warning(f"Failed to update trajectory {trajectory_id}: {e}")
 
             question = (
-                questions_data[i]['question']
-                if use_langchain and i < len(questions_data) else ''
+                questions_data_ref[i]['question']
+                if use_langchain and i < len(questions_data_ref) else ''
             )
-            # Always append to detailed_results (even skipped entries, for auditing)
             entry = res.get('entry') or {}
             detailed_results.append({
-                'question': question,
-                'gold_sql': entry.get('goldSQL', ''),
-                'predicted_sql': entry.get('predictSQL', ''),
-                'db_id': db_id,
-                'exact_match': bool(res['exact_score']) if not skip else None,
-                'execution_match': res.get('exec_score', 0) > 0 if not skip else None,
-                'hardness': res.get('hardness', 'unknown'),
-                'error': res.get('error'),
-                'parse_error': res.get('parse_error'),
-                'trajectory_id': trajectory_map.get(i),
-                'skipped': skip,
+                'question':         question,
+                'gold_sql':         entry.get('goldSQL', ''),
+                'predicted_sql':    entry.get('predictSQL', ''),
+                'db_id':            db_id,
+                'exact_match':      bool(res['exact_score']) if not skip else None,
+                'execution_match':  res.get('exec_score', 0) > 0 if not skip else None,
+                'hardness':         res.get('hardness', 'unknown'),
+                'error':            res.get('error'),
+                'parse_error':      res.get('parse_error'),
+                'trajectory_id':    trajectory_map.get(i),
+                'skipped':          skip,
             })
 
     # === FINALIZE SCORES ===
@@ -471,14 +487,14 @@ def evaluate(
         count = scores[level]['count']
         if count > 0:
             scores[level]['exact'] /= count
-            scores[level]['exec'] /= count
+            scores[level]['exec']  /= count
             for type_ in partial_types:
                 scores[level]['partial'][type_]['acc'] /= count
                 scores[level]['partial'][type_]['rec'] /= count
-                scores[level]['partial'][type_]['f1'] /= count
+                scores[level]['partial'][type_]['f1']  /= count
 
     # === LEARNING PHASE ===
-    distillation_result = {}
+    distillation_result  = {}
     consolidation_result = {}
 
     if reasoning_pipeline:
@@ -489,13 +505,12 @@ def evaluate(
         try:
             distillation_result = reasoning_pipeline.distill_strategies()
             logger.info(f"✓ Strategy distillation complete")
-            logger.info(f"  New strategies created: {distillation_result.get('new_strategies', 0)}")
-            logger.info(f"  Strategies updated: {distillation_result.get('updated_strategies', 0)}")
-            logger.info(f"  Trajectories processed: {len(trajectory_map)}")
+            logger.info(f"  New strategies created:   {distillation_result.get('new_strategies', 0)}")
+            logger.info(f"  Strategies updated:       {distillation_result.get('updated_strategies', 0)}")
+            logger.info(f"  Trajectories processed:   {len(trajectory_map)}")
         except Exception as e:
             logger.error(f"Failed to distill strategies: {e}")
-            import traceback
-            traceback.print_exc()
+            import traceback; traceback.print_exc()
             distillation_result = {'error': str(e)}
 
         try:
@@ -509,10 +524,10 @@ def evaluate(
 
     # === RESULTS ===
     results = {
-        'scores': scores,
-        'exact_match_accuracy': scores['all']['exact'],
-        'execution_accuracy': scores['all']['exec'],
-        'detailed_results': detailed_results
+        'scores':                scores,
+        'exact_match_accuracy':  scores['all']['exact'],
+        'execution_accuracy':    scores['all']['exec'],
+        'detailed_results':      detailed_results
     }
 
     if semantic_pipeline:
@@ -524,10 +539,9 @@ def evaluate(
     if reasoning_pipeline:
         try:
             reasoning_stats = reasoning_pipeline.get_statistics()
-            reasoning_stats['distillation'] = distillation_result
+            reasoning_stats['distillation']  = distillation_result
             reasoning_stats['consolidation'] = consolidation_result
             reasoning_stats['total_trajectories_collected'] = len(trajectory_map)
-
             results['reasoning_statistics'] = reasoning_stats
 
             stats_file = './results/reasoning_stats.json'
@@ -562,17 +576,8 @@ def generate_sql_with_pipeline(
     semantic_pipeline: Optional['SemanticPipeline'],
     reasoning_pipeline: Optional['ReasoningBankPipeline']
 ) -> Dict:
-    """
-    Generate SQL with the complete pipeline.
+    """Generate SQL with the complete pipeline."""
 
-    Flow:
-      1. Semantic analysis (if enabled)
-      2. ReasoningBank enhancement (if enabled)
-      3. SQL extraction / cleanup
-      4. Trajectory collection
-    """
-
-    # Step 1: Semantic analysis
     semantic_analysis = None
     if semantic_pipeline:
         try:
@@ -580,39 +585,29 @@ def generate_sql_with_pipeline(
         except Exception as e:
             logger.warning(f"Semantic analysis failed: {e}")
 
-    # Step 2: ReasoningBank enhancement with retry logic
     if reasoning_pipeline:
 
         def sql_generator(q: str) -> str:
             max_retries = 3
             rate_limiter.wait()
-
             for attempt in range(max_retries):
                 try:
                     raw = evaluator.generate_sql_from_question(q, db_path)
-
                     if not raw or not raw.strip():
                         return ""
-
                     if _is_valid_sql(raw):
                         return raw
-
                     extracted = _extract_sql_from_output(raw)
                     if _is_valid_sql(extracted):
                         return extracted
-
-                    logger.warning(
-                        f"Could not extract SQL for: {q!r} (attempt {attempt+1})"
-                    )
+                    logger.warning(f"Could not extract SQL for: {q!r} (attempt {attempt+1})")
                     return ""
-
                 except Exception as e:
                     err = str(e)
                     if "429" in err or "Resource exhausted" in err or "rate" in err.lower():
                         wait_time = min(60 * (2 ** attempt), 300)
                         logger.warning(
-                            f"Rate limit escaped to sql_generator "
-                            f"(attempt {attempt+1}/{max_retries}). "
+                            f"Rate limit (attempt {attempt+1}/{max_retries}). "
                             f"Waiting {wait_time}s…"
                         )
                         if attempt < max_retries - 1:
@@ -624,23 +619,6 @@ def generate_sql_with_pipeline(
                         else:
                             return ""
             return ""
-
-        def _coerce_sql(raw_sql: str, q: str, db_pth: str, s_info: Dict) -> str:
-            """Return raw_sql if valid, else try pattern generate, else SELECT 1."""
-            if raw_sql and _is_valid_sql(raw_sql) and raw_sql.strip().upper() != "SELECT 1":
-                return raw_sql
-
-            try:
-                from src.evaluation.sql_generator import WikiSQLGenerator
-                gen = WikiSQLGenerator.__new__(WikiSQLGenerator)
-                pattern_sql = gen._pattern_generate(q, s_info)
-                if pattern_sql and _is_valid_sql(pattern_sql):
-                    logger.info(f"Upgraded SELECT 1 → pattern SQL: {pattern_sql!r}")
-                    return pattern_sql
-            except Exception:
-                pass
-
-            return raw_sql or "SELECT 1"
 
         try:
             result = reasoning_pipeline.enhance_sql_generation(
@@ -657,7 +635,6 @@ def generate_sql_with_pipeline(
                 extracted = _extract_sql_from_output(raw_sql)
                 if extracted and _is_valid_sql(extracted):
                     result['sql'] = extracted
-                    logger.debug(f"Post-processed SQL: {raw_sql[:80]!r} → {extracted!r}")
                 else:
                     logger.warning(f"Could not extract SQL from output: {raw_sql[:80]!r}")
                     result['sql'] = "SELECT 1"
@@ -676,14 +653,14 @@ def generate_sql_with_pipeline(
                 else fallback_raw
             ) or "SELECT 1"
             return {
-                'sql': fallback_sql,
-                'trajectory_id': None,
-                'strategies_used': [],
-                'generation_time': 0.0,
-                'metadata': {'method': 'fallback', 'error': str(e)}
+                'sql':              fallback_sql,
+                'trajectory_id':    None,
+                'strategies_used':  [],
+                'generation_time':  0.0,
+                'metadata':         {'method': 'fallback', 'error': str(e)}
             }
 
-    # Step 3: Standard generation (no ReasoningBank)
+    # Standard generation (no ReasoningBank)
     try:
         raw = evaluator.generate_sql_from_question(question, db_path)
         sql = _extract_sql_from_output(raw) if raw and not _is_valid_sql(raw) else raw
@@ -693,11 +670,11 @@ def generate_sql_with_pipeline(
         sql = "SELECT 1"
 
     return {
-        'sql': sql,
-        'trajectory_id': None,
+        'sql':             sql,
+        'trajectory_id':   None,
         'strategies_used': [],
         'generation_time': 0.0,
-        'metadata': {'method': 'standard'}
+        'metadata':        {'method': 'standard'}
     }
 
 
@@ -764,10 +741,10 @@ def evaluate_turn(
     if p_str.strip().upper() == "SELECT 1":
         return {
             'exact_score': 0,
-            'exec_score': 0,
-            'hardness': 'unknown',
-            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
-            'error': 'placeholder_query',
+            'exec_score':  0,
+            'hardness':    'unknown',
+            'entry':       {'goldSQL': g_str, 'predictSQL': p_str},
+            'error':       'placeholder_query',
             'partial_scores': {}
         }
 
@@ -780,8 +757,11 @@ def evaluate_turn(
     p_str_normalized = _re.sub(
         r'\bJOIN\s+table\b', 'JOIN wikisql_data', p_str_normalized, flags=_re.IGNORECASE
     )
+    # Normalise NOT operators, IS NULL artifacts, scientific notation
+    p_str_normalized = _normalize_not_operators(p_str_normalized)
 
     g_str_normalized = normalize_sql_for_evaluation(g_str) or ""
+    g_str_normalized = _normalize_not_operators(g_str_normalized)
 
     # ── Parse gold SQL ────────────────────────────────────────────────────────
     try:
@@ -790,13 +770,11 @@ def evaluate_turn(
         error_msg = str(e) if str(e) else "Unknown parse error"
         logger.warning(f"Gold query parse failed on {db_path}: {error_msg}")
         logger.debug(f"Gold SQL: {g_str}")
-        # FIX: mark skip_from_denominator=True so this entry is excluded from
-        # EM/EX score calculation — unevaluable examples should not count as 0.
         return {
             'exact_score': 0,
-            'exec_score': 0,
-            'hardness': 'unknown',
-            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
+            'exec_score':  0,
+            'hardness':    'unknown',
+            'entry':       {'goldSQL': g_str, 'predictSQL': p_str},
             'parse_error': f"Gold SQL parse error: {error_msg}",
             'partial_scores': {},
             'skip_from_denominator': True,
@@ -805,18 +783,20 @@ def evaluate_turn(
     hardness = eval_hardness(g_sql)
 
     # ── Parse predicted SQL ───────────────────────────────────────────────────
-    # Reject truncated outputs (no FROM clause) before hitting the parser.
+    p_parse_error = None
     if not _is_complete_sql(p_str_normalized):
         logger.debug(f"Truncated predicted SQL, skipping parse: {p_str_normalized!r}")
-        p_sql = None
+        p_sql         = None
+        p_parse_error = "Truncated or unparseable predicted SQL"
     else:
         try:
             p_sql = get_sql(p_str_normalized, schema)
         except Exception as e:
-            error_msg = str(e) if str(e) else "Unknown parse error"
+            error_msg     = str(e) if str(e) else "Unknown parse error"
             logger.warning(f"Predicted SQL parse error: {error_msg}")
             logger.debug(f"Predict SQL: {p_str}")
-            p_sql = None
+            p_sql         = None
+            p_parse_error = f"Predicted SQL parse error: {error_msg}"
 
     # ── Execution accuracy ────────────────────────────────────────────────────
     exec_score = 0
@@ -834,59 +814,58 @@ def evaluate_turn(
             logger.debug(f"Execution error: {e}")
 
     if p_sql is None:
-        return {
-            'exact_score': 0,
-            'exec_score': exec_score,
-            'hardness': hardness,
-            'entry': {'goldSQL': g_str, 'predictSQL': p_str},
-            'parse_error': 'Truncated or unparseable predicted SQL',
-            'partial_scores': {}
+        result = {
+            'exact_score':  0,
+            'exec_score':   exec_score,
+            'hardness':     hardness,
+            'entry':        {'goldSQL': g_str, 'predictSQL': p_str},
+            'partial_scores': {},
         }
+        if p_parse_error:
+            result['parse_error'] = p_parse_error
+        return result
 
+    # ── Exact match ───────────────────────────────────────────────────────────
     exact_score    = evaluator.eval_exact_match(p_sql, g_sql)
     partial_scores = evaluator.partial_scores
 
-    return {
-        'exact_score': exact_score,
-        'exec_score': exec_score,
-        'hardness': hardness,
-        'entry': {
-            'goldSQL': g_str,
-            'predictSQL': p_str
-        },
+    result = {
+        'exact_score':  exact_score,
+        'exec_score':   exec_score,
+        'hardness':     hardness,
+        'entry':        {'goldSQL': g_str, 'predictSQL': p_str},
         'component_scores': (
             evaluator.get_component_scores()
             if hasattr(evaluator, 'get_component_scores') else None
         ),
-        'partial_scores': partial_scores
+        'partial_scores': partial_scores,
     }
+    if p_parse_error:
+        result['parse_error'] = p_parse_error
+    return result
 
 
 def load_predictions(predict_path: str) -> List[List]:
     """Load predictions from file"""
     with open(predict_path) as f:
-        plist = []
+        plist    = []
         pseq_one = []
-
         for line in f.readlines():
             if len(line.strip()) == 0:
                 plist.append(pseq_one)
                 pseq_one = []
             else:
                 pseq_one.append(line.strip().split('\t'))
-
         if len(pseq_one) != 0:
             plist.append(pseq_one)
-
     return plist
 
 
 def load_gold_queries(gold_path: str) -> List[List]:
     """Load gold queries from file"""
     with open(gold_path) as f:
-        glist = []
+        glist    = []
         gseq_one = []
-
         for line in f.readlines():
             if len(line.strip()) == 0:
                 glist.append(gseq_one)
@@ -894,10 +873,8 @@ def load_gold_queries(gold_path: str) -> List[List]:
             else:
                 lstrip = line.strip().split('\t')
                 gseq_one.append(lstrip)
-
         if len(gseq_one) != 0:
             glist.append(gseq_one)
-
     return glist
 
 
@@ -912,5 +889,4 @@ def finalize_scores(scores: Dict, etype: str):
 
 def preprocess_question(question: str) -> str:
     """Normalize and clean question"""
-    question = ' '.join(question.split())
-    return question
+    return ' '.join(question.split())
