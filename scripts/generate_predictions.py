@@ -60,6 +60,44 @@ def load_config(path):
         return {}
 
 
+def _is_server_error(exc: Exception) -> bool:
+    """
+    Return True if exc (or any chained cause) is an HTTP 5xx server error.
+    Walks __cause__ and __context__ so wrapped exceptions are also detected.
+    """
+    _5xx = ("500", "502", "503", "504",
+            "Internal Server Error", "Bad Gateway",
+            "Service Unavailable", "Gateway Timeout")
+
+    seen = set()
+    node = exc
+    while node is not None and id(node) not in seen:
+        seen.add(id(node))
+        if any(code in str(node) for code in _5xx):
+            return True
+        if any(code in repr(node) for code in _5xx):
+            return True
+        node = node.__cause__ or node.__context__
+
+    return False
+
+
+def _stop_on_server_error(exc: Exception, out_f, already_done: int, i: int,
+                           output_path: str) -> None:
+    """Flush checkpoint and exit if exc is a 5xx error."""
+    if _is_server_error(exc):
+        out_f.flush()
+        done_so_far = already_done + i
+        logger.error(
+            f"\n{'='*60}\n"
+            f"❌  Server error (5xx) at question {done_so_far}.\n"
+            f"    Checkpoint saved: {output_path} ({done_so_far} lines)\n"
+            f"    Resume with:  --resume\n"
+            f"{'='*60}"
+        )
+        sys.exit(1)
+
+
 def main():
     parser = argparse.ArgumentParser(description='Generate SQL predictions to TSV file')
 
@@ -82,6 +120,9 @@ def main():
     parser.add_argument('--limit',  type=int, default=None)
     parser.add_argument('--resume', action='store_true',
                         help='Skip already-generated lines (resume interrupted run)')
+    parser.add_argument('--checkpoint_size', type=int, default=None,
+                        help='Stop after generating this many NEW predictions '
+                             '(re-run with --resume to continue)')
 
     args = parser.parse_args()
 
@@ -89,13 +130,10 @@ def main():
     if not Path(args.questions).exists() and 'wikisql' in args.questions.lower():
         logger.info(f"Questions file not found: {args.questions}")
         logger.info("Auto-preparing WikiSQL (building SQLite DBs + converting format)...")
-
-        # Infer gold file path from spider_format path
         gold_file = args.questions.replace('_spider_format.json', '.json')
         if not Path(gold_file).exists():
             logger.error(f"Cannot find WikiSQL gold file at: {gold_file}")
             sys.exit(1)
-
         from scripts.evaluate_wikisql import (
             prepare_wikisql_databases,
             convert_wikisql_gold_to_spider_format,
@@ -138,7 +176,6 @@ def main():
         try:
             from src.reasoning.reasoning_pipeline import ReasoningBankPipeline
             cfg = load_config(args.reasoning_config) or {}
-            # Extract db/chromadb paths from config if present, pass rest as config
             pipeline_cfg = cfg.get('pipeline', {})
             reasoning_pipeline = ReasoningBankPipeline(
                 db_path=pipeline_cfg.get('db_path', './memory/reasoning_bank.db'),
@@ -149,7 +186,7 @@ def main():
         except Exception as e:
             logger.warning(f"ReasoningBank failed: {e}")
 
-    # ── SQL generator (avoid importing broken evaluator.py chain) ─────────────
+    # ── SQL generator ─────────────────────────────────────────────────────────
     try:
         from src.generation.sql_generator import SQLGenerator
         sql_generator = SQLGenerator()
@@ -165,7 +202,9 @@ def main():
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     mode = 'a' if args.resume else 'w'
 
-    failed = 0
+    failed   = 0
+    new_count = 0
+
     with open(args.output, mode, encoding='utf-8') as out_f:
         for i, item in enumerate(tqdm(questions, desc="Generating SQL")):
             question = item.get('question', '')
@@ -173,63 +212,90 @@ def main():
 
             if not question or not db_id:
                 out_f.write(f"SELECT 1\t{db_id}\n")
-                failed += 1
-                continue
+                out_f.flush()
+                failed    += 1
+                new_count += 1
 
-            db_path = os.path.join(args.db, db_id, f"{db_id}.sqlite")
-            if not os.path.exists(db_path):
-                logger.warning(f"DB not found: {db_path}")
-                out_f.write(f"SELECT 1\t{db_id}\n")
-                failed += 1
-                continue
+            else:
+                db_path = os.path.join(args.db, db_id, f"{db_id}.sqlite")
+                if not os.path.exists(db_path):
+                    logger.warning(f"DB not found: {db_path}")
+                    out_f.write(f"SELECT 1\t{db_id}\n")
+                    out_f.flush()
+                    failed    += 1
+                    new_count += 1
 
-            try:
-                # ── Optional: semantic enhancement ───────────────────────────
-                enhanced_question = question
-                if semantic_pipeline:
-                    try:
-                        res = semantic_pipeline.enhance_question(question, db_id, None)
-                        enhanced_question = res.get('enhanced_question', question)
-                    except Exception:
-                        pass
-
-                # ── Optional: ReasoningBank strategy retrieval ────────────────
-                if reasoning_pipeline:
-                    try:
-                        db_context = load_full_db_context(db_id, args.db)
-                        rb_result = reasoning_pipeline.generate_with_reasoning(
-                            question=enhanced_question,
-                            db_id=db_id,
-                            schema=db_context.get('schema', {}),
-                            gold_sql=item.get('query', item.get('sql')),
-                            sql_generator=lambda q: sql_generator.generate(q, db_path),
-                        )
-                        sql = rb_result.get('sql', '') or ''
-                    except Exception as e:
-                        logger.debug(f"ReasoningBank generation failed: {e}, falling back")
-                        sql = ''
                 else:
-                    sql = ''
+                    try:
+                        # ── Semantic enhancement ──────────────────────────────
+                        enhanced_question = question
+                        if semantic_pipeline:
+                            try:
+                                res = semantic_pipeline.enhance_question(
+                                    question, db_id, None)
+                                enhanced_question = res.get('enhanced_question', question)
+                            except Exception:
+                                pass
 
-                # ── Fallback: plain generation ────────────────────────────────
-                if not sql or sql.strip().upper() == 'SELECT 1':
-                    sql = sql_generator.generate(enhanced_question, db_path)
+                        # ── ReasoningBank ─────────────────────────────────────
+                        sql = ''
+                        if reasoning_pipeline:
+                            try:
+                                db_context = load_full_db_context(db_id, args.db)
+                                rb_result = reasoning_pipeline.generate_with_reasoning(
+                                    question=enhanced_question,
+                                    db_id=db_id,
+                                    schema=db_context.get('schema', {}),
+                                    gold_sql=item.get('query', item.get('sql')),
+                                    sql_generator=lambda q: sql_generator.generate(
+                                        q, db_path),
+                                )
+                                sql = rb_result.get('sql', '') or ''
+                            except Exception as e:
+                                # Re-raise 5xx immediately — do NOT fall back
+                                _stop_on_server_error(e, out_f, already_done, i,
+                                                      args.output)
+                                logger.debug(f"ReasoningBank failed: {e}, falling back")
+                                sql = ''
 
-                sql = sql or 'SELECT 1'
+                        # ── Plain generation fallback ─────────────────────────
+                        if not sql or sql.strip().upper() == 'SELECT 1':
+                            sql = sql_generator.generate(enhanced_question, db_path)
 
-            except Exception as e:
-                logger.error(f"[{i}] Generation failed: {e}")
-                sql = 'SELECT 1'
-                failed += 1
+                        sql = sql or 'SELECT 1'
 
-            # One line per prediction: SQL TAB db_id
-            sql_oneline = sql.replace('\n', ' ').strip()
-            out_f.write(f"{sql_oneline}\t{db_id}\n")
-            out_f.flush()   # flush every line — safe to kill & resume
+                    except Exception as e:
+                        # DEBUG — remove after confirming fix
+                        _cause_str = repr(str(e.__cause__)[:200]) if e.__cause__ else None
+                        _cause_type = type(e.__cause__).__name__ if e.__cause__ else None
+                        print(f"[DEBUG] type={type(e).__name__}", flush=True)
+                        print(f"[DEBUG] str={repr(str(e)[:200])}", flush=True)
+                        print(f"[DEBUG] cause_type={_cause_type}", flush=True)
+                        print(f"[DEBUG] cause_str={_cause_str}", flush=True)
+                        print(f"[DEBUG] _is_server_error={_is_server_error(e)}", flush=True)
+                        # Re-raise 5xx immediately — do NOT write SELECT 1
+                        _stop_on_server_error(e, out_f, already_done, i, args.output)
+                        logger.error(f"[{already_done + i}] Generation failed: {e}")
+                        sql = 'SELECT 1'
+                        failed += 1
 
-    total = len(questions) + already_done
+                    sql_oneline = sql.replace('\n', ' ').strip()
+                    out_f.write(f"{sql_oneline}\t{db_id}\n")
+                    out_f.flush()
+                    new_count += 1
+
+            # ── Checkpoint size check ─────────────────────────────────────────
+            if args.checkpoint_size and new_count >= args.checkpoint_size:
+                logger.info(
+                    f"\n✓ Checkpoint: {new_count} new predictions written "
+                    f"({already_done + new_count} total). "
+                    f"Re-run with --resume to continue."
+                )
+                break
+
+    total = already_done + new_count
     logger.info(f"\n✓ Predictions saved → {args.output}")
-    logger.info(f"  Total: {total} | Failed/fallback: {failed}")
+    logger.info(f"  Total: {total} | New this run: {new_count} | Failed/fallback: {failed}")
     logger.info(f"\nNext — evaluate without any LLM calls:")
     logger.info(f"  python scripts/evaluate_wikisql.py \\")
     logger.info(f"      --gold  data/raw/wikisql/dev_spider_format.json \\")

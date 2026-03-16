@@ -96,6 +96,13 @@ def generate(
             if raw and raw.strip():
                 sql = self._clean_sql(raw)
         except Exception as e:
+            msg = str(e)
+            if any(code in msg for code in ("500", "502", "503", "504",
+                                            "Internal Server Error",
+                                           f "Bad Gateway",
+                                            "Service Unavailable",
+                                            "Gateway Timeout")):
+                raise
             logger.error(f"LLM generation failed: {e}")
 
         # ── Step 3: Pattern-based fallback when LLM produced nothing ────

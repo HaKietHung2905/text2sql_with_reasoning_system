@@ -1,0 +1,45 @@
+SELECT position FROM wikisql_data WHERE school_club_team = 'butler cc (ks)'	1-10015132-11
+SELECT COUNT(DISTINCT school_club_team) FROM wikisql_data WHERE no_ = 3	1-10015132-11
+SELECT 1	1-10015132-11
+SELECT player FROM wikisql_data WHERE no_ = 42	1-10015132-11
+SELECT 1	1-10015132-11
+SELECT player FROM wikisql_data WHERE school_club_team = 'westchester high school'	1-10015132-9
+SELECT school_club_team FROM wikisql_data WHERE player = 'amir johnson'	1-10015132-9
+SELECT COUNT(no_) FROM wikisql_data WHERE years_in_toronto = '2005-06'	1-10015132-9
+SELECT 1	1-10015132-9
+SELECT nationality FROM wikisql_data WHERE school_club_team = 'Fresno State'	1-10015132-9
+SELECT school_club_team FROM wikisql_data WHERE player = 'trey johnson'	1-10015132-9
+SELECT ended_time_as_senior_g8_leader FROM wikisql_data WHERE person = 'Jacques Chirac'	1-10026563-1
+SELECT began_time_as_senior_g8_leader FROM wikisql_data WHERE office = 'prime minister of italy'	1-10026563-1
+SELECT country___exonym__ FROM wikisql_data WHERE official_or_native_language_s___alphabet_script_ = 'dutch papiamento'	1-1008653-1
+SELECT official_or_native_language_s___alphabet_script_ FROM wikisql_data WHERE capital___exonym__ = 'canberra'	1-1008653-1
+SELECT capital___endonym__ FROM wikisql_data WHERE capital___exonym__ = 'canberra'	1-1008653-1
+SELECT capital___endonym__ FROM wikisql_data WHERE country___exonym__ = 'anguilla'	1-1008653-1
+SELECT capital___exonym__ FROM wikisql_data WHERE capital___endonym__ = 'st. john''s'	1-1008653-1
+SELECT COUNT(*) FROM wikisql_data WHERE country___endonym__ = 'australia'	1-1008653-1
+SELECT original_air_date FROM wikisql_data WHERE production_code = '9ABX02'	1-10088101-1
+SELECT no__in_series FROM wikisql_data WHERE production_code = '8ABX15'	1-10088101-1
+SELECT 1	1-10295819-2
+SELECT amount_of_trees__that_require_replacement FROM wikisql_data WHERE prevailing_types___ = 'pine — 29.37 poplar — 26.12 acer negundo — 13.2'	1-10342194-3
+SELECT amount_of_trees__that_require_replacement FROM wikisql_data WHERE district = 'leninsky'	1-10342194-3
+SELECT district FROM wikisql_data WHERE total_amount_of_trees < 150817.6878461314 AND amount_of_old_trees = 1928	1-10342194-3
+SELECT amount_of_trees__that_require_replacement FROM wikisql_data WHERE district = 'motovilikhinsky'	1-10342194-3
+SELECT total_amount_of_trees FROM wikisql_data WHERE district = 'leninsky'	1-10342194-3
+SELECT district FROM wikisql_data WHERE prevailing_types___ = 'acer negundo — 30.22 tilia — 18.6 poplar — 15.23'	1-10342194-3
+SELECT in_ames FROM wikisql_data WHERE since_beginning_of_big_12 = 'synonymous'	1-10429820-13
+SELECT u_s__open_cup FROM wikisql_data WHERE regular_season = '4th' AND division = 'atlantic'	1-1046170-5
+SELECT COUNT(*) FROM wikisql_data WHERE year = 2003 AND u_s__open_cup = 'did not qualify'	1-1046170-5
+SELECT playoffs FROM wikisql_data WHERE u_s__open_cup = 'semifinals'	1-1046170-5
+SELECT playoffs FROM wikisql_data WHERE regular_season = '1st, atlantic'	1-1046170-5
+SELECT playoffs FROM wikisql_data WHERE u_s__open_cup = '1st round'	1-1046170-5
+SELECT 1	1-1061075-1
+SELECT aggregate FROM wikisql_data WHERE col_1st_leg = '3–2'	1-1061075-1
+SELECT competition FROM wikisql_data WHERE aggregate = '4–7'	1-1061075-1
+SELECT competition FROM wikisql_data WHERE col_1st_leg = '4-1 (h)'	1-1061075-1
+SELECT 1	1-1061075-1
+SELECT 1	1-1061075-1
+SELECT max(rd) FROM wikisql_data WHERE pole_position = 'tom sneva'	1-10706961-2
+SELECT COUNT(DISTINCT winning_driver) FROM wikisql_data WHERE fastest_lap = '56.920'	1-10706961-2
+SELECT COUNT(*) FROM wikisql_data WHERE winning_team = 'forsythe racing' AND pole_position = 'teo fabi'	1-10706961-2
+SELECT rd FROM wikisql_data WHERE name = 'Indianapolis 500'	1-10706961-2
+SELECT winning_team FROM wikisql_data WHERE winning_driver = 'bobby rahal'	1-10706961-2
