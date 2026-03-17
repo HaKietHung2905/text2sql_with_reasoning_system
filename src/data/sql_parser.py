@@ -11,7 +11,7 @@ Structure:
 - condition: [cond_unit1, 'and'/'or', cond_unit2, ...]
 - sql: see SQL_STRUCTURE below
 """
-
+import re
 from typing import Dict, List, Tuple, Any, Optional
 
 from utils.sql_parser import (
@@ -44,8 +44,8 @@ def _col_candidates(col: str) -> list:
     """
     Generate lookup candidates for a column name to handle LLM artifacts
     where underscores are added, dropped, or doubled, AND to handle
-    columns that were renamed with _col suffix because they were reserved
-    
+    columns that were renamed with _col suffix because they were reserved.
+
     Candidates tried in order:
       1. exact token as-is
       2. collapse ALL runs of underscores + strip edges
@@ -57,6 +57,9 @@ def _col_candidates(col: str) -> list:
       6. exact + '_'         ← schema has trailing underscore
       7. exact + '__'
       8. collapsed + '_'
+      9. col_N  → col_x_N    ← handles LLM outputting 'col_2' or 'col__2'
+                                when schema has 'col_x_2' (sanitize_col fallback
+                                for '#' header, then deduplicated to col_x_2)
     """
     import re as _re
 
@@ -76,6 +79,19 @@ def _col_candidates(col: str) -> list:
     ]:
         if c and c not in seen:
             seen.append(c)
+
+    # 9. col_N / col__N  →  col_x_N
+    # When the LLM outputs col_2 or col__2 but the schema has col_x_2
+    # (produced by sanitize_col('#') → 'col_x', then _make_safe_headers
+    # deduplication appending _2, _3, …).
+    m = _re.match(r'^col_x?_+(\d+)$', collapsed)
+    if not m:
+        m = _re.match(r'^col_x?_+(\d+)$', col)
+    if m:
+        cx = f"col_x_{m.group(1)}"
+        if cx not in seen:
+            seen.append(cx)
+
     return seen
 
 class SQLParser:
@@ -111,9 +127,12 @@ class SQLParser:
         if tok == "*":
             return start_idx + 1, self.schema.idMap[tok]
 
-        if tok.startswith('"') or tok.startswith("'") or tok.lower() == 'null':
+        if re.match(r'^_+$', tok):
             raise ValueError(f"Error parsing column: {tok}")
 
+        if re.match(r'^[-+*/]$', tok) or tok in ('1=1',) or '\x02' in tok or '\x03' in tok:
+            raise ValueError(f"Error parsing column: {tok}")
+            
         if '.' in tok:
             first_part = tok.split('.', 1)[0]
             if first_part.lstrip('-').isdigit():
@@ -137,8 +156,6 @@ class SQLParser:
 
         for alias in default_tables:
             table = tables_with_alias[alias]
-            # Try all candidate forms — handles LLM underscore mismatches
-            # AND columns renamed with _col suffix (reserved keyword columns)
             for candidate in _col_candidates(tok):
                 if candidate in self.schema.schema[table]:
                     key = table + "." + candidate

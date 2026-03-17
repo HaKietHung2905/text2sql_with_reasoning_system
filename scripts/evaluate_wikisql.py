@@ -76,8 +76,8 @@ warnings.filterwarnings('ignore')
 
 WIKISQL_TABLE_NAME = "wikisql_data"
 
-# SQL reserved words that must be double-quoted as column names in SQLite DDL.
 _SQLITE_RESERVED = {
+    # ── Standard SQL DML / DDL ────────────────────────────────────────────────
     'group', 'order', 'select', 'from', 'where', 'table', 'index',
     'join', 'on', 'as', 'by', 'having', 'limit', 'offset', 'union',
     'intersect', 'except', 'case', 'when', 'then', 'else', 'end',
@@ -86,8 +86,27 @@ _SQLITE_RESERVED = {
     'insert', 'update', 'delete', 'create', 'drop', 'alter', 'add',
     'column', 'primary', 'key', 'foreign', 'references', 'unique',
     'check', 'default', 'with', 'desc', 'asc',
+    # ── SQLite-specific keywords ──────────────────────────────────────────────
+    'cast', 'each', 'fail', 'glob', 'plan', 'raise', 'replace',
+    'row', 'temp', 'trigger', 'vacuum', 'view', 'virtual', 'without',
+    'match', 'full', 'left', 'right', 'inner', 'outer', 'cross',
+    'natural', 'using', 'over', 'partition', 'range', 'rows', 'filter',
+    'transaction', 'begin', 'commit', 'rollback', 'savepoint', 'release',
+    'attach', 'detach', 'reindex', 'analyze', 'explain', 'pragma',
+    'rename', 'recursive', 'generated', 'always',
+    # ── Spider tokenizer keywords ─────────────────────────────────────────────
+    'avg', 'count', 'sum', 'max', 'min',
+    # ── Short words confirmed to cause failures in WikiSQL headers ────────────
+    'no',   # "No." → 'no' → Spider tokenizer mis-classifies it
+    'to',   # "To"  → 'to' → SQLite DDL: near "to": syntax error
+    'for',  # "For" → 'for' → SQLite keyword
+    'if',   # "If"  → 'if' → SQLite keyword
+    'do',   # "Do"  → 'do' → SQLite keyword
+    'of',   # "Of"  → 'of' → clashes in some Spider lookups
+    'at',   # "At"  → 'at' → SQLite keyword
+    'int',  # "Int" → 'int' → SQLite type affinity keyword
+    'div',  # "Div" → 'div' → SQL arithmetic operator token
 }
-
 
 
 def sanitize_col(name: str) -> str:
@@ -99,10 +118,11 @@ def sanitize_col(name: str) -> str:
       2. Prefix with 'col_' if name starts with a digit
       3. Strip leading/trailing underscores produced by punctuation/spaces
       4. Collapse internal runs of multiple underscores to a single '_'
-      5. Fall back to 'col' if the result is empty after stripping
+      5. Fall back to 'col_x' if the result is empty after stripping.
+         MUST NOT fall back to bare 'col' — that string is also the result
+         of sanitizing '#' (header[0] for some WikiSQL tables), and it
+         collides with the WikiSQL col0 placeholder after substitution.
       6. If the result is a reserved SQL/Spider keyword, append '_col'
-         so that the Spider tokenizer never mis-classifies it as a keyword
-         (e.g. original header "Table" → sanitized "table" → "table_col")
     """
     name = re.sub(r"[^\w]", "_", name.strip())
     if not name or name[0].isdigit():
@@ -110,7 +130,7 @@ def sanitize_col(name: str) -> str:
     name = name.strip("_")
     name = re.sub(r"_+", "_", name)
     if not name:
-        name = "col"
+        name = "col_x"
     if name.lower() in _SQLITE_RESERVED:
         name = name + "_col"
     return name
@@ -120,11 +140,6 @@ def _make_safe_headers(headers: list) -> list:
     """
     Sanitize a list of column headers and deduplicate any collisions
     by appending _2, _3, ... to later occurrences.
-
-    Also double-quotes any name that is a SQLite reserved word so that
-    DDL and DML remain valid (the schema stores the unquoted lowercase
-    name; quoting only happens in the CREATE TABLE statement via
-    _quote_col).
     """
     safe = [sanitize_col(h).lower() for h in headers]
     seen: dict = {}
@@ -137,7 +152,6 @@ def _make_safe_headers(headers: list) -> list:
             seen[col] += 1
             result.append(f"{col}_{seen[col]}")
     return result
-
 
 
 def _quote_col(name: str) -> str:
@@ -168,6 +182,7 @@ def _is_empty_sqlite(db_path: str) -> bool:
     except Exception:
         return True
 
+
 def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
     table   = item.get("table", {})
     headers = table.get("header", [])
@@ -177,9 +192,7 @@ def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
     if not headers:
         return False
 
-    # Use _make_safe_headers to deduplicate collisions like Kerry% / Kerry#
     safe_headers = _make_safe_headers(headers)
-
     col_defs = ", ".join(
         f"{_quote_col(col)} {wikisql_type_to_sqlite(t)}"
         for col, t in zip(safe_headers, types)
@@ -190,9 +203,7 @@ def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
         conn = sqlite3.connect(db_path)
         conn.text_factory = str
         cur  = conn.cursor()
-        cur.execute(
-            f'CREATE TABLE IF NOT EXISTS {WIKISQL_TABLE_NAME} ({col_defs})'
-        )
+        cur.execute(f'CREATE TABLE IF NOT EXISTS {WIKISQL_TABLE_NAME} ({col_defs})')
         if rows:
             ph = ", ".join(["?"] * len(safe_headers))
             cur.executemany(
@@ -211,12 +222,21 @@ def build_sqlite_from_wikisql_item(item: Dict, db_path: str) -> bool:
         return False
 
 
-def prepare_wikisql_databases(gold_file, db_dir, limit=None):
+def prepare_wikisql_databases(
+    gold_file: str,
+    db_dir: str,
+    limit: Optional[int] = None,
+) -> str:
+    """
+    Read WikiSQL JSON, build one .sqlite file per unique db_id,
+    and write a Spider-compatible tables.json into db_dir.
+    """
     logger.info(f"📦 Preparing WikiSQL databases in: {db_dir}")
     os.makedirs(db_dir, exist_ok=True)
 
     with open(gold_file, encoding="utf-8") as f:
-        data = json.load(f)
+        data: List[Dict] = json.load(f)
+
     if limit:
         data = data[:limit]
 
@@ -245,82 +265,8 @@ def prepare_wikisql_databases(gold_file, db_dir, limit=None):
 
             table   = item.get("table", {})
             headers = table.get("header", [])
-            types   = table.get("types", ["text"] * len(headers))
-            # Must match the column names used in build_sqlite_from_wikisql_item
-            safe_h  = _make_safe_headers(headers)
-
-            tables_schema.append({
-                "db_id": db_id,
-                "table_names":          [WIKISQL_TABLE_NAME],
-                "table_names_original": [WIKISQL_TABLE_NAME],
-                "column_names":          [[-1, "*"]] + [[0, h] for h in safe_h],
-                "column_names_original": [[-1, "*"]] + [[0, h] for h in safe_h],
-                "column_types":          ["text"] + [t.lower() for t in types],
-                "primary_keys": [],
-                "foreign_keys": [],
-            })
-
-    tables_json_path = os.path.join(db_dir, "tables.json")
-    with open(tables_json_path, "w", encoding="utf-8") as f:
-        json.dump(tables_schema, f, indent=2)
-
-    logger.info(f"✅ Built {built} new SQLite DBs, skipped {skipped}, "
-                f"total unique IDs: {len(seen_ids)}")
-    logger.info(f"✅ Wrote tables.json: {tables_json_path}")
-    return db_dir
-
-
-
-def prepare_wikisql_databases(
-    gold_file: str,
-    db_dir: str,
-    limit: Optional[int] = None,
-) -> str:
-    """
-    Read WikiSQL JSON, build one .sqlite file per unique db_id,
-    and write a Spider-compatible tables.json into db_dir.
-
-    Returns db_dir (same path passed in, created if needed).
-    """
-    logger.info(f"📦 Preparing WikiSQL databases in: {db_dir}")
-    os.makedirs(db_dir, exist_ok=True)
-
-    with open(gold_file, encoding="utf-8") as f:
-        data: List[Dict] = json.load(f)
-
-    if limit:
-        data = data[:limit]
-
-    built    = 0
-    skipped  = 0
-    seen_ids = set()
-    tables_schema = []
-
-    for item in data:
-        db_id = item.get("db_id", "")
-        if not db_id:
-            skipped += 1
-            continue
-
-        db_folder = os.path.join(db_dir, db_id)
-        db_path   = os.path.join(db_folder, f"{db_id}.sqlite")
-
-        if db_id not in seen_ids:
-            seen_ids.add(db_id)
-
-            # Rebuild if missing OR empty (previously failed on reserved keyword)
-            if not os.path.exists(db_path) or _is_empty_sqlite(db_path):
-                ok = build_sqlite_from_wikisql_item(item, db_path)
-                if ok:
-                    built += 1
-                else:
-                    skipped += 1
-
-            # Build tables.json entry — column names must match SQLite DDL
-            table   = item.get("table", {})
-            headers = table.get("header", [])
             types   = table.get("types",  ["text"] * len(headers))
-            safe_h  = [sanitize_col(h).lower() for h in headers]
+            safe_h  = _make_safe_headers(headers)
 
             tables_schema.append({
                 "db_id": db_id,
@@ -346,119 +292,169 @@ def prepare_wikisql_databases(
 # ─────────────────────────────────────────────────────────────────────────────
 # Gold SQL conversion helpers
 # ─────────────────────────────────────────────────────────────────────────────
-
 def _strip_quoted_identifiers(sql: str) -> str:
     """
     Remove double-quote wrappers from column/table identifiers only.
 
-    Double-quoted tokens that look like plain identifiers (word chars only)
-    are unquoted and lowercased.  Double-quoted tokens that contain spaces,
-    apostrophes, or other special characters are string literals — they are
-    converted to single-quoted SQL strings with apostrophes escaped as ''.
-
-    Examples:
-        "Position"    → position
-        "st. john's"  → 'st. john''s'
-        "New York"    → 'New York'
+    Rules:
+    - "word"          → word          (plain identifier — unquote + lowercase)
+    - "multi word"    → 'multi word'  (identifier with spaces → string literal)
+    - = "value"       → = 'value'     (value position → single-quoted string)
+    - = '"value"'     → unchanged     (already inside single quotes → leave alone)
     """
-    def replacer(m: re.Match) -> str:
-        inner = m.group(1)
-        if re.fullmatch(r'\w+', inner):
-            return inner.lower()
-        escaped = inner.replace("'", "''")
-        return f"'{escaped}'"
+    # Tokenize into segments: single-quoted strings (copy verbatim) vs rest
+    # Process "..." only outside single-quoted literals
+    result = []
+    i = 0
+    n = len(sql)
 
-    return re.sub(r'"([^"]*)"', replacer, sql)
+    while i < n:
+        ch = sql[i]
+
+        # ── Single-quoted string: copy entirely verbatim ──────────────────────
+        if ch == "'":
+            result.append(ch)
+            i += 1
+            while i < n:
+                c = sql[i]
+                result.append(c)
+                i += 1
+                if c == "'":
+                    if i < n and sql[i] == "'":   # escaped '' — stay inside
+                        result.append("'")
+                        i += 1
+                        continue
+                    break                          # closing quote
+            continue
+
+        # ── Double-quoted token outside a literal ─────────────────────────────
+        if ch == '"':
+            # Find closing "
+            j = sql.find('"', i + 1)
+            if j == -1:                            # unterminated — keep as-is
+                result.append(ch)
+                i += 1
+                continue
+
+            inner = sql[i + 1:j]
+            i = j + 1
+
+            # Peek behind to determine context: is this after = / != / <> ?
+            before = "".join(result).rstrip()
+            is_value_position = bool(re.search(r'(?:=|!=|<>)\s*$', before))
+
+            if is_value_position:
+                # Value literal — convert to single-quoted string
+                escaped = inner.replace("'", "''")
+                result.append(f"'{escaped}'")
+            elif re.fullmatch(r'\w+', inner):
+                # Plain identifier — unquote and lowercase
+                result.append(inner.lower())
+            else:
+                # Complex identifier with spaces/special chars → string literal
+                escaped = inner.replace("'", "''")
+                result.append(f"'{escaped}'")
+            continue
+
+        result.append(ch)
+        i += 1
+
+    return "".join(result)
+
+
+def _strip_wikisql_double_apos(sql: str) -> str:
+    """
+    Strip WikiSQL double/triple-apostrophe value wrappers BEFORE any other
+    normalization runs.
+
+    WikiSQL stores string condition values wrapped in doubled apostrophes:
+        WHERE col = '' The Letter ''
+        WHERE col = ''' Don''t Stop '''
+    These must be unwrapped to standard single-quoted SQL strings BEFORE
+    _normalize_empty_string_literals runs, otherwise the opening '' is
+    mistakenly treated as an empty string literal.
+
+    NOTE: This handles '' wrappers only. Some WikiSQL values use double-quote
+    characters " as part of the actual cell value (e.g. '" The Letter "').
+    Those are NOT touched here — they are real data characters that must be
+    preserved for execution matching.
+    """
+    # Triple-apos first (must precede double-apos to avoid partial match)
+    sql = re.sub(
+        r"= '''((?:[^']|'(?!''))*?)'''",
+        lambda m: "= '" + m.group(1) + "'",
+        sql
+    )
+    # Double-apos
+    sql = re.sub(
+        r"= ''((?:[^']|'(?!'))*?)''",
+        lambda m: "= '" + m.group(1).replace("''", "\x00INNERAPOS\x00") + "'",
+        sql
+    )
+    sql = sql.replace("\x00INNERAPOS\x00", "''")
+    return sql
 
 
 def _normalize_empty_string_literals(sql: str) -> str:
     """
-    Replace empty string literals  = ''  with a sentinel value.
+    Replace truly-empty string literals  = ''  with a sentinel value.
     The Spider parser cannot tokenize an empty SQL string literal.
+
+    Only fires when nothing meaningful follows the '' — not when it is the
+    opening wrapper of a WikiSQL double-apos value (those are stripped first
+    by _strip_wikisql_double_apos).
     """
-    return re.sub(r"=\s*''(?=[^']|$)", "= '__empty__'", sql)
+    def _replacer(m: re.Match) -> str:
+        op    = m.group(1)
+        after = m.group(2)
+        if re.match(
+            r"^(?:\s*(?:and|or|not|where|from|order|group|having|limit|"
+            r"union|intersect|except|join|[);,])|$)",
+            after, re.IGNORECASE
+        ):
+            return f"{op} '__empty__'"
+        return m.group(0)
+
+    return re.sub(
+        r'((?:!=|<>|=|not\s+like|like)\s*)(\'\')(.*)',
+        _replacer,
+        sql,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
 
 def _normalize_not_operators(sql: str) -> str:
     """
-    Normalise NOT-related patterns and model artifact clauses in SQL
-    before parsing.
-
-    Handles:
-    1. AND col IS NOT NULL / AND col IS NULL  — strips them
-    2. WHERE col IS NOT NULL (standalone)     → WHERE 1=1
-    3. AND lower(col) = 'val'                 — strips them
-    4. Scientific notation  = 71.1e           → = '71.1e'
-    5. NOT IN / NOT LIKE / NOT BETWEEN        — lowercase
-    6. Multi-dot numeric values  = 17.7.109   → = '17.7.109'
-    7. Backslash-escaped apostrophes  \'      → ''   (LLM artifact)
-    8. Embedded double-quotes inside single-quoted literals  "  → ''
+    Normalise SQL for gold conversion pipeline only.
+    Does NOT apply LLM-artifact fixes (backslash apostrophes, stray
+    double-quotes) — those are only for predicted SQL in evaluator.py.
     """
     if not sql:
         return sql
 
-    # ── 7: Normalize backslash-escaped apostrophes FIRST ─────────────────────
-    # LLM sometimes outputs  = '24\' 31.87mph'  using C-style escaping.
-    # Convert  \'  →  ''  so the rest of the pipeline sees standard SQL.
-    sql = sql.replace("\\'", "''")
-
-    # ── 8: Remove stray double-quotes embedded inside single-quoted literals ──
-    # LLM sometimes outputs  = '24'' 31.87" 92mph'  where a "  appears inside
-    # a single-quoted string. The double-quote creates spurious quote-pair
-    # boundaries in tokenize() STEP 1 that corrupt the token stream.
-    # Walk char-by-char: inside a single-quoted literal, drop any bare ".
-    result = []
-    in_single = False
-    i = 0
-    n = len(sql)
-    while i < n:
-        ch = sql[i]
-        if ch == "'" and not in_single:
-            in_single = True
-            result.append(ch)
-        elif ch == "'" and in_single:
-            # '' = escaped apostrophe — stay inside
-            if i + 1 < n and sql[i + 1] == "'":
-                result.append("'")
-                result.append("'")
-                i += 2
-                continue
-            else:
-                in_single = False
-                result.append(ch)
-        elif ch == '"' and in_single:
-            # Stray double-quote inside a single-quoted literal — drop it
-            pass
-        else:
-            result.append(ch)
-        i += 1
-    sql = "".join(result)
-
-    # AND-prefixed IS NOT NULL / IS NULL
+    # AND/WHERE col IS NOT NULL / IS NULL
     sql = re.sub(r'\bAND\s+\w+\s+is\s+not\s+null\b',      '', sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bAND\s+\w+\s+is\s+null\b',            '', sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bAND\s+\w+\.\w+\s+is\s+not\s+null\b', '', sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bAND\s+\w+\.\w+\s+is\s+null\b',       '', sql, flags=re.IGNORECASE)
-
-    # Standalone WHERE col IS NOT NULL / WHERE col IS NULL
     sql = re.sub(r'\bWHERE\s+\w+\s+is\s+not\s+null\b',      'WHERE 1=1', sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bWHERE\s+\w+\s+is\s+null\b',            'WHERE 1=1', sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+not\s+null\b', 'WHERE 1=1', sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+null\b',       'WHERE 1=1', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+1=1\s+AND\s+', 'WHERE ', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bAND\s+1=1\b',           '',       sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+1=1\b',         '',       sql, flags=re.IGNORECASE)
 
-    # Remove  AND lower(col) = 'val'  — unsupported function artifact
+    # AND lower(col) = 'val'
     sql = re.sub(
         r'\bAND\s+lower\s*\(\s*\w+\s*\)\s*=\s*(?:\'[^\']*\'|"[^"]*"|\S+)',
         '', sql, flags=re.IGNORECASE
     )
 
-    # Fix scientific notation  = 71.1e  → = '71.1e'
-    sql = re.sub(
-        r'=\s*(\d+\.\d+[eE])\b',
-        lambda m: f"= '{m.group(1)}'",
-        sql
-    )
+    # Scientific notation
+    sql = re.sub(r'=\s*(\d+\.\d+[eE])\b', lambda m: f"= '{m.group(1)}'", sql)
 
-    # Quote multi-dot numeric values  = 17.7.109  → = '17.7.109'
+    # Multi-dot numeric values
     sql = re.sub(
         r'([=<>!]+\s*)(\d[\d.]*\.\d[\d.]+)',
         lambda m: m.group(1) + "'" + m.group(2) + "'"
@@ -466,19 +462,67 @@ def _normalize_not_operators(sql: str) -> str:
         sql
     )
 
-    # Convert remaining double-quoted string values → single-quoted
-    def _dquote_to_squote(m: re.Match) -> str:
-        inner = m.group(1).replace("'", "''")
-        return f"= '{inner}'"
-    sql = re.sub(r'=\s*"([^"]*)"', _dquote_to_squote, sql)
-
-    # Lowercase NOT IN / NOT LIKE / NOT BETWEEN
+    # NOT IN / NOT LIKE / NOT BETWEEN → lowercase
     sql = re.sub(r'\bNOT\s+IN\b',      'not in',      sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bNOT\s+LIKE\b',    'not like',    sql, flags=re.IGNORECASE)
     sql = re.sub(r'\bNOT\s+BETWEEN\b', 'not between', sql, flags=re.IGNORECASE)
 
     sql = re.sub(r'\s+', ' ', sql).strip()
     return sql
+
+
+def _normalize_wikisql_string_literals(sql: str) -> str:
+    """
+    Re-escape unescaped apostrophes inside SQL string literals.
+    """
+    CLOSING_NEXT = re.compile(
+        r"^(?:and|or|not|from|where|order|group|having|limit|"
+        r"union|intersect|except|join|on|[);,])",
+        re.IGNORECASE,
+    )
+
+    result = []
+    i = 0
+    n = len(sql)
+
+    while i < n:
+        ch = sql[i]
+        if ch != "'":
+            result.append(ch)
+            i += 1
+            continue
+
+        result.append("'")
+        i += 1
+
+        while i < n:
+            c = sql[i]
+            if c != "'":
+                result.append(c)
+                i += 1
+                continue
+
+            if i + 1 < n and sql[i + 1] == "'":
+                result.append("'")
+                result.append("'")
+                i += 2
+                continue
+
+            j = i + 1
+            while j < n and sql[j] == " ":
+                j += 1
+            rest = sql[j:]
+
+            if j >= n or CLOSING_NEXT.match(rest):
+                result.append("'")
+                i += 1
+                break
+            else:
+                result.append("''")
+                i += 1
+
+    return "".join(result)
+
 
 def convert_wikisql_gold_to_spider_format(gold_file, output_file, limit=None):
     with open(gold_file, encoding="utf-8") as f:
@@ -494,23 +538,43 @@ def convert_wikisql_gold_to_spider_format(gold_file, output_file, limit=None):
         table    = item.get("table", {})
         headers  = table.get("header", [])
 
-        # Must match _make_safe_headers used in build_sqlite_from_wikisql_item
         safe_headers = _make_safe_headers(headers)
 
-        def replacer(m):
+        # Pass 1: numbered col<N> placeholders
+        def _numbered_replacer(m):
             idx = int(m.group(1))
             return safe_headers[idx] if idx < len(safe_headers) else m.group(0)
 
-        real_sql = re.sub(r'\bcol(\d+)\b', replacer, sql)
+        real_sql = re.sub(r'\bcol(\d+)\b', _numbered_replacer, sql)
+
+        # Pass 2: bare `col` (no digit) → first column
+        _first_col = safe_headers[0] if safe_headers else "col_x"
+        real_sql = re.sub(r'\bcol\b', _first_col, real_sql)
+
+        # Table name normalisation
         real_sql = re.sub(r'\bFROM\s+["`\[]?table["`\]]?\b',
                           f'FROM {WIKISQL_TABLE_NAME}', real_sql, flags=re.IGNORECASE)
         real_sql = re.sub(r'\bJOIN\s+["`\[]?table["`\]]?\b',
                           f'JOIN {WIKISQL_TABLE_NAME}', real_sql, flags=re.IGNORECASE)
 
+        # ── Strip WikiSQL double-apos wrappers FIRST ─────────────────────────
+        # Must run before _normalize_empty_string_literals so that '' used as
+        # value wrappers are not mistaken for empty string literals.
+        # NOTE: does NOT touch " characters — those are real data in some tables
+        # (e.g. '" The Letter "' where " is part of the song title cell value).
+        real_sql = _strip_wikisql_double_apos(real_sql)
+
+        # Then remaining normalizations
         real_sql = _strip_quoted_identifiers(real_sql)
         real_sql = _normalize_empty_string_literals(real_sql)
         real_sql = _normalize_wikisql_string_literals(real_sql)
         real_sql = _normalize_not_operators(real_sql)
+
+        # Sanity check
+        if re.search(r'\bcol\d*\b', real_sql, re.IGNORECASE):
+            logger.warning(
+                f"Unresolved col placeholder in gold SQL for db_id={db_id!r}: {real_sql!r}"
+            )
 
         converted.append({
             "db_id":    db_id,
@@ -526,81 +590,6 @@ def convert_wikisql_gold_to_spider_format(gold_file, output_file, limit=None):
     logger.info(f"✓ Converted {len(converted)} gold entries → {output_file}")
     return output_file
 
-
-def _normalize_wikisql_string_literals(sql: str) -> str:
-    """
-    Re-escape unescaped apostrophes inside SQL string literals.
-
-    WikiSQL source JSON sometimes stores condition values with bare apostrophes,
-    e.g.  = '17' 36.58 mph'  instead of  = '17'' 36.58 mph'
-    because the original value "17' 36.58 mph" was never SQL-escaped.
-
-    A lone ' inside a literal is the CLOSING quote when:
-      - it is at the very end of the SQL string, OR
-      - the non-space text that follows it starts with a SQL structural token
-        (AND, OR, FROM, WHERE, ORDER, GROUP, HAVING, LIMIT, UNION, EXCEPT,
-         INTERSECT, a closing paren ')', or a semicolon ';')
-
-    Any other lone ' is treated as an unescaped apostrophe and is doubled.
-
-    Already-escaped '' sequences are passed through unchanged.
-    """
-    # Tokens that legally follow a closing string quote
-    CLOSING_NEXT = re.compile(
-        r"^(?:and|or|not|from|where|order|group|having|limit|"
-        r"union|intersect|except|join|on|[);,])",
-        re.IGNORECASE,
-    )
-
-    result = []
-    i = 0
-    n = len(sql)
-
-    while i < n:
-        ch = sql[i]
-
-        if ch != "'":
-            result.append(ch)
-            i += 1
-            continue
-
-        # Opening quote of a string literal
-        result.append("'")
-        i += 1
-
-        while i < n:
-            c = sql[i]
-
-            if c != "'":
-                result.append(c)
-                i += 1
-                continue
-
-            # We're on a quote inside the literal.
-            if i + 1 < n and sql[i + 1] == "'":
-                # Already escaped '' → pass both through unchanged
-                result.append("'")
-                result.append("'")
-                i += 2
-                continue
-
-            # Lone quote — peek ahead (skip whitespace) to decide
-            j = i + 1
-            while j < n and sql[j] == " ":
-                j += 1
-            rest = sql[j:]  # everything after optional spaces
-
-            if j >= n or CLOSING_NEXT.match(rest):
-                # This is the closing quote of the literal
-                result.append("'")
-                i += 1
-                break
-            else:
-                # Unescaped apostrophe inside the value — double it
-                result.append("''")
-                i += 1
-
-    return "".join(result)
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Config loader
@@ -635,7 +624,6 @@ def save_summary_report(results: dict, output_json_path: str, dataset: str = "Wi
     from datetime import datetime
 
     txt_path = Path(output_json_path).with_suffix(".txt")
-
     em  = results.get("exact_match_accuracy", 0)
     ex  = results.get("execution_accuracy",   0)
     n   = results.get("total_evaluated",      0)

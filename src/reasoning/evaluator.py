@@ -74,101 +74,160 @@ class RateLimiter:
 
 
 rate_limiter = RateLimiter(requests_per_minute=30)
-
-
-# ---------------------------------------------------------------------------
-# SQL normalisation helpers
-# ---------------------------------------------------------------------------
-def _normalize_not_operators(sql: str) -> str:
+def _normalize_column_underscores(sql: str, schema) -> str:
     """
-    Normalise predicted/gold SQL before parsing.
+    Collapse runs of underscores in identifier tokens so that LLM artifacts
+    like  target_code__allied_  or  viewers__millions_  resolve to real schema
+    columns before execution against SQLite.
 
-    Handles:
-    1.  AND/WHERE col IS NOT NULL / IS NULL      — strip or replace
-    2.  AND lower(col) = 'val'                   — strip
-    3.  Scientific notation  = 71.1e             → = '71.1e'
-    4.  Multi-dot numeric values  = 17.7.109     → = '17.7.109'
-    5.  Backslash-escaped apostrophes  \'        → ''
-    6.  Stray double-quotes inside single-quoted literals
-    7.  Remaining double-quoted string values    → single-quoted
-    8.  NOT IN / NOT LIKE / NOT BETWEEN          → lowercase
+    Only touches tokens outside string literals that contain double underscores
+    or trailing underscores, and only replaces them when the collapsed form
+    exists in the schema.
     """
     if not sql:
         return sql
 
-    # ── 5: Normalize backslash-escaped apostrophes FIRST ─────────────────────
-    sql = sql.replace("\\'", "''")
+    # Flat set of all known column names
+    known_cols = set()
+    for cols in schema.schema.values():
+        for c in cols:
+            known_cols.add(c.lower())
 
-    # ── 6: Remove stray double-quotes inside single-quoted literals ───────────
+    # Walk char-by-char, skipping string literals
     result = []
-    in_single = False
     i = 0
     n = len(sql)
+
     while i < n:
         ch = sql[i]
-        if ch == "'" and not in_single:
-            in_single = True
+
+        # String literal — copy verbatim
+        if ch == "'":
             result.append(ch)
-        elif ch == "'" and in_single:
-            if i + 1 < n and sql[i + 1] == "'":
-                result.append("'")
-                result.append("'")
-                i += 2
-                continue
-            else:
-                in_single = False
-                result.append(ch)
-        elif ch == '"' and in_single:
-            pass  # drop stray double-quote inside single-quoted literal
-        else:
-            result.append(ch)
+            i += 1
+            while i < n:
+                c = sql[i]
+                result.append(c)
+                i += 1
+                if c == "'":
+                    if i < n and sql[i] == "'":  # escaped ''
+                        result.append("'")
+                        i += 1
+                        continue
+                    break
+            continue
+
+        # Identifier token
+        if ch.isalpha() or ch == '_':
+            j = i
+            while j < n and (sql[j].isalnum() or sql[j] == '_'):
+                j += 1
+            tok = sql[i:j]
+            i = j
+
+            # Only attempt collapse if token has __ or trailing _
+            if '__' in tok or tok.endswith('_'):
+                collapsed = re.sub(r'_+', '_', tok).strip('_')
+                if collapsed.lower() in known_cols:
+                    result.append(collapsed)
+                    continue
+
+            result.append(tok)
+            continue
+
+        result.append(ch)
         i += 1
-    sql = "".join(result)
 
-    # ── 1: Strip IS NOT NULL / IS NULL artifact clauses ──────────────────────
-    sql = _re.sub(r'\bAND\s+\w+\s+is\s+not\s+null\b',      '', sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bAND\s+\w+\s+is\s+null\b',            '', sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bAND\s+\w+\.\w+\s+is\s+not\s+null\b', '', sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bAND\s+\w+\.\w+\s+is\s+null\b',       '', sql, flags=_re.IGNORECASE)
+    return "".join(result)
+    
+def _normalize_not_operators(sql: str, is_gold: bool = False) -> str:
+    """
+    Normalise predicted/gold SQL before parsing.
 
-    sql = _re.sub(r'\bWHERE\s+\w+\s+is\s+not\s+null\b',      'WHERE 1=1', sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bWHERE\s+\w+\s+is\s+null\b',            'WHERE 1=1', sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+not\s+null\b', 'WHERE 1=1', sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+null\b',       'WHERE 1=1', sql, flags=_re.IGNORECASE)
+    Handles:
+    1. AND/WHERE col IS NOT NULL / IS NULL      — strip or replace
+    2. AND lower(col) = 'val'                   — strip
+    3. Scientific notation  = 71.1e             → = '71.1e'
+    4. Multi-dot numeric values  = 17.7.109     → = '17.7.109'
+    5. Backslash-escaped apostrophes  \'        → ''  (predicted only)
+    6. Stray double-quotes inside single-quoted literals (predicted only)
+       SKIPPED for gold SQL — WikiSQL song/title values are legitimately
+       stored with surrounding double-quotes as part of the cell value,
+       e.g. '" The Letter "'. Stripping them breaks execution matching.
+    """
+    if not sql:
+        return sql
 
-    # ── 2: Remove  AND lower(col) = 'val' ────────────────────────────────────
-    sql = _re.sub(
+    if not is_gold:
+        # ── 5: backslash-escaped apostrophes (LLM artifact) ──────────────────
+        sql = sql.replace("\\'", "''")
+
+        # ── 6: stray double-quotes inside single-quoted literals ──────────────
+        result = []
+        in_single = False
+        i = 0
+        n = len(sql)
+        while i < n:
+            ch = sql[i]
+            if ch == "'" and not in_single:
+                in_single = True
+                result.append(ch)
+            elif ch == "'" and in_single:
+                if i + 1 < n and sql[i + 1] == "'":
+                    result.append("'")
+                    result.append("'")
+                    i += 2
+                    continue
+                else:
+                    in_single = False
+                    result.append(ch)
+            elif ch == '"' and in_single:
+                pass  # drop stray double-quote
+            else:
+                result.append(ch)
+            i += 1
+        sql = "".join(result)
+
+    # ── 1: AND/WHERE col IS NOT NULL / IS NULL ────────────────────────────────
+    sql = re.sub(r'\bAND\s+\w+\s+is\s+not\s+null\b',      '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bAND\s+\w+\s+is\s+null\b',            '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bAND\s+\w+\.\w+\s+is\s+not\s+null\b', '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bAND\s+\w+\.\w+\s+is\s+null\b',       '', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+\w+\s+is\s+not\s+null\b',      'WHERE 1=1', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+\w+\s+is\s+null\b',            'WHERE 1=1', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+not\s+null\b', 'WHERE 1=1', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+null\b',       'WHERE 1=1', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+1=1\s+AND\s+', 'WHERE ', sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bAND\s+1=1\b',           '',       sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bWHERE\s+1=1\b',         '',       sql, flags=re.IGNORECASE)
+
+    # ── 2: AND lower(col) = 'val' ─────────────────────────────────────────────
+    sql = re.sub(
         r'\bAND\s+lower\s*\(\s*\w+\s*\)\s*=\s*(?:\'[^\']*\'|"[^"]*"|\S+)',
-        '', sql, flags=_re.IGNORECASE
+        '', sql, flags=re.IGNORECASE
     )
 
-    # ── 3: Fix scientific notation  = 71.1e  → = '71.1e' ─────────────────────
-    sql = _re.sub(
-        r'=\s*(\d+\.\d+[eE])\b',
-        lambda m: f"= '{m.group(1)}'",
-        sql
-    )
+    # ── 3: Scientific notation ────────────────────────────────────────────────
+    sql = re.sub(r'=\s*(\d+\.\d+[eE])\b', lambda m: f"= '{m.group(1)}'", sql)
 
-    # ── 4: Quote multi-dot numeric values  = 17.7.109  → = '17.7.109' ────────
-    sql = _re.sub(
+    # ── 4: Multi-dot numeric values ───────────────────────────────────────────
+    sql = re.sub(
         r'([=<>!]+\s*)(\d[\d.]*\.\d[\d.]+)',
         lambda m: m.group(1) + "'" + m.group(2) + "'"
         if m.group(2).count('.') >= 2 else m.group(0),
         sql
     )
 
-    # ── 7: Convert remaining double-quoted string values → single-quoted ──────
-    def _dquote_to_squote(m: _re.Match) -> str:
+    def _dquote_to_squote(m: re.Match) -> str:
         inner = m.group(1).replace("'", "''")
         return f"= '{inner}'"
-    sql = _re.sub(r'=\s*"([^"]*)"', _dquote_to_squote, sql)
+    sql = re.sub(r'=\s*"([^"]*)"', _dquote_to_squote, sql)
 
-    # ── 8: Lowercase NOT IN / NOT LIKE / NOT BETWEEN ──────────────────────────
-    sql = _re.sub(r'\bNOT\s+IN\b',      'not in',      sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bNOT\s+LIKE\b',    'not like',    sql, flags=_re.IGNORECASE)
-    sql = _re.sub(r'\bNOT\s+BETWEEN\b', 'not between', sql, flags=_re.IGNORECASE)
+    sql = re.sub(r'\bNOT\s+IN\b',      'not in',      sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bNOT\s+LIKE\b',    'not like',    sql, flags=re.IGNORECASE)
+    sql = re.sub(r'\bNOT\s+BETWEEN\b', 'not between', sql, flags=re.IGNORECASE)
 
-    sql = _re.sub(r'\s+', ' ', sql).strip()
+    sql = re.sub(r'\s+', ' ', sql).strip()
     return sql
 
 
@@ -798,9 +857,10 @@ def evaluate_turn(
     )
     # Normalise NOT operators, IS NULL artifacts, scientific notation
     p_str_normalized = _normalize_not_operators(p_str_normalized)
-
+    p_str_normalized = _normalize_column_underscores(p_str_normalized, schema) 
+    
     g_str_normalized = normalize_sql_for_evaluation(g_str) or ""
-    g_str_normalized = _normalize_not_operators(g_str_normalized)
+    g_str_normalized = _normalize_not_operators(g_str_normalized, is_gold=True)
 
     # ── Parse gold SQL ────────────────────────────────────────────────────────
     try:

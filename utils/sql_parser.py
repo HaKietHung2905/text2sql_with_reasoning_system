@@ -105,18 +105,60 @@ def tokenize(string: str) -> List[str]:
     # ------------------------------------------------------------------
     # STEP 1: Pre-escape apostrophes inside double-quoted regions.
     # ------------------------------------------------------------------
-    APOS_PLACEHOLDER = "\x02\x03"
+    APOS_PLACEHOLDER  = "\x02\x03"  # ' inside double-quoted region
+    DQUOTE_IN_SQUOTE  = "\x04\x05"  # " inside single-quoted region
 
-    result = []
-    in_dquote = False
-    for ch in string:
-        if ch == '"':
-            in_dquote = not in_dquote
-            result.append(ch)
-        elif ch == "'" and in_dquote:
-            result.append(APOS_PLACEHOLDER)
+    result   = []
+    in_sq    = False   # inside '...'
+    in_dq    = False   # inside "..."
+    idx      = 0
+    s        = string
+
+    while idx < len(s):
+        ch = s[idx]
+
+        if in_sq:
+            if ch == "'":
+                # '' = escaped apostrophe — stay inside single-quote context
+                if idx + 1 < len(s) and s[idx + 1] == "'":
+                    result.append("'")
+                    result.append("'")
+                    idx += 2
+                    continue
+                else:
+                    in_sq = False
+                    result.append(ch)
+            elif ch == '"':
+                # " inside single-quoted literal → placeholder so STEP 2
+                # doesn't create a spurious double-quote pair
+                result.append(DQUOTE_IN_SQUOTE)
+            else:
+                result.append(ch)
+
+        elif in_dq:
+            if ch == '"':
+                in_dq = False
+                result.append(ch)
+            elif ch == "'":
+                # ' inside double-quoted region → placeholder so STEP 2's
+                # ' → " swap doesn't close the outer double-quote
+                result.append(APOS_PLACEHOLDER)
+            else:
+                result.append(ch)
+
         else:
-            result.append(ch)
+            # Outside any quote
+            if ch == "'":
+                in_sq = True
+                result.append(ch)
+            elif ch == '"':
+                in_dq = True
+                result.append(ch)
+            else:
+                result.append(ch)
+
+        idx += 1
+
     string = "".join(result)
 
     # ------------------------------------------------------------------
@@ -153,6 +195,8 @@ def tokenize(string: str) -> List[str]:
         str_idx += 1
         string = string[:qidx1] + f" {placeholder} " + string[qidx2 + 1:]
         vals[placeholder.lower()] = raw_val
+
+    vals = {k: v.replace(DQUOTE_IN_SQUOTE, '"') for k, v in vals.items()}
 
     # ------------------------------------------------------------------
     # STEP 4: Tokenize, then restore string literals.

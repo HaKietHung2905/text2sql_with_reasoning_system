@@ -71,11 +71,16 @@ def _repair_unbalanced_apostrophes(sql: str) -> str:
 
     return "".join(result)
 
-
 def _lowercase_sql_string_literals(sql: str) -> str:
     """
-    Lowercase the content of every SQL string literal in *sql* without
-    breaking SQL-standard escaped apostrophes ('' inside a literal).
+    Lowercase all string literal values in SQL while preserving structure.
+
+    Handles both single-quoted and double-quoted string literals.
+
+    CRITICAL: double-quote characters that appear INSIDE a single-quoted
+    literal (e.g. WHERE title = '"When Worlds Collide"') are part of the
+    cell value data — they must be treated as ordinary characters, not as
+    the start of a new double-quoted literal.
     """
     sql = _repair_unbalanced_apostrophes(sql)
 
@@ -94,12 +99,21 @@ def _lowercase_sql_string_literals(sql: str) -> str:
 
             while i < n:
                 c = sql[i]
+
+                # ── Inside a single-quoted literal: treat " as plain data ──
+                if quote == "'" and c == '"':
+                    literal_chars.append(c)
+                    i += 1
+                    continue
+
                 if c == quote:
                     if i + 1 < n and sql[i + 1] == quote:
+                        # Escaped quote ('' or "") — keep both
                         literal_chars.append(quote)
                         literal_chars.append(quote)
                         i += 2
                     else:
+                        # Closing quote
                         break
                 else:
                     literal_chars.append(c)
@@ -157,6 +171,9 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     # Step 0: Handle placeholder
     if sql.strip().upper() == "SELECT 1":
         return sql.strip().lower()
+
+    # Step 0b: Normalize backslash-escaped apostrophes
+    sql = sql.replace("\\'"  , "''")
 
     # Step 1: Collapse whitespace
     sql = re.sub(r'\s+', ' ', sql.strip())
