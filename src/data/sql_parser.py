@@ -40,7 +40,43 @@ SQL Structure:
     'union': None/sql
 }
 """
+def _col_candidates(col: str) -> list:
+    """
+    Generate lookup candidates for a column name to handle LLM artifacts
+    where underscores are added, dropped, or doubled, AND to handle
+    columns that were renamed with _col suffix because they were reserved
+    
+    Candidates tried in order:
+      1. exact token as-is
+      2. collapse ALL runs of underscores + strip edges
+         e.g. order__  → order,  runner_s__up → runner_s_up
+      3. strip trailing/leading underscores only
+      4. collapsed + '_col'  ← handles LLM outputting 'order' or 'order__'
+                                when schema has 'order_col'
+      5. exact + '_col'      ← handles LLM outputting 'order_' → 'order_col'
+      6. exact + '_'         ← schema has trailing underscore
+      7. exact + '__'
+      8. collapsed + '_'
+    """
+    import re as _re
 
+    collapsed = _re.sub(r'_+', '_', col).strip('_')
+    stripped  = col.strip('_')
+
+    seen = []
+    for c in [
+        col,                    # 1. exact
+        collapsed,              # 2. collapse runs + strip
+        stripped,               # 3. strip edges only
+        collapsed + '_col',     # 4. keyword renamed: 'order__' → 'order_col'
+        col + '_col',           # 5. keyword renamed: 'order' → 'order_col'
+        col + '_',              # 6. trailing underscore in schema
+        col + '__',             # 7. double trailing underscore in schema
+        collapsed + '_',        # 8. collapsed + trailing
+    ]:
+        if c and c not in seen:
+            seen.append(c)
+    return seen
 
 class SQLParser:
     """Parse SQL queries into structured format"""
@@ -79,29 +115,36 @@ class SQLParser:
             raise ValueError(f"Error parsing column: {tok}")
 
         if '.' in tok:
-            # maxsplit=1 prevents crash on tokens like "a.b.c"
+            first_part = tok.split('.', 1)[0]
+            if first_part.lstrip('-').isdigit():
+                raise ValueError(f"Error parsing column: {tok}")
+
             alias, col = tok.split('.', 1)
-            # Also guard: if alias part starts with quote, it's a string literal
             if alias.startswith('"') or alias.startswith("'"):
                 raise ValueError(f"Error parsing column: {tok}")
             table = tables_with_alias.get(alias, alias)
-            key = table + "." + col
-            if key in self.schema.idMap:
-                return start_idx + 1, self.schema.idMap[key]
-            if key.lower() in self.schema.idMap:
-                return start_idx + 1, self.schema.idMap[key.lower()]
+
+            for candidate_col in _col_candidates(col):
+                key = table + "." + candidate_col
+                if key in self.schema.idMap:
+                    return start_idx + 1, self.schema.idMap[key]
+                if key.lower() in self.schema.idMap:
+                    return start_idx + 1, self.schema.idMap[key.lower()]
+
             raise ValueError(f"Error parsing column: {tok}")
 
         assert default_tables is not None and len(default_tables) > 0
 
         for alias in default_tables:
             table = tables_with_alias[alias]
-            if tok in self.schema.schema[table]:
-                key = table + "." + tok
-                return start_idx + 1, self.schema.idMap[key]
+            # Try all candidate forms — handles LLM underscore mismatches
+            # AND columns renamed with _col suffix (reserved keyword columns)
+            for candidate in _col_candidates(tok):
+                if candidate in self.schema.schema[table]:
+                    key = table + "." + candidate
+                    return start_idx + 1, self.schema.idMap[key]
 
         raise ValueError(f"Error parsing column: {tok}")
-    
     
     def _parse_col_unit(
             self,
@@ -584,7 +627,6 @@ class SQLParser:
         return idx, sql
 
 
-# Convenience functions
 def parse_sql(query: str, schema: Schema) -> Dict[str, Any]:
     """
     Parse SQL query with given schema

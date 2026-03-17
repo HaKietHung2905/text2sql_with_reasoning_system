@@ -1,12 +1,26 @@
 import re
 from typing import Optional, Tuple
 
-
 def _repair_unbalanced_apostrophes(sql: str) -> str:
     """
     Fix SQL strings where apostrophes inside string literals were never
     escaped (e.g. 'St. John's'  →  'St. John''s').
+
+    Rules (applied char-by-char inside each single-quoted string):
+    - '' (two consecutive quotes) is a standard SQL escaped apostrophe.
+      Pass both through unchanged and stay inside the literal.
+    - A lone ' followed immediately by a SQL structural keyword
+      (AND, OR, FROM, WHERE, ORDER, GROUP, HAVING, LIMIT, UNION,
+       EXCEPT, INTERSECT, JOIN, or punctuation ), ;, ,)
+      is the CLOSING quote of the literal.
+    - Any other lone ' is an unescaped apostrophe — double it.
     """
+    CLOSING_NEXT = re.compile(
+        r"^(?:and|or|not|from|where|order|group|having|limit|"
+        r"union|intersect|except|join|on|[);,])",
+        re.IGNORECASE,
+    )
+
     result = []
     i = 0
     n = len(sql)
@@ -14,26 +28,46 @@ def _repair_unbalanced_apostrophes(sql: str) -> str:
     while i < n:
         ch = sql[i]
 
-        if ch == "'":
-            result.append("'")
-            i += 1
-            while i < n:
-                c = sql[i]
-                if c == "'":
-                    next_i = i + 1
-                    if next_i < n and sql[next_i].isalpha():
-                        result.append("''")
-                        i += 1
-                    else:
-                        result.append("'")
-                        i += 1
-                        break
-                else:
-                    result.append(c)
-                    i += 1
-        else:
+        if ch != "'":
             result.append(ch)
             i += 1
+            continue
+
+        # Opening quote
+        result.append("'")
+        i += 1
+
+        while i < n:
+            c = sql[i]
+
+            if c != "'":
+                result.append(c)
+                i += 1
+                continue
+
+            # On a quote inside the literal
+            if i + 1 < n and sql[i + 1] == "'":
+                # '' → standard escaped apostrophe, pass through, stay inside
+                result.append("'")
+                result.append("'")
+                i += 2
+                continue
+
+            # Lone quote — look ahead past spaces to decide
+            j = i + 1
+            while j < n and sql[j] == " ":
+                j += 1
+            rest = sql[j:]
+
+            if j >= n or CLOSING_NEXT.match(rest):
+                # Closing quote
+                result.append("'")
+                i += 1
+                break
+            else:
+                # Unescaped apostrophe inside value — double it
+                result.append("''")
+                i += 1
 
     return "".join(result)
 
@@ -176,8 +210,8 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     sql = _lowercase_sql_string_literals(sql)
 
     # Step 9: Normalize numeric string literals → bare integers
-    sql = re.sub(r"= '(\d+)'", r"= \1", sql)
-    sql = re.sub(r'= "(\d+)"',  r"= \1", sql)
+    sql = re.sub(r"= '(\d+)'(?!')", r"= \1", sql)
+    sql = re.sub(r'= "(\d+)"',       r"= \1", sql)
 
     # Step 10: Normalize COUNT variants → COUNT ( * )
     # This makes COUNT(col), COUNT(*), COUNT(DISTINCT col) all equivalent,

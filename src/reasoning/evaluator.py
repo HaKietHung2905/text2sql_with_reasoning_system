@@ -79,57 +79,96 @@ rate_limiter = RateLimiter(requests_per_minute=30)
 # ---------------------------------------------------------------------------
 # SQL normalisation helpers
 # ---------------------------------------------------------------------------
-
 def _normalize_not_operators(sql: str) -> str:
     """
-    Normalise NOT-related patterns and model artifact clauses in predicted SQL
-    before parsing.
+    Normalise predicted/gold SQL before parsing.
 
     Handles:
-    1. AND col IS NOT NULL / AND col IS NULL  — model artifact for COUNT(col)
-    2. WHERE col IS NOT NULL (standalone, no AND before it) → WHERE 1=1
-    3. AND lower(col) = 'val'  — unsupported function artifact
-    4. Scientific notation values like  = 71.1e  → quoted string  = '71.1e'
-    5. NOT IN / NOT LIKE / NOT BETWEEN — lowercase for Spider parser.
+    1.  AND/WHERE col IS NOT NULL / IS NULL      — strip or replace
+    2.  AND lower(col) = 'val'                   — strip
+    3.  Scientific notation  = 71.1e             → = '71.1e'
+    4.  Multi-dot numeric values  = 17.7.109     → = '17.7.109'
+    5.  Backslash-escaped apostrophes  \'        → ''
+    6.  Stray double-quotes inside single-quoted literals
+    7.  Remaining double-quoted string values    → single-quoted
+    8.  NOT IN / NOT LIKE / NOT BETWEEN          → lowercase
     """
     if not sql:
         return sql
 
-    # ── Strip IS NOT NULL / IS NULL artifact clauses ─────────────────────────
+    # ── 5: Normalize backslash-escaped apostrophes FIRST ─────────────────────
+    sql = sql.replace("\\'", "''")
 
-    # AND-prefixed variants (col or table.col)
+    # ── 6: Remove stray double-quotes inside single-quoted literals ───────────
+    result = []
+    in_single = False
+    i = 0
+    n = len(sql)
+    while i < n:
+        ch = sql[i]
+        if ch == "'" and not in_single:
+            in_single = True
+            result.append(ch)
+        elif ch == "'" and in_single:
+            if i + 1 < n and sql[i + 1] == "'":
+                result.append("'")
+                result.append("'")
+                i += 2
+                continue
+            else:
+                in_single = False
+                result.append(ch)
+        elif ch == '"' and in_single:
+            pass  # drop stray double-quote inside single-quoted literal
+        else:
+            result.append(ch)
+        i += 1
+    sql = "".join(result)
+
+    # ── 1: Strip IS NOT NULL / IS NULL artifact clauses ──────────────────────
     sql = _re.sub(r'\bAND\s+\w+\s+is\s+not\s+null\b',      '', sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bAND\s+\w+\s+is\s+null\b',            '', sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bAND\s+\w+\.\w+\s+is\s+not\s+null\b', '', sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bAND\s+\w+\.\w+\s+is\s+null\b',       '', sql, flags=_re.IGNORECASE)
 
-    # Standalone WHERE col IS NOT NULL / WHERE col IS NULL
     sql = _re.sub(r'\bWHERE\s+\w+\s+is\s+not\s+null\b',      'WHERE 1=1', sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bWHERE\s+\w+\s+is\s+null\b',            'WHERE 1=1', sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+not\s+null\b', 'WHERE 1=1', sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bWHERE\s+\w+\.\w+\s+is\s+null\b',       'WHERE 1=1', sql, flags=_re.IGNORECASE)
 
-    # Remove  AND lower(col) = 'val'  — unsupported function artifact
+    # ── 2: Remove  AND lower(col) = 'val' ────────────────────────────────────
     sql = _re.sub(
         r'\bAND\s+lower\s*\(\s*\w+\s*\)\s*=\s*(?:\'[^\']*\'|"[^"]*"|\S+)',
         '', sql, flags=_re.IGNORECASE
     )
 
-    # ── Fix scientific notation values  = 71.1e  → = '71.1e' ─────────────────
+    # ── 3: Fix scientific notation  = 71.1e  → = '71.1e' ─────────────────────
     sql = _re.sub(
         r'=\s*(\d+\.\d+[eE])\b',
         lambda m: f"= '{m.group(1)}'",
         sql
     )
 
-    # ── Lowercase NOT IN / NOT LIKE / NOT BETWEEN ─────────────────────────────
+    # ── 4: Quote multi-dot numeric values  = 17.7.109  → = '17.7.109' ────────
+    sql = _re.sub(
+        r'([=<>!]+\s*)(\d[\d.]*\.\d[\d.]+)',
+        lambda m: m.group(1) + "'" + m.group(2) + "'"
+        if m.group(2).count('.') >= 2 else m.group(0),
+        sql
+    )
+
+    # ── 7: Convert remaining double-quoted string values → single-quoted ──────
+    def _dquote_to_squote(m: _re.Match) -> str:
+        inner = m.group(1).replace("'", "''")
+        return f"= '{inner}'"
+    sql = _re.sub(r'=\s*"([^"]*)"', _dquote_to_squote, sql)
+
+    # ── 8: Lowercase NOT IN / NOT LIKE / NOT BETWEEN ──────────────────────────
     sql = _re.sub(r'\bNOT\s+IN\b',      'not in',      sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bNOT\s+LIKE\b',    'not like',    sql, flags=_re.IGNORECASE)
     sql = _re.sub(r'\bNOT\s+BETWEEN\b', 'not between', sql, flags=_re.IGNORECASE)
 
-    # ── Final whitespace cleanup ──────────────────────────────────────────────
     sql = _re.sub(r'\s+', ' ', sql).strip()
-
     return sql
 
 

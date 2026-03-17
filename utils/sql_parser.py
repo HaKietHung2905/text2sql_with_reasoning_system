@@ -20,6 +20,21 @@ TABLE_TYPE = {
     'table_unit': "table_unit",
 }
 
+# All SQL keywords that the parser treats specially — used by Pass 5a
+# to decide whether a merged token is safe.
+_ALL_SQL_KEYWORDS = frozenset(
+    list(CLAUSE_KEYWORDS) + list(JOIN_KEYWORDS) + list(WHERE_OPS) +
+    list(AGG_OPS) + list(COND_OPS) + list(SQL_OPS) + list(ORDER_OPS) +
+    ['distinct', 'by', 'having', 'between', 'exists', 'is',
+     'null', 'case', 'when', 'then', 'else', 'end', 'all', 'any',
+     'into', 'set', '*']
+)
+
+
+def _is_sql_keyword(token: str) -> bool:
+    return token.lower() in _ALL_SQL_KEYWORDS
+
+
 def is_identifier(token: str) -> bool:
     if not token:
         return False
@@ -39,7 +54,6 @@ def is_identifier(token: str) -> bool:
 
 
 def tokenize(string: str) -> List[str]:
-    # print(f"DEBUG TOKENIZE CALLED: {string[:80]!r}", flush=True)
     """
     Tokenize SQL string with full WikiSQL compatibility.
 
@@ -59,24 +73,23 @@ def tokenize(string: str) -> List[str]:
         2. Restored string literals containing dots can reach _parse_col
            and trigger the '.' in tok branch incorrectly.
         3. NULL literals reach _parse_col and raise ValueError.
+        4. NLTK splits identifiers on underscores in certain contexts,
+           e.g. table_col → ['table', '_', 'col'], obama_ → ['obama', '_'].
+           Pass 5a re-joins these fragments.
 
-      Fixes applied here:
-        - STEP 3a: After extraction, replace spaces inside quoted values
-          with a non-space placeholder before word_tokenize, so the
-          __STRn__ token stays atomic and is never split.
-        - STEP 4: Restore the space placeholder after tokenization.
-        - _parse_col (in src/data/sql_parser.py): guard for string
-          literals and NULL before dot-splitting (see below).
+      Fixes applied:
+        - STEP 3a: Replace spaces inside quoted values with a placeholder
+          before word_tokenize so the SQLSTRnSQLEND token stays atomic.
+        - STEP 5a: Re-join underscore-split identifier fragments, allowing
+          keyword prefixes/suffixes as long as the merged result is not
+          itself a keyword (handles table_col, order_col, from_col, etc.).
+        - _parse_col: guards for numeric-dotted tokens and string literals.
     """
     string = str(string)
 
     # ------------------------------------------------------------------
     # STEP 0: Strip WikiSQL double-apos wrappers:  ''value''  →  'value'
-    # Handles values with internal spaces, dots, apostrophes, parens.
     # ------------------------------------------------------------------
-    # Match:  = ''anything''  including values with internal spaces
-    # Uses a greedy match bounded by the final '' at end of value.
-    # We process from right-to-left to handle multiple conditions.
     string = re.sub(
         r"= '''((?:[^']|'(?!''))*?)'''",
         lambda m: "= '" + m.group(1) + "'",
@@ -93,7 +106,7 @@ def tokenize(string: str) -> List[str]:
     # STEP 1: Pre-escape apostrophes inside double-quoted regions.
     # ------------------------------------------------------------------
     APOS_PLACEHOLDER = "\x02\x03"
-    
+
     result = []
     in_dquote = False
     for ch in string:
@@ -128,15 +141,13 @@ def tokenize(string: str) -> List[str]:
         quote_idxs = [idx for idx, char in enumerate(string) if char == '"']
 
     # ------------------------------------------------------------------
-    # STEP 3: Extract quoted string literals → __STRn__ placeholders.
+    # STEP 3: Extract quoted string literals → SQLSTRnSQLEND placeholders.
     # ------------------------------------------------------------------
-    
     vals: dict = {}
     str_idx = 0
     for i in range(len(quote_idxs) - 1, -1, -2):
         qidx1 = quote_idxs[i - 1]
         qidx2 = quote_idxs[i]
-        # Restore APOS_PH → real apostrophe inside the extracted value
         raw_val = string[qidx1: qidx2 + 1].replace(APOS_PLACEHOLDER, "'")
         placeholder = f"SQLSTR{str_idx}SQLEND"
         str_idx += 1
@@ -148,13 +159,88 @@ def tokenize(string: str) -> List[str]:
     # ------------------------------------------------------------------
     toks = [word.lower() for word in word_tokenize(string)]
     toks = [vals.get(tok, tok) for tok in toks]
-    # DEBUG
-    # if any(tok in ('don', 'great', 'the', 'when') for tok in toks):
-    #    print(f"DEBUG BAD TOKS: {toks}", flush=True)
-    #    print(f"DEBUG VALS KEYS: {list(vals.keys())}", flush=True)
 
     # ------------------------------------------------------------------
-    # STEP 5: Merge  table . column  patterns into single tokens.
+    # STEP 5a: Re-join NLTK-split underscore identifier fragments.
+    #
+    # NLTK word_tokenize splits identifiers on underscores in some
+    # contexts, producing a pure-underscore token between fragments:
+    #   table_col  → ['table', '_', 'col']
+    #   from_col   → ['from',  '_', 'col']
+    #   order_col  → ['order', '_', 'col']
+    #   obama_     → ['obama', '_']
+    #   a__b       → ['a', '__', 'b']
+    #
+    # Merge strategy: when we encounter a pure-underscore token, merge
+    # it with its left (prefix) and right (suffix) neighbours when the
+    # resulting combined token:
+    #   (a) consists entirely of word characters (\w+), AND
+    #   (b) is NOT itself a SQL keyword.
+    #
+    # We deliberately allow keyword prefixes (table, from, order, …)
+    # as long as the final merged token is not a keyword — this is what
+    # enables table_col, from_col, order_col, etc.
+    #
+    # Fallback: if a three-way merge isn't possible, attempt a two-way
+    # prefix-only merge (handles trailing underscores: obama_ → obama_).
+    # ------------------------------------------------------------------
+    def _try_merge(prefix: str, under: str, suffix: str) -> Optional[str]:
+        """Return merged token if safe (all-\w and not a SQL keyword)."""
+        merged = prefix + under + suffix
+        if re.match(r'^\w+$', merged) and not _is_sql_keyword(merged):
+            return merged
+        return None
+
+    i = 0
+    rejoined: List[str] = []
+    while i < len(toks):
+        tok = toks[i]
+
+        if not re.match(r'^_+$', tok):
+            # Not a pure-underscore token — pass through unchanged.
+            rejoined.append(tok)
+            i += 1
+            continue
+
+        # ── Pure underscore token ─────────────────────────────────────
+        # Collect prefix: last token in rejoined if it's all word chars.
+        prefix = rejoined[-1] if (rejoined and re.match(r'^\w+$', rejoined[-1])) else ""
+
+        # Collect suffix: next token if it's all word chars.
+        # Note: we intentionally do NOT exclude keywords here — the
+        # _try_merge check on the result handles safety.
+        suffix = ""
+        if i + 1 < len(toks) and re.match(r'^\w+$', toks[i + 1]):
+            suffix = toks[i + 1]
+
+        # Attempt three-way merge: prefix + underscore(s) + suffix
+        if prefix and suffix:
+            merged = _try_merge(prefix, tok, suffix)
+            if merged is not None:
+                rejoined.pop()          # remove borrowed prefix
+                rejoined.append(merged)
+                i += 2                  # consumed underscore + suffix
+                continue
+
+        # Attempt two-way merge: prefix + underscore(s)  (trailing _)
+        # Only allowed when prefix is NOT a SQL keyword — a bare trailing
+        # underscore after a keyword (e.g. WHERE_) is never a column name.
+        if prefix and not _is_sql_keyword(prefix):
+            merged2 = _try_merge(prefix, tok, "")
+            if merged2 is not None:
+                rejoined.pop()
+                rejoined.append(merged2)
+                i += 1
+                continue
+
+        # Cannot merge — emit the underscore token as-is.
+        rejoined.append(tok)
+        i += 1
+
+    toks = rejoined
+
+    # ------------------------------------------------------------------
+    # STEP 5b: Merge  table . column  patterns into single tokens.
     # ------------------------------------------------------------------
     merged_toks = []
     i = 0
@@ -179,11 +265,11 @@ def tokenize(string: str) -> List[str]:
     # ------------------------------------------------------------------
     eq_idxs = [idx for idx, tok in enumerate(toks) if tok == "="]
     eq_idxs.reverse()
-    prefix = ('!', '>', '<')
+    prefix_chars = ('!', '>', '<')
     for eq_idx in eq_idxs:
         if eq_idx > 0:
             pre_tok = toks[eq_idx - 1]
-            if pre_tok in prefix:
+            if pre_tok in prefix_chars:
                 toks = toks[:eq_idx - 1] + [pre_tok + "="] + toks[eq_idx + 1:]
 
     return toks
