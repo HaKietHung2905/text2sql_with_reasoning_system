@@ -1,0 +1,243 @@
+# Regenerated 48 line(s)
+# Copy the TSV ROW line for each entry into your predictions file.
+
+=== Line 611 | db_id: 1-15472061-1 ===
+Question : Name the number of original air date for when the number in season is 10/11
+SQL      : SELECT COUNT(original_air_date) FROM wikisql_data WHERE no_in_season IN ('10', '11')
+TSV ROW  : SELECT COUNT(original_air_date) FROM wikisql_data WHERE no_in_season IN ('10', '11')	1-15472061-1
+
+=== Line 612 | db_id: 1-15530244-2 ===
+Question : Which race number in the Indy F3 Challenge circuit had John Martin in pole position?
+SQL      : SELECT race FROM wikisql_data WHERE circuit = 'Indy F3 Challenge' AND pole_position = 'John Martin'
+TSV ROW  : SELECT race FROM wikisql_data WHERE circuit = 'Indy F3 Challenge' AND pole_position = 'John Martin'	1-15530244-2
+
+=== Line 613 | db_id: 1-15530244-2 ===
+Question : What is the highest race number in the Phillip Island circuit with James Winslow as the winning driver and pole position?
+SQL      : SELECT MAX(round) FROM wikisql_data WHERE circuit = 'Phillip Island' AND winning_driver = 'James Winslow' AND pole_position = 'James Winslow'
+TSV ROW  : SELECT MAX(round) FROM wikisql_data WHERE circuit = 'Phillip Island' AND winning_driver = 'James Winslow' AND pole_position = 'James Winslow'	1-15530244-2
+
+=== Line 614 | db_id: 1-15581223-8 ===
+Question : Name the least amount of tackles for danny clark
+SQL      : SELECT MIN(tackles) FROM wikisql_data WHERE player = 'Danny Clark'
+TSV ROW  : SELECT MIN(tackles) FROM wikisql_data WHERE player = 'Danny Clark'	1-15581223-8
+
+=== Line 615 | db_id: 1-15581223-8 ===
+Question : Name the most tackles for 3.5 sacks
+SQL      : SELECT player FROM wikisql_data WHERE sacks = '3.5' ORDER BY tackles DESC LIMIT 1
+TSV ROW  : SELECT player FROM wikisql_data WHERE sacks = '3.5' ORDER BY tackles DESC LIMIT 1	1-15581223-8
+
+=== Line 616 | db_id: 1-15581223-8 ===
+Question : Name the least fum rec td
+SQL      : SELECT player FROM wikisql_data ORDER BY fum_rec_td ASC LIMIT 1
+TSV ROW  : SELECT player FROM wikisql_data ORDER BY fum_rec_td ASC LIMIT 1	1-15581223-8
+
+=== Line 617 | db_id: 1-15581223-8 ===
+Question : Name the least int yards when sacks is 11.5
+SQL      : SELECT player FROM wikisql_data WHERE sacks = '11.5' ORDER BY int_yards ASC LIMIT 1
+TSV ROW  : SELECT player FROM wikisql_data WHERE sacks = '11.5' ORDER BY int_yards ASC LIMIT 1	1-15581223-8
+
+=== Line 618 | db_id: 1-15581223-8 ===
+Question : Name the least amount of int yards
+SQL      : SELECT MIN(int_yards) FROM wikisql_data
+TSV ROW  : SELECT MIN(int_yards) FROM wikisql_data	1-15581223-8
+
+=== Line 619 | db_id: 1-15621965-8 ===
+Question : What jersey number did Al Harrington wear
+SQL      : SELECT no_col FROM wikisql_data WHERE player = 'Al Harrington'
+TSV ROW  : SELECT no_col FROM wikisql_data WHERE player = 'Al Harrington'	1-15621965-8
+
+=== Line 620 | db_id: 1-15621965-8 ===
+Question : What school did Dwight Howard play for
+SQL      : SELECT school_club_team FROM wikisql_data WHERE player = 'Dwight Howard'
+TSV ROW  : SELECT school_club_team FROM wikisql_data WHERE player = 'Dwight Howard'	1-15621965-8
+
+=== Line 621 | db_id: 1-15621965-7 ===
+Question : How many players belong to Notre Dame?
+SQL      : SELECT COUNT(player) FROM wikisql_data WHERE school_club_team = 'Notre Dame'
+TSV ROW  : SELECT COUNT(player) FROM wikisql_data WHERE school_club_team = 'Notre Dame'	1-15621965-7
+
+=== Line 622 | db_id: 1-15621965-7 ===
+Question : What number identifies Chris Gatling?
+SQL      : SELECT no_col FROM wikisql_data WHERE player = 'Chris Gatling'
+TSV ROW  : SELECT no_col FROM wikisql_data WHERE player = 'Chris Gatling'	1-15621965-7
+
+=== Line 623 | db_id: 1-15621965-7 ===
+Question : What is Chris Gatling 's number?
+SQL      : SELECT no_col FROM wikisql_data WHERE player = 'Chris Gatling'
+TSV ROW  : SELECT no_col FROM wikisql_data WHERE player = 'Chris Gatling'	1-15621965-7
+
+=== Line 624 | db_id: 1-15652027-1 ===
+Question : What is the extortion and theft rates where the United Nations Observer Mission Uganda-Rwanda is active?
+SQL      : SELECT extortion_theft_3 FROM wikisql_data WHERE united_nations_mission = 'United Nations Observer Mission Uganda-Rwanda'
+TSV ROW  : SELECT extortion_theft_3 FROM wikisql_data WHERE united_nations_mission = 'United Nations Observer Mission Uganda-Rwanda'	1-15652027-1
+
+=== Line 625 | db_id: 1-15652027-1 ===
+Question : What is the sexual abuse rate where the conflict is the Burundi Civil War?
+SQL      : SELECT sexual_abuse_1 FROM wikisql_data WHERE conflict = 'Burundi Civil War'
+TSV ROW  : SELECT sexual_abuse_1 FROM wikisql_data WHERE conflict = 'Burundi Civil War'	1-15652027-1
+
+=== Line 626 | db_id: 1-15652027-1 ===
+Question : What is the sexual abuse rate where the conflict is the Burundi Civil War?
+SQL      : SELECT sexual_abuse_1 FROM wikisql_data WHERE conflict = 'Burundi Civil War'
+TSV ROW  : SELECT sexual_abuse_1 FROM wikisql_data WHERE conflict = 'Burundi Civil War'	1-15652027-1
+
+=== Line 627 | db_id: 1-15652027-1 ===
+Question : What is the sexual abuse rate where the conflict is the Second Sudanese Civil War?
+SQL      : SELECT sexual_abuse_1 FROM wikisql_data WHERE conflict = 'Second Sudanese Civil War'
+TSV ROW  : SELECT sexual_abuse_1 FROM wikisql_data WHERE conflict = 'Second Sudanese Civil War'	1-15652027-1
+
+=== Line 628 | db_id: 1-1566848-8 ===
+Question : Who was the on the cover when Bob Vila did the 20 Questions?
+SQL      : SELECT cover_model FROM wikisql_data WHERE col_20_questions = 'Bob Vila'
+TSV ROW  : SELECT cover_model FROM wikisql_data WHERE col_20_questions = 'Bob Vila'	1-1566848-8
+
+=== Line 629 | db_id: 1-1566848-8 ===
+Question : When was the Kymberly Paige the Centerfold?
+SQL      : SELECT date FROM wikisql_data WHERE centerfold_model = 'Kymberly Paige'
+TSV ROW  : SELECT date FROM wikisql_data WHERE centerfold_model = 'Kymberly Paige'	1-1566848-8
+
+=== Line 630 | db_id: 1-1566850-8 ===
+Question : When was Kalin Olson listed as  the centerfold model?
+SQL      : SELECT date FROM wikisql_data WHERE centerfold_model = 'Kalin Olson'
+TSV ROW  : SELECT date FROM wikisql_data WHERE centerfold_model = 'Kalin Olson'	1-1566850-8
+
+=== Line 631 | db_id: 1-1566850-8 ===
+Question : What is the name of the cover model on 3-97?
+SQL      : SELECT cover_model FROM wikisql_data WHERE date = '3-97'
+TSV ROW  : SELECT cover_model FROM wikisql_data WHERE date = '3-97'	1-1566850-8
+
+=== Line 632 | db_id: 1-1566850-8 ===
+Question : Who was the centerfold model when a pictorial was done on marilyn monroe?
+SQL      : SELECT centerfold_model FROM wikisql_data WHERE pictorials = 'Marilyn Monroe'
+TSV ROW  : SELECT centerfold_model FROM wikisql_data WHERE pictorials = 'Marilyn Monroe'	1-1566850-8
+
+=== Line 633 | db_id: 1-1566850-8 ===
+Question : Who was the interview subject on the date 1-97?
+SQL      : SELECT interview_subject FROM wikisql_data WHERE date = '1-97'
+TSV ROW  : SELECT interview_subject FROM wikisql_data WHERE date = '1-97'	1-1566850-8
+
+=== Line 634 | db_id: 1-1566852-8 ===
+Question : Who was the centerfold model in the issue where Fergie answered the "20 questions"?
+SQL      : SELECT centerfold_model FROM wikisql_data WHERE col_20_questions = 'Fergie'
+TSV ROW  : SELECT centerfold_model FROM wikisql_data WHERE col_20_questions = 'Fergie'	1-1566852-8
+
+=== Line 635 | db_id: 1-1566852-8 ===
+Question : Who was the cover model when the issue's pictorials was pmoy - sara jean underwood?
+SQL      : SELECT cover_model FROM wikisql_data WHERE pictorials = 'pmoy - sara jean underwood'
+TSV ROW  : SELECT cover_model FROM wikisql_data WHERE pictorials = 'pmoy - sara jean underwood'	1-1566852-8
+
+=== Line 636 | db_id: 1-1566852-8 ===
+Question : List the pictorals from issues when lindsey roeper was the cover model.
+SQL      : SELECT pictorials FROM wikisql_data WHERE cover_model = 'Lindsey Roeper'
+TSV ROW  : SELECT pictorials FROM wikisql_data WHERE cover_model = 'Lindsey Roeper'	1-1566852-8
+
+=== Line 637 | db_id: 1-1566852-8 ===
+Question : Who was the centerfold model when the issue's pictorial was kimberly bell , bunnies of the new playboy club?
+SQL      : SELECT centerfold_model FROM wikisql_data WHERE pictorials = 'kimberly bell , bunnies of the new playboy club'
+TSV ROW  : SELECT centerfold_model FROM wikisql_data WHERE pictorials = 'kimberly bell , bunnies of the new playboy club'	1-1566852-8
+
+=== Line 638 | db_id: 1-1566852-8 ===
+Question : Who was the centerfold model when the issue's pictorial was amanda beard, reby sky , girls of montauk ?
+SQL      : SELECT centerfold_model FROM wikisql_data WHERE pictorials = 'amanda beard, reby sky , girls of montauk'
+TSV ROW  : SELECT centerfold_model FROM wikisql_data WHERE pictorials = 'amanda beard, reby sky , girls of montauk'	1-1566852-8
+
+=== Line 639 | db_id: 1-1566852-8 ===
+Question : Who answered the 20 questions on 10-07?
+SQL      : SELECT col_20_questions FROM wikisql_data WHERE date = '10-07'
+TSV ROW  : SELECT col_20_questions FROM wikisql_data WHERE date = '10-07'	1-1566852-8
+
+=== Line 640 | db_id: 1-15700367-2 ===
+Question : Name the wickets for overs bowled being 15
+SQL      : SELECT wickets FROM wikisql_data WHERE overs_bowled = '15'
+TSV ROW  : SELECT wickets FROM wikisql_data WHERE overs_bowled = '15'	1-15700367-2
+
+=== Line 641 | db_id: 1-15700367-2 ===
+Question : Name the total number of wickets being yuvraj singh
+SQL      : SELECT SUM(wickets) FROM wikisql_data WHERE name = 'yuvraj singh'
+TSV ROW  : SELECT SUM(wickets) FROM wikisql_data WHERE name = 'yuvraj singh'	1-15700367-2
+
+=== Line 642 | db_id: 1-15700367-2 ===
+Question : Name the name for when overs bowled is 31.2
+SQL      : SELECT name FROM wikisql_data WHERE overs_bowled = '31.2'
+TSV ROW  : SELECT name FROM wikisql_data WHERE overs_bowled = '31.2'	1-15700367-2
+
+=== Line 643 | db_id: 1-15700367-2 ===
+Question : Name the runs conceded where overs bowled is 53
+SQL      : SELECT runs_conceded FROM wikisql_data WHERE overs_bowled = '53'
+TSV ROW  : SELECT runs_conceded FROM wikisql_data WHERE overs_bowled = '53'	1-15700367-2
+
+=== Line 644 | db_id: 1-15700367-2 ===
+Question : Name the maaidens where overs bowled is 13
+SQL      : SELECT maidens FROM wikisql_data WHERE overs_bowled = '13'
+TSV ROW  : SELECT maidens FROM wikisql_data WHERE overs_bowled = '13'	1-15700367-2
+
+=== Line 645 | db_id: 1-15736385-1 ===
+Question : On what date was the race at Nazareth?
+SQL      : SELECT date FROM wikisql_data WHERE location = 'Nazareth'
+TSV ROW  : SELECT date FROM wikisql_data WHERE location = 'Nazareth'	1-15736385-1
+
+=== Line 646 | db_id: 1-15736385-1 ===
+Question : At which location did Rick Mears drive?
+SQL      : SELECT location FROM wikisql_data WHERE driver = 'Rick Mears'
+TSV ROW  : SELECT location FROM wikisql_data WHERE driver = 'Rick Mears'	1-15736385-1
+
+=== Line 647 | db_id: 1-15736385-1 ===
+Question : Which team raced on October 19?
+SQL      : SELECT team FROM wikisql_data WHERE date = 'October 19'
+TSV ROW  : SELECT team FROM wikisql_data WHERE date = 'October 19'	1-15736385-1
+
+=== Line 648 | db_id: 1-15736385-1 ===
+Question : What engine does Galles Racing use?
+SQL      : SELECT DISTINCT engine FROM wikisql_data WHERE team = 'Galles Racing'
+TSV ROW  : SELECT DISTINCT engine FROM wikisql_data WHERE team = 'Galles Racing'	1-15736385-1
+
+=== Line 649 | db_id: 1-15780049-5 ===
+Question : What game happened on December 19?
+SQL      : SELECT game FROM wikisql_data WHERE date = 'December 19'
+TSV ROW  : SELECT game FROM wikisql_data WHERE date = 'December 19'	1-15780049-5
+
+=== Line 650 | db_id: 1-15780049-5 ===
+Question : Who scored the most points against Washington?
+SQL      : SELECT team FROM wikisql_data WHERE score LIKE '%Washington%' AND high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE score LIKE '%Washington%')
+TSV ROW  : SELECT team FROM wikisql_data WHERE score LIKE '%Washington%' AND high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE score LIKE '%Washington%')	1-15780049-5
+
+=== Line 651 | db_id: 1-157826-1 ===
+Question : Which municipalities located in the county of Finnmark have populations bigger than 6187.0?
+SQL      : SELECT municipality FROM wikisql_data WHERE county = 'Finnmark' AND population > 6187.0
+TSV ROW  : SELECT municipality FROM wikisql_data WHERE county = 'Finnmark' AND population > 6187.0	1-157826-1
+
+=== Line 652 | db_id: 1-157826-1 ===
+Question : In which county is the city/town of Halden located?
+SQL      : SELECT county FROM wikisql_data WHERE city_town = 'Halden'
+TSV ROW  : SELECT county FROM wikisql_data WHERE city_town = 'Halden'	1-157826-1
+
+=== Line 653 | db_id: 1-157826-1 ===
+Question : Which municipality has a population of 24421?
+SQL      : SELECT municipality FROM wikisql_data WHERE population = 24421
+TSV ROW  : SELECT municipality FROM wikisql_data WHERE population = 24421	1-157826-1
+
+=== Line 654 | db_id: 1-157826-1 ===
+Question : What is the total population in the city/town of Arendal?
+SQL      : SELECT population FROM wikisql_data WHERE city_town = 'Arendal'
+TSV ROW  : SELECT population FROM wikisql_data WHERE city_town = 'Arendal'	1-157826-1
+
+=== Line 655 | db_id: 1-157826-1 ===
+Question : What are the cities/towns located in the municipality of Horten?
+SQL      : SELECT city_town FROM wikisql_data WHERE municipality = 'Horten'
+TSV ROW  : SELECT city_town FROM wikisql_data WHERE municipality = 'Horten'	1-157826-1
+
+=== Line 656 | db_id: 1-157826-1 ===
+Question : What are the cities/towns located in the municipality of Moss?
+SQL      : SELECT city_town FROM wikisql_data WHERE municipality = 'Moss'
+TSV ROW  : SELECT city_town FROM wikisql_data WHERE municipality = 'Moss'	1-157826-1
+
+=== Line 657 | db_id: 1-15796054-3 ===
+Question : Name the song choice when week number is hollywood
+SQL      : SELECT song_choice FROM wikisql_data WHERE week = 'hollywood'
+TSV ROW  : SELECT song_choice FROM wikisql_data WHERE week = 'hollywood'	1-15796054-3
+
+=== Line 658 | db_id: 1-15796054-3 ===
+Question : Name the week number for andrew lloyd webber
+SQL      : SELECT week FROM wikisql_data WHERE theme = 'Andrew Lloyd Webber'
+TSV ROW  : SELECT week FROM wikisql_data WHERE theme = 'Andrew Lloyd Webber'	1-15796054-3
+

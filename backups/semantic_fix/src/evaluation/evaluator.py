@@ -85,7 +85,11 @@ def evaluate(
         )
     else:
         plist = load_predictions(predict)
-    
+        if questions_file and os.path.exists(questions_file):
+            with open(questions_file, 'r') as f:
+                questions_data_ref = json.load(f) if questions_file.endswith('.json') else []
+        else:
+            questions_data_ref = []
     # Load gold queries
     glist = load_gold_queries(gold)
     

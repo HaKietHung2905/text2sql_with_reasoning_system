@@ -482,7 +482,11 @@ def evaluate(
 
     elif predict:
         plist = load_predictions(predict)
-        questions_data_ref = []
+        if questions_file and os.path.exists(questions_file):
+            with open(questions_file, 'r') as f:
+                questions_data_ref = json.load(f) if questions_file.endswith('.json') else []
+        else:
+            questions_data_ref = []
     else:
         raise ValueError("Either use_langchain+questions_file or predict file required")
 
@@ -563,7 +567,8 @@ def evaluate(
 
             question = (
                 questions_data_ref[i]['question']
-                if use_langchain and i < len(questions_data_ref) else ''
+                #if use_langchain and i < len(questions_data_ref) else ''
+                if i < len(questions_data_ref) else ''
             )
             entry = res.get('entry') or {}
             detailed_results.append({
