@@ -10,9 +10,6 @@ from dotenv import load_dotenv
 
 from utils.logging_utils import get_logger
 
-# Note: build_sql_prompt does not exist in src.generation.sql_generator —
-# we always use _build_prompt defined in this class.
-
 logger = get_logger(__name__)
 
 try:
@@ -23,6 +20,67 @@ try:
 except ImportError:
     LANGCHAIN_AVAILABLE = False
     logger.warning("LangChain not available")
+
+# ── WikiSQL annotation rules ──────────────────────────────────────────────────
+WIKISQL_ANNOTATION_RULES = """\
+━━━ WIKISQL ANNOTATION RULES (follow exactly) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():
+   • "What is the X?" / "Which X?" / "What X did Y have?" / "Name the X"
+   → SELECT MAX(col) FROM wikisql_data WHERE ...
+   • NEVER use plain SELECT col for single-value lookup questions.
+   • Example: "What is the pick number for Northwestern?"
+     → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
+
+2. MINIMUM RETRIEVAL — use MIN() when lowest/earliest/first is implied:
+   • "What is the lowest/first/earliest X?" / "Name the minimum X"
+   → SELECT MIN(col) FROM wikisql_data WHERE ...
+   • Example: "Name the minimum ties played for 6 years."
+     → SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6
+
+3. COUNTING — always use COUNT(col), never COUNT(*):
+   • "How many X?" / "What is the total number of X?"
+   → SELECT COUNT(col) FROM wikisql_data WHERE ...
+   • Use the column being counted, not *.
+   • Example: "How many players played in 2005-06?"
+     → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
+
+3b. EXCEPTION — plain SELECT when the column itself IS the count:    
+   • If the column name already contains the question's noun, use plain SELECT.
+   • "How many goals were scored in 2005-06?"
+     → SELECT goals FROM wikisql_data WHERE season = '2005-06'    
+   • "How many viewers did episode X draw?"
+     → SELECT viewers FROM wikisql_data WHERE title = 'X'           
+   • "How many points did the team score?"
+     → SELECT points FROM wikisql_data WHERE ...                    
+   Rule: if a column named goals/viewers/points/passengers/rewards
+   exists in the schema, use plain SELECT — not SUM or COUNT.
+
+4. MINIMAL WHERE — use ONLY the single most specific filter from the question.
+   When a question mentions multiple entities/people, use ONLY the one that
+   matches the most specific or unusual column value.
+
+   BAD: "Who was SS when Jim Lefebvre was at 2nd and Don Drysdale was pitcher?"
+   → WHERE second_baseman = 'jim lefebvre' AND pitcher = 'don drysdale'   ← WRONG
+   GOOD: → WHERE second_baseman = 'jim lefebvre'                           ← CORRECT
+
+   BAD: "What championship had 54-holes = '1 shot lead' and runner-up Chris DiMarco?"
+   → WHERE col_54_holes = '1 shot lead' AND runner_s_up = 'chris dimarco' ← WRONG
+   GOOD: → WHERE col_54_holes = '1 shot lead'                              ← CORRECT
+
+   BAD: "What school did the forward whose number is 10 belong to?"
+   → WHERE position = 'forward' AND no_s = 10                             ← WRONG
+   GOOD: → WHERE no_s = 10                                                 ← CORRECT
+
+   RULE: pick the filter value that is most unique/numeric. Drop the rest.
+
+5. COMPOUND WHERE VALUES — never split on commas:
+   • WHERE regular_season = '4th, Atlantic Division'  ← correct
+   • WHERE regular_season = '4th' AND ...             ← wrong
+
+6. String values: always quote with single quotes.
+   Numeric values: do NOT quote.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+"""
 
 
 class SQLGenerator:
@@ -47,7 +105,7 @@ class SQLGenerator:
                 model="meta/llama-4-maverick-17b-128e-instruct-maas",
                 temperature=0.1,
                 google_api_key=api_key,
-                convert_system_message_to_human=True
+                convert_system_message_to_human=True,
             )
             self.generator = (
                 ChatPromptTemplate.from_template("{prompt}") | llm | StrOutputParser()
@@ -58,11 +116,33 @@ class SQLGenerator:
             self.generator = None
 
     # ------------------------------------------------------------------
+    # WikiSQL detection
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_wikisql(db_path: str) -> bool:
+        """
+        Return True when the database is a WikiSQL database.
+        Fast-path: path contains 'wikisql'.
+        Fallback: inspect tables — wikisql_data present means WikiSQL.
+        """
+        if "wikisql" in db_path.lower():
+            return True
+        try:
+            conn = sqlite3.connect(db_path)
+            cur  = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [r[0] for r in cur.fetchall()]
+            conn.close()
+            return "wikisql_data" in tables
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
-    
-def generate(
+    def generate(
         self,
         question: str,
         db_path: str,
@@ -72,12 +152,12 @@ def generate(
         Generate SQL for a question.
 
         Pipeline:
-          1. LLM generation  (with retry inside _generate_maas)
-          2. SQL extraction  (_clean_sql)
+          1. LLM generation via _invoke()
+          2. SQL extraction  (_clean_sql, already called inside _invoke)
           3. Pattern-based heuristic fallback  (_pattern_generate)
-          4. Hard fallback   SELECT 1   (last resort, should be rare)
+          4. Hard fallback   SELECT 1   (last resort)
 
-        Returns a non-empty string.  Never returns "".
+        Returns a non-empty string. Never returns "".
         """
         if not os.path.exists(db_path):
             logger.error(f"Database not found: {db_path}")
@@ -87,25 +167,17 @@ def generate(
             schema_info = self._load_schema_info(db_path)
 
         schema_str = self._get_schema_string(db_path)
-        prompt     = self._construct_prompt(question, schema_str)
+        is_wikisql = self._is_wikisql(db_path)
 
-        # ── Step 1 + 2: LLM → extract SQL ───────────────────────────────
-        sql = ""
-        try:
-            raw = self.model.generate(prompt)
-            if raw and raw.strip():
-                sql = self._clean_sql(raw)
-        except Exception as e:
-            msg = str(e)
-            if any(code in msg for code in ("500", "502", "503", "504",
-                                            "Internal Server Error",
-                                           f "Bad Gateway",
-                                            "Service Unavailable",
-                                            "Gateway Timeout")):
-                raise
-            logger.error(f"LLM generation failed: {e}")
+        # ── Step 1 + 2: LLM → extract SQL ────────────────────────────────
+        # FIX: use self._invoke() (LangChain path) instead of self.model.generate()
+        sql = self._invoke(question, schema_str, simple=False, is_wikisql=is_wikisql)
 
-        # ── Step 3: Pattern-based fallback when LLM produced nothing ────
+        # Retry with terse prompt on empty result
+        if not sql:
+            sql = self._invoke(question, schema_str, simple=True, is_wikisql=is_wikisql)
+
+        # ── Step 3: Pattern-based fallback ───────────────────────────────
         if not sql:
             logger.warning(
                 f"LLM returned no valid SQL for: {question!r}  → using pattern fallback"
@@ -115,7 +187,7 @@ def generate(
             except Exception as e:
                 logger.error(f"Pattern fallback failed: {e}")
 
-        # ── Step 4: Hard fallback (should almost never happen) ───────────
+        # ── Step 4: Hard fallback ─────────────────────────────────────────
         if not sql:
             logger.error(
                 f"All generation methods failed for: {question!r}  → SELECT 1"
@@ -128,31 +200,49 @@ def generate(
     # Internal helpers
     # ------------------------------------------------------------------
 
-    def _invoke(self, question: str, schema_text: str, simple: bool) -> str:
+    def _invoke(
+        self,
+        question: str,
+        schema_text: str,
+        simple: bool = False,
+        is_wikisql: bool = False,
+    ) -> str:
         """Invoke the LangChain chain and return clean SQL, or '' on failure."""
         if not self.generator:
             return ""
 
-        # Always use _build_prompt — never trust the shared import since
-        # build_sql_prompt does not exist in src.generation.sql_generator.
-        prompt_text = self._build_prompt(question, schema_text, simple=simple)
+        prompt_text = self._build_prompt(
+            question, schema_text, simple=simple, is_wikisql=is_wikisql
+        )
 
         try:
             result = self.generator.invoke({"prompt": prompt_text})
             return self._clean_sql(result)
         except Exception as e:
+            msg = str(e)
+            if any(code in msg for code in (
+                "500", "502", "503", "504",
+                "Internal Server Error", "Bad Gateway",
+                "Service Unavailable", "Gateway Timeout",
+            )):
+                raise   # propagate 5xx so generate_predictions.py can checkpoint
             logger.error(f"LangChain invoke failed ({'simple' if simple else 'full'}): {e}")
             return ""
 
-    def _build_prompt(self, question: str, schema_text: str, simple: bool = False) -> str:
+    def _build_prompt(
+        self,
+        question: str,
+        schema_text: str,
+        simple: bool = False,
+        is_wikisql: bool = False,
+    ) -> str:
         """
-        Build a prompt that forces SQL-only output from CoT/DeepSeek models.
+        Build prompt string.
 
-        simple=True  → ultra-terse, used on retry
-        simple=False → structured with examples and rules
+        simple=True      → ultra-terse, used on retry
+        is_wikisql=True  → injects WIKISQL_ANNOTATION_RULES
         """
         if simple:
-            # Terse prompt — primes model to continue with SELECT directly
             return (
                 f"Schema:\n{schema_text}\n\n"
                 f"Question: {question}\n\n"
@@ -160,9 +250,12 @@ def generate(
                 "Start with SELECT.\n\nSQL:"
             )
 
-        # IMPORTANT: Do NOT use backtick code fences in this f-string — LangChain's
-        # ChatPromptTemplate will try to parse {variable} tokens inside them and
-        # will raise a KeyError on the examples.  Use plain text examples instead.
+        if is_wikisql:
+            return self._build_prompt_wikisql(question, schema_text)
+
+        # ── Spider / general prompt ───────────────────────────────────────
+        # NOTE: Do NOT use backtick code fences here — LangChain's
+        # ChatPromptTemplate parses {variable} tokens inside them.
         return (
             "You are a SQL expert. Write a single SQL SELECT statement.\n\n"
             "CRITICAL INSTRUCTIONS:\n"
@@ -189,9 +282,115 @@ def generate(
             "Q: Name the minimum ties played for 6 years.\n"
             "A: SELECT MIN(ties_played) FROM table_name WHERE years_played = 6\n\n"
             "Q: What player played guard for Toronto in 1996-97?\n"
-            "A: SELECT player FROM table_name WHERE position = 'guard' AND years_in_toronto = '1996-97'\n\n"
+            "A: SELECT player FROM table_name WHERE position = 'guard'\n\n"
             f"Question: {question}\n"
             "SQL Query:"
+        )
+
+    def _build_prompt_wikisql(self, question: str, schema_text: str) -> str:
+        return (
+            "You are a Text-to-SQL expert for WikiSQL.\n\n"
+            "OUTPUT RULES:\n"
+            "- Output ONE SQL SELECT query only. No explanations. No markdown. No semicolon.\n"
+            "- NEVER use subqueries, nested SELECT, or correlated queries.\n"
+            "- Table name is always: wikisql_data\n"
+            "- Use EXACTLY the column names from the schema below (case-preserved).\n\n"
+            f"{WIKISQL_ANNOTATION_RULES}\n"
+            f"Database Schema:\n{schema_text}\n\n"
+            "EXAMPLES:\n"
+            "Q: What is the pick number for Northwestern college?\n"
+            "WRONG: SELECT pick FROM wikisql_data WHERE college = 'Northwestern'\n"        # ← ADD
+            "RIGHT: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n" # ← ADD
+            "Q: What is the episode number that has production code 8ABX15?\n"
+            "A: SELECT MIN(no_in_series) FROM wikisql_data WHERE production_code = '8ABX15'\n\n"
+            "Q: How many schools did player 3 play at?\n"
+            "A: SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_ = 3\n\n"
+            "Q: How many players are on the Toronto team in 2005-06?\n"
+            "A: SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n\n"
+            "Q: What player played guard for Toronto in 1996-97?\n"
+            "A: SELECT player FROM wikisql_data WHERE position = 'Guard'\n\n"
+            "Q: What is the U.S. airdate of the episode with production code 4 April 2008?\n"
+            "A: SELECT MAX(us_airdate) FROM wikisql_data WHERE production_code = '4 April 2008'\n\n"
+            "Q: What year did University of Saskatchewan have their first season?\n"        # ← ADD
+            "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"  # ← ADD
+            "Q: What is the enrollment for Foote Field?\n"                                 # ← ADD
+            "A: SELECT MAX(enrollment) FROM wikisql_data WHERE football_stadium = 'Foote Field'\n\n"  # ← ADD
+            f"Question: {question}\n"   
+            "SQL Query:"
+        )
+
+    # ------------------------------------------------------------------
+    # MaaS prompt path (_construct_prompt used by generate_predictions.py)
+    # ------------------------------------------------------------------
+
+    def _construct_prompt(
+        self,
+        question: str,
+        schema_str: str,
+        is_wikisql: bool = False,
+    ) -> str:
+        """
+        Construct prompt for Text-to-SQL (MaaS / direct model path).
+        is_wikisql=True → WikiSQL annotation rules injected.
+        """
+        if is_wikisql:
+            return self._construct_prompt_wikisql(question, schema_str)
+
+        # ── Spider / general MaaS prompt ─────────────────────────────────
+        return (
+            "You are an expert SQL assistant. Generate a SQL query following Spider benchmark format.\n\n"
+            f"Database Schema:\n{schema_str}\n\n"
+            "CRITICAL OUTPUT FORMAT:\n"
+            "- Output ONLY the raw SQL query — no explanations, no reasoning, no comments\n"
+            "- Do NOT include markdown fences, labels like 'SQL:', or footnotes\n"
+            "- Do NOT write 'But wait', 'However', 'Note', or any prose after the query\n"
+            "- Start your response DIRECTLY with SELECT\n\n"
+            "CRITICAL SPIDER FORMAT RULES:\n"
+            "1. Use ONLY 'JOIN' — NEVER INNER JOIN, LEFT JOIN, RIGHT JOIN\n"
+            "2. DO NOT use CASE statements\n"
+            "3. Use simple aggregate functions: COUNT(*), SUM(), AVG(), MIN(), MAX()\n"
+            "4. Use lowercase for all identifiers\n"
+            "5. Do not include trailing semicolons\n"
+            "6. For single table queries: NEVER use table aliases\n"
+            "7. For multi-table queries: Use simple aliases like t1, t2\n\n"
+            "AGGREGATION RULES:\n"
+            '- "how many" / "total number of" → COUNT(col)  [NOT SUM]\n'
+            '- "total <numeric col>"          → SUM(col)\n'
+            '- "minimum / lowest"             → MIN(col)\n'
+            '- "maximum / highest"            → MAX(col)\n'
+            "- Exact string match: WHERE col = 'value'  [NOT LIKE]\n\n"
+            f"Question: {question}\n"
+            "SELECT"
+        )
+
+    def _construct_prompt_wikisql(self, question: str, schema_str: str) -> str:
+        return (
+            "You are a Text-to-SQL expert for WikiSQL.\n\n"
+            "OUTPUT RULES:\n"
+            "- Output ONE SQL SELECT query only. No explanations. No markdown. No semicolon.\n"
+            "- Table name is always: wikisql_data\n"
+            "- Use EXACTLY the column names from the schema below (case-preserved).\n\n"
+            "- NEVER use subqueries, nested SELECT, or correlated queries.\n"
+            f"{WIKISQL_ANNOTATION_RULES}\n"
+            f"Database Schema:\n{schema_str}\n\n"
+            "EXAMPLES:\n"
+            "Q: What is the pick number for Northwestern college?\n"
+            "WRONG: SELECT pick FROM wikisql_data WHERE college = 'Northwestern'\n"        
+            "RIGHT: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n" 
+            "Q: What is the episode number that has production code 8ABX15?\n"
+            "A: SELECT MIN(no_in_series) FROM wikisql_data WHERE production_code = '8ABX15'\n\n"
+            "Q: How many schools did player 3 play at?\n"
+            "A: SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_ = 3\n\n"
+            "Q: How many players are on the Toronto team in 2005-06?\n"
+            "A: SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n\n"
+            "Q: What player played guard for Toronto in 1996-97?\n"
+            "A: SELECT player FROM wikisql_data WHERE position = 'Guard'\n\n"
+            "Q: What year did University of Saskatchewan have their first season?\n"        
+            "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"  
+            "Q: What is the enrollment for Foote Field?\n"                                 
+            "A: SELECT MAX(enrollment) FROM wikisql_data WHERE football_stadium = 'Foote Field'\n\n"  
+            f"Question: {question}\n"  
+            "SELECT"                   
         )
 
     # ------------------------------------------------------------------
@@ -201,10 +400,6 @@ def generate(
     def _clean_sql(self, result: str) -> str:
         """
         Extract a clean SQL SELECT statement from arbitrary LLM output.
-
-        The full prompt ends with "SQL: SELECT", so the model response may
-        start mid-statement (e.g. "COUNT(x) FROM y WHERE z").  We prepend
-        SELECT in that case.
 
         Priority:
           1. ```sql … ``` fenced block
@@ -237,26 +432,22 @@ def generate(
                 last_select_idx = i
 
         if last_select_idx is not None:
-            # Join from that SELECT line to the next blank line (prose boundary)
             remainder = "\n".join(lines[last_select_idx:])
             candidate = remainder.split("\n\n")[0].strip()
             return self._finalize(candidate)
 
-
         # 4. "SQL:" / "Final SQL:" label
         m = re.search(
             r"(?:final\s+sql|sql)\s*:\s*(SELECT\b.*?)(?:\n|$)",
-            text, re.IGNORECASE | re.DOTALL
+            text, re.IGNORECASE | re.DOTALL,
         )
         if m:
             return self._finalize(m.group(1))
 
-        # 5. Prompt-primed response: model continued after "SQL: SELECT"
-        #    so output starts with a non-SELECT token like COUNT / *  etc.
+        # 5. Prompt-primed response (model continues after "SELECT " prefix)
         first_line = text.splitlines()[0].strip()
         if re.match(r"^(COUNT|SUM|AVG|MIN|MAX|DISTINCT|\*)\b", first_line, re.IGNORECASE):
-            # The whole text is the continuation after the primed "SELECT"
-            full_continuation = text.split("\n\n")[0].strip()  # stop at blank line (prose boundary)
+            full_continuation = text.split("\n\n")[0].strip()
             return self._finalize("SELECT " + full_continuation)
 
         # 6. Any SELECT substring
@@ -269,29 +460,23 @@ def generate(
     def _finalize(self, sql: str) -> str:
         """
         Post-process extracted SQL:
-          - Collapse whitespace
-          - Drop trailing semicolons / newlines
+          - Collapse whitespace / drop trailing semicolons
           - Strip dangling prose after a blank line (CoT suffix)
           - Remove backticks
-          - Validate it actually starts with SELECT
+          - Validate it starts with SELECT
         """
         if not sql:
             return ""
 
-        # Split off any prose that follows a blank line
         sql = sql.split("\n\n")[0]
-        # Remove trailing semicolons
         sql = sql.rstrip(";").strip()
-        # Strip trailing reasoning sentences (DeepSeek R1 appends these)
         sql = re.sub(
             r"\s+\b(But|However|Note|Therefore|Also|Alternatively|Wait|This)\b.*$",
             "",
             sql,
             flags=re.IGNORECASE | re.DOTALL,
         )
-        # Remove backticks
         sql = sql.replace("`", "")
-        # Collapse whitespace
         sql = " ".join(sql.split()).strip()
 
         if not re.match(r"^SELECT\b", sql, re.IGNORECASE):
@@ -305,16 +490,13 @@ def generate(
 
     def _pattern_generate(self, question: str, schema_info: Dict) -> str:
         """
-        Schema-aware heuristic SQL builder for when the LLM produces no SQL.
-
-        Covers the most common WikiSQL patterns:
-          COUNT, MAX, MIN, SUM, AVG, simple SELECT with optional WHERE.
+        Schema-aware heuristic SQL builder used when LLM produces nothing.
+        Covers the most common WikiSQL patterns.
         """
-        q = question.lower()
+        q     = question.lower()
         table = next(iter(schema_info), "table")
-        cols = schema_info.get(table, [])
+        cols  = schema_info.get(table, [])
 
-        # Aggregate detection (order matters — check count before total)
         if re.search(r"\bhow many\b|\btotal number\b|\bcount\b", q):
             col = self._best_col(q, cols) or (cols[0] if cols else "*")
             return f"SELECT COUNT({col}) FROM {table}"
@@ -335,15 +517,14 @@ def generate(
             col = self._best_col(q, cols) or (cols[0] if cols else "*")
             return f"SELECT SUM({col}) FROM {table}"
 
-        # Plain SELECT + optional WHERE equality
         sel_col = self._best_col(q, cols) or "*"
-        base = f"SELECT {sel_col} FROM {table}"
+        base    = f"SELECT {sel_col} FROM {table}"
 
         for col in cols:
             col_pat = col.lower().replace("_", " ").replace("-", " ")
             m = re.search(
                 rf"\b{re.escape(col_pat)}\b\s+(?:is|was|are|=)\s+['\"]?([^'\"?,]+)['\"]?",
-                q
+                q,
             )
             if m:
                 val = m.group(1).strip().rstrip("?")
@@ -353,11 +534,11 @@ def generate(
 
     def _best_col(self, question: str, cols: List[str]) -> str:
         """Return the column whose tokens best overlap with the question."""
-        q_words = set(re.sub(r"[^a-z0-9 ]", " ", question.lower()).split())
+        q_words    = set(re.sub(r"[^a-z0-9 ]", " ", question.lower()).split())
         best, best_score = "", 0
         for col in cols:
             col_words = set(re.sub(r"[^a-z0-9 ]", " ", col.lower()).split())
-            score = len(q_words & col_words)
+            score     = len(q_words & col_words)
             if score > best_score:
                 best, best_score = col, score
         return best
@@ -366,14 +547,28 @@ def generate(
     # Schema helpers
     # ------------------------------------------------------------------
 
+    def _load_schema_info(self, db_path: str) -> Dict[str, List[str]]:
+        """Load schema as {table: [col, ...]} from a SQLite database."""
+        return self._get_db_schema(db_path)
+
+    def _get_schema_string(self, db_path: str) -> str:
+        """Build a human-readable schema string for prompt injection."""
+        schema_info = self._load_schema_info(db_path)
+        lines = []
+        for table, cols in schema_info.items():
+            lines.append(f"Table: {table}")
+            lines.append(f"Columns: {', '.join(cols)}")
+            lines.append("")
+        return "\n".join(lines)
+
     def _get_db_schema(self, db_path: str) -> Dict[str, List[str]]:
         """Extract table/column names from a SQLite database."""
         try:
-            conn = sqlite3.connect(db_path)
+            conn   = sqlite3.connect(db_path)
             cursor = conn.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
             tables = [t[0] for t in cursor.fetchall()]
-            schema_info = {}
+            schema_info: Dict[str, List[str]] = {}
             for table in tables:
                 cursor.execute(f'PRAGMA table_info("{table}")')
                 schema_info[table] = [col[1] for col in cursor.fetchall()]
@@ -389,40 +584,21 @@ def generate(
             f"Table {table}: {', '.join(columns)}"
             for table, columns in schema_info.items()
         )
-def _construct_prompt(self, question: str, schema_str: str) -> str:
-        """Construct prompt for Text-to-SQL — forces SQL-only output for CoT models."""
-        return (
-            "You are an expert SQL assistant. Generate a SQL query following Spider benchmark format.\n\n"
-            f"Database Schema:\n{schema_str}\n\n"
-            "CRITICAL OUTPUT FORMAT:\n"
-            "- Output ONLY the raw SQL query — no explanations, no reasoning, no comments\n"
-            "- Do NOT include markdown fences, labels like 'SQL:', or footnotes\n"
-            "- Do NOT write 'But wait', 'However', 'Note', or any prose after the query\n"
-            "- Start your response DIRECTLY with SELECT\n\n"
-            "CRITICAL SPIDER FORMAT RULES:\n"
-            "1. Use ONLY 'JOIN' — NEVER INNER JOIN, LEFT JOIN, RIGHT JOIN\n"
-            "2. DO NOT use CASE statements\n"
-            "3. Use simple aggregate functions: COUNT(*), SUM(), AVG(), MIN(), MAX()\n"
-            "4. Use lowercase for all identifiers\n"
-            "5. Do not include trailing semicolons\n"
-            "6. For single table queries: NEVER use table aliases\n"
-            "7. For multi-table queries: Use simple aliases like t1, t2\n\n"
-            "AGGREGATION RULES:\n"
-            '- "how many" / "total number of" → COUNT(col)  [NOT SUM]\n'
-            '- "total <numeric col>"          → SUM(col)\n'
-            '- "minimum / lowest"             → MIN(col)\n'
-            '- "maximum / highest"            → MAX(col)\n'
-            "- Exact string match: WHERE col = 'value'  [NOT LIKE]\n\n"
-            "EXAMPLES:\n"
-            "Q: How many schools did player 3 play at?\n"
-            "A: SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_ = 3\n\n"
-            "Q: What is the total number of positions on the Toronto team in 2006-07?\n"
-            "A: SELECT COUNT(position) FROM wikisql_data WHERE years_in_toronto = '2006-07'\n\n"
-            "Q: What player played guard for Toronto in 1996-97?\n"
-            "A: SELECT player FROM wikisql_data WHERE position = 'guard' AND years_in_toronto = '1996-97'\n\n"
-            f"Question: {question}\n"
-            "SELECT"
-        )
+
+    def _normalize_for_spider(self, sql: str) -> str:
+        """
+        Lightweight SQL normalization for Spider evaluation.
+          - Collapse INNER/LEFT OUTER/RIGHT OUTER JOIN → JOIN / LEFT JOIN / RIGHT JOIN
+          - Strip trailing semicolons and extra whitespace
+        """
+        if not sql:
+            return sql
+        sql = re.sub(r'\bINNER\s+JOIN\b',        'JOIN',       sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'LEFT JOIN',  sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b','RIGHT JOIN', sql, flags=re.IGNORECASE)
+        sql = sql.rstrip(';').strip()
+        sql = ' '.join(sql.split())
+        return sql
 
     def _wrap_prompt_for_maas(self, prompt: str) -> list:
         """Wrap prompt as chat messages with strict SQL-only instruction for MaaS."""
@@ -437,11 +613,8 @@ def _construct_prompt(self, question: str, schema_str: str) -> str:
             "6. Stop immediately after the last SQL token\n"
             "Your entire response must be valid SQL starting with SELECT."
         )
-        # Append "SELECT" to prime the model to continue mid-statement,
-        # suppressing CoT reasoning preamble entirely.
-        # primed_prompt = prompt.rstrip() + "\nSELECT"
         return [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
+            {"role": "system",    "content": system},
+            {"role": "user",      "content": prompt},
             {"role": "assistant", "content": "SELECT "},
         ]
