@@ -44,34 +44,21 @@ WIKISQL_ANNOTATION_RULES = """\
    • Example: "How many players played in 2005-06?"
      → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
 
-3b. EXCEPTION — plain SELECT when the column itself IS the count:    
-   • If the column name already contains the question's noun, use plain SELECT.
+3b. EXCEPTION — plain SELECT when a schema column already holds the count:
+   • If a column named goals/viewers/points/seats/attendance exists in the
+     schema and the question asks "how many [that noun]", use plain SELECT.
    • "How many goals were scored in 2005-06?"
-     → SELECT goals FROM wikisql_data WHERE season = '2005-06'    
-   • "How many viewers did episode X draw?"
-     → SELECT viewers FROM wikisql_data WHERE title = 'X'           
-   • "How many points did the team score?"
-     → SELECT points FROM wikisql_data WHERE ...                    
-   Rule: if a column named goals/viewers/points/passengers/rewards
-   exists in the schema, use plain SELECT — not SUM or COUNT.
+     → SELECT goals FROM wikisql_data WHERE season = '2005-06'
+   Rule: check the schema first — if the noun maps to a column name, SELECT it.
 
-4. MINIMAL WHERE — use ONLY the single most specific filter from the question.
-   When a question mentions multiple entities/people, use ONLY the one that
-   matches the most specific or unusual column value.
-
-   BAD: "Who was SS when Jim Lefebvre was at 2nd and Don Drysdale was pitcher?"
-   → WHERE second_baseman = 'jim lefebvre' AND pitcher = 'don drysdale'   ← WRONG
-   GOOD: → WHERE second_baseman = 'jim lefebvre'                           ← CORRECT
-
-   BAD: "What championship had 54-holes = '1 shot lead' and runner-up Chris DiMarco?"
-   → WHERE col_54_holes = '1 shot lead' AND runner_s_up = 'chris dimarco' ← WRONG
-   GOOD: → WHERE col_54_holes = '1 shot lead'                              ← CORRECT
-
-   BAD: "What school did the forward whose number is 10 belong to?"
-   → WHERE position = 'forward' AND no_s = 10                             ← WRONG
-   GOOD: → WHERE no_s = 10                                                 ← CORRECT
-
-   RULE: pick the filter value that is most unique/numeric. Drop the rest.
+4. WHERE conditions — include ALL filters explicitly stated, nothing more:
+   • Add a condition for EVERY filter criterion named in the question.
+   • Do NOT invent, infer, or add conditions not present in the question.
+   • SUPERLATIVE RULE: words like "tallest", "largest", "most recent" are NOT
+     WHERE conditions — represent them as MAX/MIN in the SELECT clause instead.
+     WRONG: WHERE height = (SELECT MAX(height) FROM wikisql_data)
+     RIGHT:  SELECT MAX(height) FROM wikisql_data WHERE floors = 35
+   • No subqueries, nested SELECTs, or (SELECT ...) anywhere in the query.
 
 5. COMPOUND WHERE VALUES — never split on commas:
    • WHERE regular_season = '4th, Atlantic Division'  ← correct
@@ -306,16 +293,23 @@ class SQLGenerator:
             "3. SUM vs COUNT:\n"
             "   'total number of X' → COUNT(col)   ← counting rows\n"
             "   'total <numeric>'   → SUM(col)     ← summing a column\n"
-            "4. AGG keyword map:\n"
-            "   highest/most/largest/best/latest → MAX\n"
-            "   lowest/fewest/smallest/earliest/first → MIN\n"
-            "   average/mean → AVG\n"
-            "   how many/number of → COUNT\n"
+            "4. AGG keyword map — NEVER drop aggregation when these words appear:\n"
+            "   highest/most/largest/best/latest → MAX(col)\n"
+            "   lowest/fewest/smallest/earliest/first → MIN(col)\n"
+            "   average/mean → AVG(col)\n"
+            "   how many/number of/count → COUNT(col)\n"
+            "   total/sum of → SUM(col)\n"
+            "   COUNT vs SUM: COUNT(col) counts rows. SUM(col) adds numeric values.\n"
+            "   'How many games' → COUNT(games). 'What is the total score' → SUM(score).\n"
             "5. WHERE conditions:\n"
             "   - Only include conditions EXPLICITLY stated in the question.\n"
             "   - Do NOT add extra filters beyond what the question asks.\n"
             "   - Keep compound values intact: WHERE result = '4th, Atlantic Division'\n"
-            "   - String values: single-quoted. Numeric values: unquoted.\n\n"
+            "   - String values: single-quoted. Numeric values: unquoted.\n"
+            "   - SUPERLATIVE RULE: words like 'tallest', 'largest', 'most recent' are\n"
+            "     NOT WHERE conditions. Represent them as MAX/MIN in the SELECT clause.\n"
+            "     BAD:  WHERE height = (SELECT MAX(height) ...)\n"
+            "     GOOD: SELECT MAX(height) FROM wikisql_data WHERE floors = 35\n\n"
             f"Database Schema:\n{schema_text}\n\n"
             "EXAMPLES:\n"
             "Q: What is the pick number for Northwestern college?\n"
@@ -339,7 +333,7 @@ class SQLGenerator:
             f"Question: {question}\n"
             "SQL:"
         )
-        
+
     def _construct_prompt(
         self,
         question: str,
@@ -652,6 +646,10 @@ class SQLGenerator:
 
     def _wikisql_cond_hint(question: str) -> str:
         q = question.lower()
+        if re.search(r'\btallest\b|\blargest\b|\bbiggest\b|\bmost recent\b'
+                    r'|\bhighest\b|\blowest\b|\bsmallest\b|\bnewest\b|\boldest\b', q):
+            return ("⚡ Condition hint: superlative in question — do NOT add a subquery "
+                    "WHERE condition. Use MAX/MIN in SELECT instead.")
         and_count = len(re.findall(r'\band\b', q))
         kw = re.findall(r'\bwhere\b|\bwith\b|\bfor\b|\bnamed\b|\bcalled\b|\bwhen\b', q)
         estimated = max(1, len(kw)) + and_count

@@ -70,7 +70,6 @@ def _normalise_date(v: str) -> str:
             return f"{m.group(3)}-{mn}-{m.group(1).zfill(2)}"
     return v
  
- 
 def _normalise_number_str(v: str) -> str:
     """Normalize number string formats: European comma, thousands comma."""
     # European decimal: '22,77' → '22.77'
