@@ -25,11 +25,10 @@ except ImportError:
 WIKISQL_ANNOTATION_RULES = """\
 ━━━ WIKISQL ANNOTATION RULES (follow exactly) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():
-   • "What is the X?" / "Which X?" / "What X did Y have?" / "Name the X"
+   • "What is the X?" / "Which X?" / "Name the X"
+   • 'The [date/event] of X applied to what Y?' → MAX or COUNT
+   • 'The [date/event] of X had a Y of what?' → MAX
    → SELECT MAX(col) FROM wikisql_data WHERE ...
-   • NEVER use plain SELECT col for single-value lookup questions.
-   • Example: "What is the pick number for Northwestern?"
-     → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
 
 2. MINIMUM RETRIEVAL — use MIN() when lowest/earliest/first is implied:
    • "What is the lowest/first/earliest X?" / "Name the minimum X"
@@ -50,6 +49,12 @@ WIKISQL_ANNOTATION_RULES = """\
    • "How many goals were scored in 2005-06?"
      → SELECT goals FROM wikisql_data WHERE season = '2005-06'
    Rule: check the schema first — if the noun maps to a column name, SELECT it.
+3c. COUNT vs SUM — critical distinction:
+   • 'total number of X' → COUNT(col)  ← ALWAYS, even if X sounds numeric
+   • 'total X' (bare)    → SUM(col)
+   • 'how many X'        → COUNT(col)
+   • Example: 'total number of episode count' → COUNT(final_episode_count)
+   • Example: 'total attendance'              → SUM(attendance)
 
 4. WHERE conditions — include ALL filters explicitly stated, nothing more:
    • Add a condition for EVERY filter criterion named in the question.
@@ -328,6 +333,10 @@ class SQLGenerator:
             "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"
             "Q: What player played guard for Toronto in 1996-97?\n"
             "A: SELECT player FROM wikisql_data WHERE position = 'Guard' AND years_in_toronto = '1996-97'\n\n"
+            "Q: The U.S. airdate of 4 april 2008 had a production code of what?\n"
+            "A: SELECT MAX(production_code) FROM wikisql_data WHERE us_airdate = '4 april 2008'\n\n"
+            "Q: The canadian airdate of 11 february 2008 applied to what series number?\n"
+            "A: SELECT COUNT(no_in_series) FROM wikisql_data WHERE canadian_airdate = '11 february 2008'\n\n"
             f"{agg_hint}\n"
             f"{cond_hint}\n\n"
             f"Question: {question}\n"

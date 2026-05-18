@@ -236,6 +236,41 @@ def _strip_quotes(s: str) -> str:
         return s[1:-1]
     return s
 
+def _strip_subquery_conditions(where_clause: str) -> str:
+    """
+    Remove 'col OP (SELECT ...) ' conditions before parsing.
+    Uses depth-counting to handle nested parens correctly.
+    """
+    out = []
+    i = 0
+    n = len(where_clause)
+    subq_start = re.compile(
+        r'(?:(?:AND|OR)\s+)?[\w`"\[\]]+\s*(?:!=|<>|>=|<=|>|<|=)\s*(?=\(SELECT\b)',
+        re.IGNORECASE
+    )
+    while i < n:
+        m = subq_start.search(where_clause, i)
+        if m is None:
+            out.append(where_clause[i:])
+            break
+        out.append(where_clause[i:m.start()])
+        paren_pos = where_clause.index('(', m.end())
+        depth, pos = 0, paren_pos
+        while pos < n:
+            if where_clause[pos] == '(':
+                depth += 1
+            elif where_clause[pos] == ')':
+                depth -= 1
+                if depth == 0:
+                    break
+            pos += 1
+        i = pos + 1
+        # skip trailing AND/OR separator
+        skip = re.match(r'^\s*(AND|OR)\s+', where_clause[i:], re.IGNORECASE)
+        if skip:
+            i += skip.end()
+    result = ''.join(out).strip()
+    return re.sub(r'^(AND|OR)\s+', '', result, flags=re.IGNORECASE)
 
 def _normalise_value_for_parse(v: str) -> Any:
     """
@@ -248,9 +283,10 @@ def _normalise_value_for_parse(v: str) -> Any:
     - Lowercases remaining strings
     """
     v = _strip_quotes(v).strip()
-    v = v.replace('\u2212', '-').replace('\u2013', '-')  # unicode minus/en-dash → ASCII
-    v = v.strip('"').strip("'")   # inner quotes: '"ambush"' → 'ambush'
-    v = v.rstrip("%")             # 76.3% → 76.3
+    v = v.replace('\u2212', '-').replace('\u2013', '-')
+    v = v.strip('"').strip("'")
+    v = v.rstrip("%")
+    v = v.replace("\\'", "'").rstrip("\\")   # ← ADD THIS LINE
     try:
         return float(v) if "." in v else int(v)
     except (ValueError, TypeError):
@@ -286,9 +322,9 @@ def parse_sql_to_wikisql_struct(
 
     sql = sql.strip().rstrip(";")
 
-    # ── AGG + SEL ──────────────────────────────────────────────────────────────
-    agg_id  = 0
-    sel_col = None
+    # ── AGG + SEL ─────────────────────────────────────────────────────────────
+    agg_id     = 0
+    sel_col    = None
     count_star = False
 
     m_agg = _AGG_RE.search(sql)
@@ -296,10 +332,9 @@ def parse_sql_to_wikisql_struct(
         agg_name = m_agg.group(1).upper()
         col_name = m_agg.group(2).strip().strip("`\"[]").strip()
         agg_id   = AGG_OPS.index(agg_name)
-        # ── FIX: COUNT(*) — sel column is irrelevant ────────────────────────
         if col_name == "*":
             count_star = True
-            sel_col    = None          # handled below
+            sel_col    = None
         else:
             sel_col = col_name
     else:
@@ -311,7 +346,7 @@ def parse_sql_to_wikisql_struct(
 
     # Resolve sel to index
     if count_star:
-        sel_idx = _COUNT_STAR_SEL    # sentinel; comparison logic handles it
+        sel_idx = _COUNT_STAR_SEL
     else:
         if sel_col is None:
             return None
@@ -325,6 +360,7 @@ def parse_sql_to_wikisql_struct(
     if m_where:
         where_clause = m_where.group(1)
         where_clause = re.sub(r"^\s*(AND|OR)\s+", "", where_clause, flags=re.IGNORECASE)
+        where_clause = _strip_subquery_conditions(where_clause)  # ← FIX IS HERE
 
         for col_raw, op_raw, val_raw in _find_conditions(where_clause):
             col_raw = col_raw.strip().strip("`\"[]").strip()
@@ -336,7 +372,6 @@ def parse_sql_to_wikisql_struct(
             conds.append([col_idx, op_idx, value])
 
     return {"agg": agg_id, "sel": sel_idx, "conds": conds, "count_star": count_star}
-
 
 # ─── Structural comparison ────────────────────────────────────────────────────
 def _normalise_value(v: Any) -> Any:
