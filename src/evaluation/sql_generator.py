@@ -288,41 +288,58 @@ class SQLGenerator:
         )
 
     def _build_prompt_wikisql(self, question: str, schema_text: str) -> str:
+        agg_hint  = _wikisql_agg_hint(question)
+        cond_hint = _wikisql_cond_hint(question)
         return (
             "You are a Text-to-SQL expert for WikiSQL.\n\n"
             "OUTPUT RULES:\n"
             "- Output ONE SQL SELECT query only. No explanations. No markdown. No semicolon.\n"
-            "- NEVER use subqueries, nested SELECT, or correlated queries.\n"
             "- Table name is always: wikisql_data\n"
-            "- Use EXACTLY the column names from the schema below (case-preserved).\n\n"
-            f"{WIKISQL_ANNOTATION_RULES}\n"
+            "- Use EXACTLY the column names from the schema below (case-preserved).\n"
+            "- NEVER use subqueries, nested SELECT, or (SELECT ...) inside WHERE.\n\n"
+            "WIKISQL ANNOTATION RULES (CRITICAL — these match the gold SQL style):\n"
+            "1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():\n"
+            "   'What is the X?' / 'Which X?' → SELECT MAX(col) FROM wikisql_data WHERE ...\n"
+            "   NEVER use plain SELECT col for a single descriptive value.\n"
+            "2. COUNTING — always COUNT(col), NEVER COUNT(*):\n"
+            "   'How many X?' → SELECT COUNT(col) FROM wikisql_data WHERE ...\n"
+            "3. SUM vs COUNT:\n"
+            "   'total number of X' → COUNT(col)   ← counting rows\n"
+            "   'total <numeric>'   → SUM(col)     ← summing a column\n"
+            "4. AGG keyword map:\n"
+            "   highest/most/largest/best/latest → MAX\n"
+            "   lowest/fewest/smallest/earliest/first → MIN\n"
+            "   average/mean → AVG\n"
+            "   how many/number of → COUNT\n"
+            "5. WHERE conditions:\n"
+            "   - Only include conditions EXPLICITLY stated in the question.\n"
+            "   - Do NOT add extra filters beyond what the question asks.\n"
+            "   - Keep compound values intact: WHERE result = '4th, Atlantic Division'\n"
+            "   - String values: single-quoted. Numeric values: unquoted.\n\n"
             f"Database Schema:\n{schema_text}\n\n"
             "EXAMPLES:\n"
             "Q: What is the pick number for Northwestern college?\n"
-            "WRONG: SELECT pick FROM wikisql_data WHERE college = 'Northwestern'\n"        # ← ADD
-            "RIGHT: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n" # ← ADD
+            "A: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n"
             "Q: What is the episode number that has production code 8ABX15?\n"
             "A: SELECT MIN(no_in_series) FROM wikisql_data WHERE production_code = '8ABX15'\n\n"
             "Q: How many schools did player 3 play at?\n"
             "A: SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_ = 3\n\n"
             "Q: How many players are on the Toronto team in 2005-06?\n"
             "A: SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n\n"
+            "Q: What is the total attendance at Bridgestone Arena?\n"
+            "A: SELECT SUM(attendance) FROM wikisql_data WHERE arena = 'Bridgestone Arena'\n\n"
+            "Q: What is the lowest rank for a player from Germany?\n"
+            "A: SELECT MIN(rank) FROM wikisql_data WHERE country = 'Germany'\n\n"
+            "Q: What year did University of Saskatchewan have their first season?\n"
+            "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"
             "Q: What player played guard for Toronto in 1996-97?\n"
-            "A: SELECT player FROM wikisql_data WHERE position = 'Guard'\n\n"
-            "Q: What is the U.S. airdate of the episode with production code 4 April 2008?\n"
-            "A: SELECT MAX(us_airdate) FROM wikisql_data WHERE production_code = '4 April 2008'\n\n"
-            "Q: What year did University of Saskatchewan have their first season?\n"        # ← ADD
-            "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"  # ← ADD
-            "Q: What is the enrollment for Foote Field?\n"                                 # ← ADD
-            "A: SELECT MAX(enrollment) FROM wikisql_data WHERE football_stadium = 'Foote Field'\n\n"  # ← ADD
-            f"Question: {question}\n"   
-            "SQL Query:"
+            "A: SELECT player FROM wikisql_data WHERE position = 'Guard' AND years_in_toronto = '1996-97'\n\n"
+            f"{agg_hint}\n"
+            f"{cond_hint}\n\n"
+            f"Question: {question}\n"
+            "SQL:"
         )
-
-    # ------------------------------------------------------------------
-    # MaaS prompt path (_construct_prompt used by generate_predictions.py)
-    # ------------------------------------------------------------------
-
+        
     def _construct_prompt(
         self,
         question: str,
@@ -618,3 +635,27 @@ class SQLGenerator:
             {"role": "user",      "content": prompt},
             {"role": "assistant", "content": "SELECT "},
         ]
+    
+    def _wikisql_agg_hint(question: str) -> str:
+        q = question.lower()
+        if re.search(r'\bhow many\b|\bnumber of\b|\bcount\b|\btotal number\b', q):
+            return "⚡ AGG hint: question asks for COUNT → use COUNT(col)"
+        if re.search(r'\btotal\b|\bsum\b', q) and not re.search(r'\btotal number\b', q):
+            return "⚡ AGG hint: question asks for SUM → use SUM(col)"
+        if re.search(r'\bhighest\b|\bmost\b|\blargest\b|\bmaximum\b|\bmax\b|\bbest\b|\blatest\b', q):
+            return "⚡ AGG hint: question asks for MAX → use MAX(col)"
+        if re.search(r'\blowest\b|\bfewest\b|\bsmallest\b|\bminimum\b|\bmin\b|\bearli\b|\bfirst\b|\boldest\b', q):
+            return "⚡ AGG hint: question asks for MIN → use MIN(col)"
+        if re.search(r'\baverage\b|\bmean\b|\bavg\b', q):
+            return "⚡ AGG hint: question asks for AVG → use AVG(col)"
+        return "⚡ AGG hint: WikiSQL convention — wrap single-value results in MAX(col)"
+
+    def _wikisql_cond_hint(question: str) -> str:
+        q = question.lower()
+        and_count = len(re.findall(r'\band\b', q))
+        kw = re.findall(r'\bwhere\b|\bwith\b|\bfor\b|\bnamed\b|\bcalled\b|\bwhen\b', q)
+        estimated = max(1, len(kw)) + and_count
+        if estimated == 1:
+            return "⚡ Condition hint: exactly 1 WHERE condition — do NOT add extra filters."
+        return f"⚡ Condition hint: ~{min(estimated, 3)} WHERE conditions — only use what the question states."
+    

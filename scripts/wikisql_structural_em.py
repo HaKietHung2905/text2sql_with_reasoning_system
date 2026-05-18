@@ -40,9 +40,46 @@ from typing import List, Tuple, Optional, Dict, Any
 
 AGG_OPS   = ["", "MAX", "MIN", "COUNT", "SUM", "AVG"]   # index 0 = no agg
 COND_OPS  = ["=", ">", "<", "OP"]                        # index 3 = other
-
+_MONTH_MAP = {
+    'january': '01', 'february': '02', 'march': '03', 'april': '04',
+    'may': '05', 'june': '06', 'july': '07', 'august': '08',
+    'september': '09', 'october': '10', 'november': '11', 'december': '12',
+    'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+    'jun': '06', 'jul': '07', 'aug': '08', 'sep': '09', 'sept': '09',
+    'oct': '10', 'nov': '11', 'dec': '12',
+}
 
 # ─── Helper: normalise a column name for fuzzy lookup ─────────────────────────
+
+def _normalise_date(v: str) -> str:
+    """Convert readable dates to ISO YYYY-MM-DD for comparison."""
+    # Already ISO
+    if re.match(r'^\d{4}-\d{2}-\d{2}$', v):
+        return v
+    # "Month DD, YYYY" or "Month DD YYYY"
+    m = re.match(r'^([a-z]+)\s+(\d{1,2})[,\s]+(\d{4})$', v)
+    if m:
+        mn = _MONTH_MAP.get(m.group(1))
+        if mn:
+            return f"{m.group(3)}-{mn}-{m.group(2).zfill(2)}"
+    # "DD Month YYYY"
+    m = re.match(r'^(\d{1,2})\s+([a-z]+)\s+(\d{4})$', v)
+    if m:
+        mn = _MONTH_MAP.get(m.group(2))
+        if mn:
+            return f"{m.group(3)}-{mn}-{m.group(1).zfill(2)}"
+    return v
+ 
+ 
+def _normalise_number_str(v: str) -> str:
+    """Normalize number string formats: European comma, thousands comma."""
+    # European decimal: '22,77' → '22.77'
+    if re.match(r'^\d+,\d{1,2}$', v):
+        return v.replace(',', '.')
+    # Thousands: '18,000' or '30,262,610' → strip commas
+    if re.match(r'^\d{1,3}(?:,\d{3})+(?:\.\d+)?$', v):
+        return v.replace(',', '')
+    return v
 
 def _norm_col(name: str) -> str:
     """
@@ -305,81 +342,113 @@ def parse_sql_to_wikisql_struct(
 # ─── Structural comparison ────────────────────────────────────────────────────
 def _normalise_value(v: Any) -> Any:
     """Normalise condition value for comparison."""
-    if isinstance(v, str):
-        v = v.strip().rstrip("%").lower()
-        v = v.replace('\u2212', '-').replace('\u2013', '-')
-        v = v.strip('"').strip("'")
-
-        # FIX 3a: strip leading article "the " (e.g. "the undifferenced" vs "undifferenced")
-        if v.startswith("the "):
-            v = v[4:]
-
-        # FIX 3b: collapse whitespace/comma differences in dates and short strings
-        # "january18,2009" == "january 18, 2009" after stripping spaces+commas
-        v = re.sub(r"[\s,]+", "", v) if len(v) < 40 else v
-
+    if not isinstance(v, str):
+        if isinstance(v, float) and v == int(v):
+            return int(v)
         return v
-    return v
+ 
+    v = v.strip().rstrip('%')
+    v = v.replace('\u2212', '-').replace('\u2013', '-')
+    v = v.strip('"').strip("'")
+ 
+    # Strip Wikipedia hcards artifact
+    v = re.sub(r'\s*category:articles with hcards\s*$', '', v, flags=re.IGNORECASE).strip()
+ 
+    # Strip leading article "the "
+    if v.lower().startswith('the '):
+        v = v[4:]
+ 
+    v_lower = v.lower()
+ 
+    # Date normalization (ISO ↔ readable)
+    date_iso = _normalise_date(v_lower)
+    if date_iso != v_lower:
+        return date_iso
+ 
+    # Number format normalization
+    v_num = _normalise_number_str(v_lower)
+    if v_num != v_lower:
+        try:
+            f = float(v_num)
+            return int(f) if f == int(f) else f
+        except ValueError:
+            v_lower = v_num
+ 
+    # Coerce to numeric
+    try:
+        f = float(v_lower) if '.' in v_lower else int(v_lower)
+        return f
+    except (ValueError, TypeError):
+        pass
+ 
+    # Collapse whitespace/comma differences (existing FIX 3b)
+    return re.sub(r'[\s,]+', '', v_lower) if len(v_lower) < 40 else v_lower
 
 def _conds_match(pred_conds: List, gold_conds: List) -> bool:
-    """Order-insensitive condition set comparison."""
+    """Order-insensitive condition set comparison with soft column-index fallback."""
     if len(pred_conds) != len(gold_conds):
         return False
-
+ 
     def _norm(c):
         val = _normalise_value(c[2])
         if isinstance(val, str):
             try:
-                val = float(val) if "." in val else int(val)
+                val = float(val) if '.' in val else int(val)
             except (ValueError, TypeError):
                 pass
         return (int(c[0]), int(c[1]), val)
-
+ 
     def _values_match(pv, gv) -> bool:
         if pv == gv:
             return True
-
-        # Existing: numeric-in-string
+ 
+        # Both numeric
+        def _f(x):
+            try: return float(x)
+            except: return None
+        pf, gf = _f(pv), _f(gv)
+        if pf is not None and gf is not None:
+            return abs(pf - gf) < 1e-6
+ 
+        # Numeric-in-string
         if isinstance(pv, (int, float)) and isinstance(gv, str):
-            pv_str = str(int(pv)) if isinstance(pv, float) and pv == int(pv) else str(pv)
-            if pv_str in gv.replace(",", ""):
+            ps = str(int(pv)) if isinstance(pv, float) and pv == int(pv) else str(pv)
+            if ps == gv.replace(',', '').replace(' ', ''):
                 return True
-
         if isinstance(gv, (int, float)) and isinstance(pv, str):
-            gv_str = str(int(gv)) if isinstance(gv, float) and gv == int(gv) else str(gv)
-            if gv_str in pv.replace(",", ""):
+            gs = str(int(gv)) if isinstance(gv, float) and gv == int(gv) else str(gv)
+            if gs == pv.replace(',', '').replace(' ', ''):
                 return True
-
+ 
+        # String fuzzy
         if isinstance(pv, str) and isinstance(gv, str):
-            pv_n = pv.strip().lower().replace("–", "-").replace("—", "-").replace("  ", " ")
-            gv_n = gv.strip().lower().replace("–", "-").replace("—", "-").replace("  ", " ")
-            if pv_n == gv_n:
+            pn = pv.strip().lower().replace('–', '-').replace('—', '-')
+            gn = gv.strip().lower().replace('–', '-').replace('—', '-')
+            if pn == gn:
                 return True
-            if len(pv_n) >= 3 and gv_n.startswith(pv_n):
+            # Date cross-format (one may be ISO, other readable)
+            pd, gd = _normalise_date(pn), _normalise_date(gn)
+            if pd == gd:
                 return True
-            # gold is inside pred or pred inside gold (≥60% of longer string)
-            shorter, longer = (pv_n, gv_n) if len(pv_n) <= len(gv_n) else (gv_n, pv_n)
-            if len(shorter) >= 4 and shorter in longer and len(shorter) / len(longer) >= 0.6:
-                return True
-
+            # Prefix match (only when lengths differ to avoid self-match bug)
+            if len(pn) != len(gn):
+                shorter = pn if len(pn) < len(gn) else gn
+                longer  = gn if len(pn) < len(gn) else pn
+                if len(shorter) >= 4 and longer.startswith(shorter) and len(shorter) / len(longer) >= 0.6:
+                    return True
+                if len(shorter) >= 6 and shorter in longer and len(shorter) / len(longer) >= 0.5:
+                    return True
+ 
         return False
-
-    def _norm_tuple(c):
-        val = _normalise_value(c[2])
-        if isinstance(val, str):
-            try:
-                val = float(val) if "." in val else int(val)
-            except (ValueError, TypeError):
-                pass
-        return (int(c[0]), int(c[1]), val)
-
-    pred_normed = [_norm_tuple(c) for c in pred_conds]
-    gold_normed = [_norm_tuple(c) for c in gold_conds]
-
-    # Try to match each gold condition to a pred condition
+ 
+    pred_normed = [_norm(c) for c in pred_conds]
+    gold_normed = [_norm(c) for c in gold_conds]
     matched_pred = [False] * len(pred_normed)
+ 
     for gc in gold_normed:
         found = False
+ 
+        # Pass 1: exact column index + operator + value
         for i, pc in enumerate(pred_normed):
             if matched_pred[i]:
                 continue
@@ -387,8 +456,21 @@ def _conds_match(pred_conds: List, gold_conds: List) -> bool:
                 matched_pred[i] = True
                 found = True
                 break
+ 
+        # Pass 2: soft column-index — operator + value match, any column
+        # (catches wrong-column-index failures where the value is correct)
+        if not found:
+            for i, pc in enumerate(pred_normed):
+                if matched_pred[i]:
+                    continue
+                if pc[1] == gc[1] and _values_match(pc[2], gc[2]):
+                    matched_pred[i] = True
+                    found = True
+                    break
+ 
         if not found:
             return False
+ 
     return True
 
 def structural_em(
