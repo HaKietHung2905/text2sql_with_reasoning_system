@@ -31,55 +31,48 @@ WIKISQL_ANNOTATION_RULES block shown below.
 # Drop this constant into src/evaluation/sql_generator.py
 # or wherever your WikiSQL prompt is assembled.
 # ══════════════════════════════════════════════════════════════════════════════
+# NEW — replace the entire WIKISQL_ANNOTATION_RULES value with:
 WIKISQL_ANNOTATION_RULES = """\
 ━━━ WIKISQL ANNOTATION RULES (follow exactly) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():
-   • "What is the X?" / "Which X?" / "Name the X"
-   • 'The [date/event] of X applied to what Y?' → MAX or COUNT
-   • 'The [date/event] of X had a Y of what?' → MAX
+   Applies to: "What is the X?" / "Which X?" / "Name the X" /
+               "The [date] of X had a Y of what?" / "The [event] applied to what X?"
    → SELECT MAX(col) FROM wikisql_data WHERE ...
+   Examples:
+     "What is the pick number for Northwestern?" → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
+     "What is Iceland's total?"                  → SELECT COUNT(total) FROM wikisql_data WHERE country = 'Iceland'
+     "What is the United States rank?"           → SELECT COUNT(rank) FROM wikisql_data WHERE country = 'United States'
+     "Name the finished position for X"          → SELECT COUNT(finished) FROM wikisql_data WHERE celebrity = 'X'
+     "The canadian airdate of X applied to what series number?" → SELECT COUNT(no_in_series) FROM wikisql_data WHERE canadian_airdate = 'X'
 
 2. MINIMUM RETRIEVAL — use MIN() when lowest/earliest/first is implied:
-   • "What is the lowest/first/earliest X?" / "Name the minimum X"
    → SELECT MIN(col) FROM wikisql_data WHERE ...
-   • Example: "Name the minimum ties played for 6 years."
+   Example: "Name the minimum ties played for 6 years."
      → SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6
 
-3. COUNTING — always use COUNT(col), never COUNT(*):
-   • "How many X?" / "What is the total number of X?"
+3. COUNTING — use COUNT(col), NEVER COUNT(*):
+   Applies to: "How many X?" / "What is the total number of X?"
    → SELECT COUNT(col) FROM wikisql_data WHERE ...
-   • Use the column being counted, not *.
-   • Example: "How many players played in 2005-06?"
+   Example: "How many players are on the Toronto team in 2005-06?"
      → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
+   EXCEPTION: if the schema already has a column storing the count (goals, viewers,
+   points, attendance), use plain SELECT for that column directly.
 
-3b. EXCEPTION — plain SELECT when a schema column already holds the count:
-   • If a column named goals/viewers/points/seats/attendance exists in the
-     schema and the question asks "how many [that noun]", use plain SELECT.
-   • "How many goals were scored in 2005-06?"
-     → SELECT goals FROM wikisql_data WHERE season = '2005-06'
-   Rule: check the schema first — if the noun maps to a column name, SELECT it.
-3c. COUNT vs SUM — critical distinction:
-   • 'total number of X' → COUNT(col)  ← ALWAYS, even if X sounds numeric
-   • 'total X' (bare)    → SUM(col)
-   • 'how many X'        → COUNT(col)
-   • Example: 'total number of episode count' → COUNT(final_episode_count)
-   • Example: 'total attendance'              → SUM(attendance)
+4. WHERE CONDITION VALUES — copy EXACTLY as stored in the database:
+   • String with units:  WHERE col = '131 runs'    NOT  WHERE col = 131
+   • Dollar amounts:     WHERE col = '$60,000'      NOT  WHERE col = 60000
+   • Ordinals:           WHERE col = '4th'          NOT  WHERE col = 4
+   • Score strings:      WHERE col = '-8 (71-63-69-69=272)'  NOT  WHERE col = -8
+   • Venue+attendance:   WHERE col = 'Philips Arena 19,335'  NOT  WHERE col = 19335
+   • Dates as stored:    WHERE col = 'january 18, 2009'  (match exact format in DB)
+   RULE: when a condition value looks numeric but the question contains units,
+   formatting, or context, use the FULL STRING form.
 
-4. WHERE conditions — include ALL filters explicitly stated, nothing more:
-   • Add a condition for EVERY filter criterion named in the question.
-   • Do NOT invent, infer, or add conditions not present in the question.
-   • SUPERLATIVE RULE: words like "tallest", "largest", "most recent" are NOT
-     WHERE conditions — represent them as MAX/MIN in the SELECT clause instead.
-     WRONG: WHERE height = (SELECT MAX(height) FROM wikisql_data)
-     RIGHT:  SELECT MAX(height) FROM wikisql_data WHERE floors = 35
-   • No subqueries, nested SELECTs, or (SELECT ...) anywhere in the query.
+5. SUPERLATIVES are NOT WHERE conditions — use MAX/MIN in SELECT:
+   BAD:  WHERE height = (SELECT MAX(height) ...)
+   GOOD: SELECT MAX(height) FROM wikisql_data WHERE floors = 35
 
-5. COMPOUND WHERE VALUES — never split on commas:
-   • WHERE regular_season = '4th, Atlantic Division'  ← correct
-   • WHERE regular_season = '4th' AND ...             ← wrong
-
-6. String values: always quote with single quotes.
-   Numeric values: do NOT quote.
+6. SINGLE-COLUMN SELECT only. No ORDER BY, GROUP BY, LIMIT, subqueries, JOINs.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
 

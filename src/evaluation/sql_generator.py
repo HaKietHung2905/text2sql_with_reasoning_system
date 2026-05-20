@@ -337,8 +337,39 @@ class SQLGenerator:
             "A: SELECT MAX(production_code) FROM wikisql_data WHERE us_airdate = '4 april 2008'\n\n"
             "Q: The canadian airdate of 11 february 2008 applied to what series number?\n"
             "A: SELECT COUNT(no_in_series) FROM wikisql_data WHERE canadian_airdate = '11 february 2008'\n\n"
+            "Q: What is Iceland's total?\n"
+            "A: SELECT COUNT(total) FROM wikisql_data WHERE country = 'Iceland'\n\n"
+            "Q: What is the United States rank?\n"
+            "A: SELECT COUNT(rank) FROM wikisql_data WHERE country = 'United States'\n\n"
+            "Q: What is the score of the event that Alianza Lima won in 1965?\n"
+            "A: SELECT MAX(score) FROM wikisql_data WHERE winner = 'Alianza Lima' AND year = '1965'\n\n"
+            "Q: What is the winning score of -8 (71-63-69-69=272)?\n"
+            "A: SELECT MIN(year) FROM wikisql_data WHERE score = '-8 (71-63-69-69=272)'\n\n"
+            "Q: Name the finished position for Kerry Katona.\n"
+            "A: SELECT COUNT(finished) FROM wikisql_data WHERE celebrity = 'Kerry Katona'\n\n"
             f"{agg_hint}\n"
             f"{cond_hint}\n\n"
+            "CONDITION TRAPS — common model errors:\n"
+            "TRAP 1 (missing WHERE — entity-as-subject):\n"
+            "  'What X are the [Entity] [verb]?' → WHERE [entity_col] = '[Entity]'\n"
+            "  A noun in the question that names something you are NOT selecting\n"
+            "  MUST appear in a WHERE condition.\n"
+            "  BAD:  SELECT location FROM wikisql_data\n"
+            "  GOOD: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
+            "TRAP 2 (context year ≠ WHERE filter — use named entity instead):\n"
+            "  'Which [role] from the [year] [event] attended [Named_Entity]?'\n"
+            "  The [year] is context; [Named_Entity] is the actual WHERE value.\n"
+            "  BAD:  WHERE pick = 2004\n"
+            "  GOOD: WHERE college = 'Wilfrid Laurier'\n\n"
+            "TRAP 3 (synonymous-with → quoted literal, NOT column reference):\n"
+            "  'value of X is synonymous with its category' → WHERE col = 'X'\n"
+            "  BAD:  WHERE since_beginning_of_big_12 = overall_record\n"
+            "  GOOD: WHERE since_beginning_of_big_12 = 'since beginning of big 12'\n\n"
+            "NEW EXAMPLES:\n"
+            "Q: What city and state are the miners located in?\n"
+            "A: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
+            "Q: Which player from the 2004 CFL draft attended Wilfrid Laurier?\n"
+            "A: SELECT MAX(player) FROM wikisql_data WHERE college = 'Wilfrid Laurier'\n\n"
             f"Question: {question}\n"
             "SQL:"
         )
@@ -409,8 +440,29 @@ class SQLGenerator:
             "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"  
             "Q: What is the enrollment for Foote Field?\n"                                 
             "A: SELECT MAX(enrollment) FROM wikisql_data WHERE football_stadium = 'Foote Field'\n\n"  
-            f"Question: {question}\n"  
-            "SELECT"                   
+            "CONDITION TRAPS — common model errors:\n"
+            "TRAP 1 (missing WHERE — entity-as-subject):\n"
+            "  'What X are the [Entity] [verb]?' → WHERE [entity_col] = '[Entity]'\n"
+            "  A noun in the question that names something you are NOT selecting\n"
+            "  MUST appear in a WHERE condition.\n"
+            "  BAD:  SELECT location FROM wikisql_data\n"
+            "  GOOD: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
+            "TRAP 2 (context year ≠ WHERE filter — use named entity instead):\n"
+            "  'Which [role] from the [year] [event] attended [Named_Entity]?'\n"
+            "  The [year] is context; [Named_Entity] is the actual WHERE value.\n"
+            "  BAD:  WHERE pick = 2004\n"
+            "  GOOD: WHERE college = 'Wilfrid Laurier'\n\n"
+            "TRAP 3 (synonymous-with → quoted literal, NOT column reference):\n"
+            "  'value of X is synonymous with its category' → WHERE col = 'X'\n"
+            "  BAD:  WHERE since_beginning_of_big_12 = overall_record\n"
+            "  GOOD: WHERE since_beginning_of_big_12 = 'since beginning of big 12'\n\n"
+            "NEW EXAMPLES:\n"
+            "Q: What city and state are the miners located in?\n"
+            "A: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
+            "Q: Which player from the 2004 CFL draft attended Wilfrid Laurier?\n"
+            "A: SELECT MAX(player) FROM wikisql_data WHERE college = 'Wilfrid Laurier'\n\n"
+            f"Question: {question}\n"
+            "SQL:"                   
         )
 
     # ------------------------------------------------------------------
@@ -642,16 +694,20 @@ class SQLGenerator:
     def _wikisql_agg_hint(question: str) -> str:
         q = question.lower()
         if re.search(r'\bhow many\b|\bnumber of\b|\bcount\b|\btotal number\b', q):
-            return "⚡ AGG hint: question asks for COUNT → use COUNT(col)"
-        if re.search(r'\btotal\b|\bsum\b', q) and not re.search(r'\btotal number\b', q):
+            return "⚡ AGG hint: question asks for COUNT → use COUNT(col)  [NOT COUNT(*)]"
+        if re.search(r'\btotal\b|\bsum\b|\bcombined\b|\baltogether\b', q) and not re.search(r'\btotal number\b', q):
             return "⚡ AGG hint: question asks for SUM → use SUM(col)"
-        if re.search(r'\bhighest\b|\bmost\b|\blargest\b|\bmaximum\b|\bmax\b|\bbest\b|\blatest\b', q):
+        if re.search(r'\bhighest\b|\bmost\b|\blargest\b|\bmaximum\b|\bmax\b|\bbest\b|\blatest\b|\bgreatest\b', q):
             return "⚡ AGG hint: question asks for MAX → use MAX(col)"
         if re.search(r'\blowest\b|\bfewest\b|\bsmallest\b|\bminimum\b|\bmin\b|\bearli\b|\bfirst\b|\boldest\b', q):
             return "⚡ AGG hint: question asks for MIN → use MIN(col)"
         if re.search(r'\baverage\b|\bmean\b|\bavg\b', q):
             return "⚡ AGG hint: question asks for AVG → use AVG(col)"
-        return "⚡ AGG hint: WikiSQL convention — wrap single-value results in MAX(col)"
+        return (
+            "⚡ AGG hint: No aggregation keyword found, but WikiSQL convention REQUIRES wrapping "
+            "single-value results in MAX(col). Use MAX(col) for 'What is/Which/Name the' questions "
+            "and COUNT(col) for 'how many' questions. Plain SELECT without AGG is almost always wrong."
+        )
 
     def _wikisql_cond_hint(question: str) -> str:
         q = question.lower()

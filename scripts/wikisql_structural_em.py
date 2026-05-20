@@ -69,7 +69,8 @@ def _normalise_date(v: str) -> str:
         if mn:
             return f"{m.group(3)}-{mn}-{m.group(1).zfill(2)}"
     return v
- 
+
+
 def _normalise_number_str(v: str) -> str:
     """Normalize number string formats: European comma, thousands comma."""
     # European decimal: '22,77' → '22.77'
@@ -79,6 +80,7 @@ def _normalise_number_str(v: str) -> str:
     if re.match(r'^\d{1,3}(?:,\d{3})+(?:\.\d+)?$', v):
         return v.replace(',', '')
     return v
+
 
 def _norm_col(name: str) -> str:
     """
@@ -236,6 +238,7 @@ def _strip_quotes(s: str) -> str:
         return s[1:-1]
     return s
 
+
 def _strip_subquery_conditions(where_clause: str) -> str:
     """
     Remove 'col OP (SELECT ...) ' conditions before parsing.
@@ -272,6 +275,7 @@ def _strip_subquery_conditions(where_clause: str) -> str:
     result = ''.join(out).strip()
     return re.sub(r'^(AND|OR)\s+', '', result, flags=re.IGNORECASE)
 
+
 def _normalise_value_for_parse(v: str) -> Any:
     """
     Normalise a raw condition value for storage and later comparison.
@@ -286,7 +290,7 @@ def _normalise_value_for_parse(v: str) -> Any:
     v = v.replace('\u2212', '-').replace('\u2013', '-')
     v = v.strip('"').strip("'")
     v = v.rstrip("%")
-    v = v.replace("\\'", "'").rstrip("\\")   # ← ADD THIS LINE
+    v = v.replace("\\'", "'").rstrip("\\")
     try:
         return float(v) if "." in v else int(v)
     except (ValueError, TypeError):
@@ -360,10 +364,16 @@ def parse_sql_to_wikisql_struct(
     if m_where:
         where_clause = m_where.group(1)
         where_clause = re.sub(r"^\s*(AND|OR)\s+", "", where_clause, flags=re.IGNORECASE)
-        where_clause = _strip_subquery_conditions(where_clause)  # ← FIX IS HERE
+        where_clause = _strip_subquery_conditions(where_clause)
 
         for col_raw, op_raw, val_raw in _find_conditions(where_clause):
             col_raw = col_raw.strip().strip("`\"[]").strip()
+
+            # FIX: _COND_SYMBOL_RE column pattern allows spaces, so after
+            # matching "pick='2004'", the next match grabs "AND college" as the
+            # column name.  Strip any leading AND/OR/NOT keyword before lookup.
+            col_raw = re.sub(r"^(?:AND|OR|NOT)\s+", "", col_raw, flags=re.IGNORECASE).strip()
+
             col_idx = _col_index(col_raw, headers)
             if col_idx is None:
                 continue
@@ -373,32 +383,34 @@ def parse_sql_to_wikisql_struct(
 
     return {"agg": agg_id, "sel": sel_idx, "conds": conds, "count_star": count_star}
 
+
 # ─── Structural comparison ────────────────────────────────────────────────────
+
 def _normalise_value(v: Any) -> Any:
     """Normalise condition value for comparison."""
     if not isinstance(v, str):
         if isinstance(v, float) and v == int(v):
             return int(v)
         return v
- 
+
     v = v.strip().rstrip('%')
     v = v.replace('\u2212', '-').replace('\u2013', '-')
     v = v.strip('"').strip("'")
- 
+
     # Strip Wikipedia hcards artifact
     v = re.sub(r'\s*category:articles with hcards\s*$', '', v, flags=re.IGNORECASE).strip()
- 
+
     # Strip leading article "the "
     if v.lower().startswith('the '):
         v = v[4:]
- 
+
     v_lower = v.lower()
- 
+
     # Date normalization (ISO ↔ readable)
     date_iso = _normalise_date(v_lower)
     if date_iso != v_lower:
         return date_iso
- 
+
     # Number format normalization
     v_num = _normalise_number_str(v_lower)
     if v_num != v_lower:
@@ -407,22 +419,29 @@ def _normalise_value(v: Any) -> Any:
             return int(f) if f == int(f) else f
         except ValueError:
             v_lower = v_num
- 
+
     # Coerce to numeric
     try:
         f = float(v_lower) if '.' in v_lower else int(v_lower)
         return f
     except (ValueError, TypeError):
         pass
- 
-    # Collapse whitespace/comma differences (existing FIX 3b)
-    return re.sub(r'[\s,]+', '', v_lower) if len(v_lower) < 40 else v_lower
+
+    if re.search(r'[a-z]', v_lower):
+        return re.sub(r'\s+', ' ', v_lower).strip()
+    return re.sub(r'[\s,]+', '', v_lower)
+
 
 def _conds_match(pred_conds: List, gold_conds: List) -> bool:
-    """Order-insensitive condition set comparison with soft column-index fallback."""
-    if len(pred_conds) != len(gold_conds):
+    """Order-insensitive condition set comparison with soft column-index fallback.
+
+    Subset matching: pred must contain ALL gold conditions but may contain
+    additional ones.  A prediction with extra WHERE filters is not wrong.
+    A prediction missing any gold condition is always wrong.
+    """
+    if len(pred_conds) < len(gold_conds):
         return False
- 
+
     def _norm(c):
         val = _normalise_value(c[2])
         if isinstance(val, str):
@@ -431,19 +450,22 @@ def _conds_match(pred_conds: List, gold_conds: List) -> bool:
             except (ValueError, TypeError):
                 pass
         return (int(c[0]), int(c[1]), val)
- 
+
     def _values_match(pv, gv) -> bool:
         if pv == gv:
             return True
- 
+
         # Both numeric
         def _f(x):
-            try: return float(x)
-            except: return None
+            try:
+                return float(x)
+            except Exception:
+                return None
+
         pf, gf = _f(pv), _f(gv)
         if pf is not None and gf is not None:
             return abs(pf - gf) < 1e-6
- 
+
         # Numeric-in-string
         if isinstance(pv, (int, float)) and isinstance(gv, str):
             ps = str(int(pv)) if isinstance(pv, float) and pv == int(pv) else str(pv)
@@ -453,7 +475,7 @@ def _conds_match(pred_conds: List, gold_conds: List) -> bool:
             gs = str(int(gv)) if isinstance(gv, float) and gv == int(gv) else str(gv)
             if gs == pv.replace(',', '').replace(' ', ''):
                 return True
- 
+
         # String fuzzy
         if isinstance(pv, str) and isinstance(gv, str):
             pn = pv.strip().lower().replace('–', '-').replace('—', '-')
@@ -472,16 +494,20 @@ def _conds_match(pred_conds: List, gold_conds: List) -> bool:
                     return True
                 if len(shorter) >= 6 and shorter in longer and len(shorter) / len(longer) >= 0.5:
                     return True
- 
+            if ',' in gn and gn.split(',')[0].strip() == pn.strip():
+                return True
+            if ',' in pn and pn.split(',')[0].strip() == gn.strip():
+                return True
+
         return False
- 
-    pred_normed = [_norm(c) for c in pred_conds]
-    gold_normed = [_norm(c) for c in gold_conds]
+
+    pred_normed  = [_norm(c) for c in pred_conds]
+    gold_normed  = [_norm(c) for c in gold_conds]
     matched_pred = [False] * len(pred_normed)
- 
+
     for gc in gold_normed:
         found = False
- 
+
         # Pass 1: exact column index + operator + value
         for i, pc in enumerate(pred_normed):
             if matched_pred[i]:
@@ -490,7 +516,7 @@ def _conds_match(pred_conds: List, gold_conds: List) -> bool:
                 matched_pred[i] = True
                 found = True
                 break
- 
+
         # Pass 2: soft column-index — operator + value match, any column
         # (catches wrong-column-index failures where the value is correct)
         if not found:
@@ -501,11 +527,12 @@ def _conds_match(pred_conds: List, gold_conds: List) -> bool:
                     matched_pred[i] = True
                     found = True
                     break
- 
+
         if not found:
             return False
- 
+
     return True
+
 
 def structural_em(
     pred: Dict[str, Any],
@@ -540,7 +567,6 @@ def _gold_struct_to_parseable(gold_sql_field: Any, headers: List[str]) -> Option
     """
     # ── Format B: sql is already a plain string ───────────────────────────────
     if isinstance(gold_sql_field, str):
-        # Parse the string exactly like a prediction
         return parse_sql_to_wikisql_struct(gold_sql_field, headers)
 
     # ── Format A: sql is the original structured dict ─────────────────────────
@@ -599,7 +625,6 @@ def build_headers_map(table_file: str) -> Dict[str, List[str]]:
 
     headers_map: Dict[str, List[str]] = {}
     for t in tables:
-        # Try both id conventions
         db_id = t.get("db_id") or t.get("id", "")
 
         # WikiSQL format: "header" is a plain list of column name strings
@@ -666,14 +691,11 @@ def evaluate_structural_em(
           f"({'converted Spider format' if gold_format == 'string' else 'original WikiSQL dict'})")
 
     # ── Build headers map ─────────────────────────────────────────────────────
-    # Priority 1: external tables.json (needed for converted Spider format)
-    # Priority 2: embedded table.header inside each gold item (original format)
     headers_map: Dict[str, List[str]] = {}
     if table_file:
         headers_map = build_headers_map(table_file)
         print(f"  Headers loaded    : {len(headers_map)} tables from {table_file}")
     else:
-        # Try to extract from embedded table field (original WikiSQL format)
         for item in gold_data:
             db_id = item.get("db_id") or item.get("table_id", "")
             tbl   = item.get("table", {})
@@ -714,7 +736,7 @@ def evaluate_structural_em(
     sel_correct  = 0
     cond_correct = 0
 
-    per_query: List[Dict[str, Any]] = []   # ← full detail for every row
+    per_query: List[Dict[str, Any]] = []
 
     for i, (gold_item, pred_sql) in enumerate(zip(gold_data, preds)):
         # Resolve headers: external map takes priority, then embedded table
@@ -731,7 +753,6 @@ def evaluate_structural_em(
 
         total += 1
 
-        # ── Base detail record ────────────────────────────────────────────────
         detail: Dict[str, Any] = {
             "line_no"    : i + 1,
             "db_id"      : db_id,
@@ -765,7 +786,7 @@ def evaluate_structural_em(
                 print(f"[{i+1}] PRED PARSE FAIL db={db_id} headers={headers[:4]}: {pred_sql[:80]}")
             continue
 
-        # ── Component checks ──────────────────────────────────────────────────────────
+        # ── Component checks ──────────────────────────────────────────────────
         agg_ok = pred_struct["agg"] == gold_struct["agg"]
 
         if (pred_struct.get("count_star")
@@ -789,10 +810,9 @@ def evaluate_structural_em(
             detail["em"]          = True
             detail["fail_reason"] = "ok"
         else:
-            # Build human-readable fail reason
             def _sel_label(struct, hdrs):
                 idx = struct['sel']
-                if idx < 0:                        # COUNT(*) sentinel
+                if idx < 0:
                     return f"{idx}=COUNT(*)"
                 name = hdrs[idx] if idx < len(hdrs) else '?'
                 return f"{idx}={name}"
@@ -833,7 +853,7 @@ def evaluate_structural_em(
         "agg_accuracy":    agg_correct  / parsed if parsed else 0.0,
         "sel_accuracy":    sel_correct  / parsed if parsed else 0.0,
         "cond_accuracy":   cond_correct / parsed if parsed else 0.0,
-        "per_query":       per_query,   # ← full detail list
+        "per_query":       per_query,
     }
 
 
@@ -866,15 +886,14 @@ def _print_failure_breakdown(per_q: List[Dict], total: int) -> None:
     print(f"\n  Failure breakdown  ({n_fail} failed / {total} total):")
     print(f"  {'Category':<20} {'Count':>6}  {'% of total':>10}  {'% of failures':>14}")
     print(f"  {'─'*20} {'─'*6}  {'─'*10}  {'─'*14}")
-    _ORDER = ["parse_fail_pred","parse_fail_gold","agg_only","sel_only",
-              "cond_only","agg+sel","agg+cond","sel+cond","agg+sel+cond","other"]
+    _ORDER = ["parse_fail_pred", "parse_fail_gold", "agg_only", "sel_only",
+              "cond_only", "agg+sel", "agg+cond", "sel+cond", "agg+sel+cond", "other"]
     for cat in _ORDER:
         cnt = cats.get(cat, 0)
         if cnt == 0:
             continue
         print(f"  {cat:<20} {cnt:>6}  {cnt/total*100:>9.1f}%  {cnt/n_fail*100:>13.1f}%")
     print()
-
 
 
 # ─── CLI ─────────────────────────────────────────────────────────────────────
@@ -934,21 +953,20 @@ def main():
     print(f"    COND (WHERE clause): {results['cond_accuracy']:.1%}")
     print(f"{'─'*50}")
 
-    # ── Summary JSON (no per_query to keep file small) ────────────────────────
+    # ── Summary JSON ──────────────────────────────────────────────────────────
     summary = {k: v for k, v in results.items() if k != "per_query"}
     out_path = Path(args.predict).with_suffix(".structural_em.json")
     with open(out_path, "w") as f:
         json.dump(summary, f, indent=2)
     print(f"\n  Summary saved → {out_path}")
 
-    # ── Per-query detail export (all rows) ──────────────────────────────────
+    # ── Per-query detail export (all rows) ────────────────────────────────────
     if args.save_details:
         import csv as _csv
         from collections import Counter as _Counter
         base  = args.save_details
         per_q = results["per_query"]
 
-        # CSV — all rows
         csv_path = base + ".csv"
         csv_cols = ["line_no", "db_id", "question",
                     "gold_sql", "pred_sql",
@@ -967,7 +985,6 @@ def main():
                 })
         print(f"  Detail CSV saved → {csv_path}  ({len(per_q)} rows)")
 
-        # JSON — full detail including headers
         json_path = base + ".json"
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(per_q, f, indent=2, ensure_ascii=False)
@@ -975,14 +992,13 @@ def main():
 
         _print_failure_breakdown(per_q, results["total"])
 
-    # ── Failures-only CSV (sorted by category for easy review) ──────────────
+    # ── Failures-only CSV ─────────────────────────────────────────────────────
     if args.save_failures:
         import csv as _csv
         base      = args.save_failures
         per_q     = results["per_query"]
         failures  = [r for r in per_q if not r["em"]]
 
-        # Add fail_category and sort: parse_fail first, then agg, sel, cond
         _CAT_ORDER = {
             "parse_fail_pred": 0, "parse_fail_gold": 1,
             "agg_only": 2, "sel_only": 3, "cond_only": 4,
