@@ -415,6 +415,26 @@ def multiset_eq(l1: List, l2: List) -> bool:
     
     return True
 
+def _normalize_exec_val(v):
+    """Normalize a SQLite result value: float/int and numeric-string equivalence."""
+    if v is None:
+        return None
+    if isinstance(v, float):
+        return int(v) if v == int(v) else round(v, 10)
+    if isinstance(v, str):
+        v = v.strip()
+        try:
+            f = float(v)
+            return int(f) if f == int(f) else f
+        except (ValueError, TypeError):
+            pass
+    return v
+
+def _normalize_exec_row(row):
+    return tuple(_normalize_exec_val(v) for v in row)
+
+def _normalize_exec_result(result):
+    return [_normalize_exec_row(row) for row in result]
 
 def result_eq(result1: List[Tuple], result2: List[Tuple], order_matters: bool) -> bool:
     """
@@ -428,6 +448,9 @@ def result_eq(result1: List[Tuple], result2: List[Tuple], order_matters: bool) -
     Returns:
         True if results are equivalent
     """
+    result1 = _normalize_exec_result(result1)
+    result2 = _normalize_exec_result(result2)
+    
     # Both empty
     if len(result1) == 0 and len(result2) == 0:
         return True

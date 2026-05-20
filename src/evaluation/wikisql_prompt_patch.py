@@ -31,7 +31,6 @@ WIKISQL_ANNOTATION_RULES block shown below.
 # Drop this constant into src/evaluation/sql_generator.py
 # or wherever your WikiSQL prompt is assembled.
 # ══════════════════════════════════════════════════════════════════════════════
-# NEW — replace the entire WIKISQL_ANNOTATION_RULES value with:
 WIKISQL_ANNOTATION_RULES = """\
 ━━━ WIKISQL ANNOTATION RULES (follow exactly) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():
@@ -39,42 +38,69 @@ WIKISQL_ANNOTATION_RULES = """\
                "The [date] of X had a Y of what?" / "The [event] applied to what X?"
    → SELECT MAX(col) FROM wikisql_data WHERE ...
    Examples:
-     "What is the pick number for Northwestern?" → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
-     "What is Iceland's total?"                  → SELECT COUNT(total) FROM wikisql_data WHERE country = 'Iceland'
-     "What is the United States rank?"           → SELECT COUNT(rank) FROM wikisql_data WHERE country = 'United States'
-     "Name the finished position for X"          → SELECT COUNT(finished) FROM wikisql_data WHERE celebrity = 'X'
-     "The canadian airdate of X applied to what series number?" → SELECT COUNT(no_in_series) FROM wikisql_data WHERE canadian_airdate = 'X'
-
+     "What is the pick number for Northwestern?"
+       → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
+     "What is the United States rank?"
+       → SELECT COUNT(rank) FROM wikisql_data WHERE country = 'United States'
+     "Name the finished position for Kerry Katona"
+       → SELECT COUNT(finished) FROM wikisql_data WHERE celebrity = 'Kerry Katona'
+ 
 2. MINIMUM RETRIEVAL — use MIN() when lowest/earliest/first is implied:
    → SELECT MIN(col) FROM wikisql_data WHERE ...
    Example: "Name the minimum ties played for 6 years."
      → SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6
-
-3. COUNTING — use COUNT(col), NEVER COUNT(*):
-   Applies to: "How many X?" / "What is the total number of X?"
+ 
+3. COUNTING RECORDS — use COUNT(col), NEVER COUNT(*):
+   Applies to: "How many [entities]?" / "What is the total number of X?"
+               "Name the number of X" / "Number of X with Y"
    → SELECT COUNT(col) FROM wikisql_data WHERE ...
-   Example: "How many players are on the Toronto team in 2005-06?"
-     → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
-   EXCEPTION: if the schema already has a column storing the count (goals, viewers,
-   points, attendance), use plain SELECT for that column directly.
-
-4. WHERE CONDITION VALUES — copy EXACTLY as stored in the database:
-   • String with units:  WHERE col = '131 runs'    NOT  WHERE col = 131
-   • Dollar amounts:     WHERE col = '$60,000'      NOT  WHERE col = 60000
-   • Ordinals:           WHERE col = '4th'          NOT  WHERE col = 4
-   • Score strings:      WHERE col = '-8 (71-63-69-69=272)'  NOT  WHERE col = -8
-   • Venue+attendance:   WHERE col = 'Philips Arena 19,335'  NOT  WHERE col = 19335
-   • Dates as stored:    WHERE col = 'january 18, 2009'  (match exact format in DB)
-   RULE: when a condition value looks numeric but the question contains units,
-   formatting, or context, use the FULL STRING form.
-
-5. SUPERLATIVES are NOT WHERE conditions — use MAX/MIN in SELECT:
-   BAD:  WHERE height = (SELECT MAX(height) ...)
-   GOOD: SELECT MAX(height) FROM wikisql_data WHERE floors = 35
-
-6. SINGLE-COLUMN SELECT only. No ORDER BY, GROUP BY, LIMIT, subqueries, JOINs.
+   Examples:
+     "How many players are on the Toronto team in 2005-06?"
+       → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
+     "Name the total number of points for South Korea"
+       → SELECT COUNT(points) FROM wikisql_data WHERE country = 'South Korea'
+   NEVER COUNT(*), always COUNT(specific_column).
+   NEVER COUNT(DISTINCT ...), always COUNT(col).
+ 
+4. NUMERIC VALUE IN A COLUMN — use bare SELECT (NOT SUM, NOT COUNT):
+   CRITICAL: When the question asks for a numeric quantity that IS ALREADY
+   stored in a column, use plain SELECT — NOT SUM, NOT AVG.
+   Test: if the column name contains the answer unit (goals, viewers, votes,
+         points, passengers, runs), use SELECT col.
+   Examples:
+     "How many goals were scored in the 2005-06 season?"  (goals = column)
+       → SELECT goals FROM wikisql_data WHERE season = '2005-06'
+       ✗ NOT: SELECT SUM(goals) FROM wikisql_data WHERE season = '2005-06'
+     "How many viewers did the David Nutter episode draw in?"  (viewers = column)
+       → SELECT u_s_viewers_million FROM wikisql_data WHERE directed_by = 'David Nutter'
+       ✗ NOT: SELECT SUM(u_s_viewers_million) FROM ...
+     "How many votes were cast in midlothian?"  (votes = column)
+       → SELECT votes_cast FROM wikisql_data WHERE constituency = 'midlothian'
+ 
+5. TOTAL/SUM OVER MULTIPLE ROWS — use SUM() only when combining across many rows:
+   Use SUM ONLY when no WHERE condition uniquely identifies a single row.
+   "What is the total X for all Y?" (no unique filter) → SUM(X)
+   NEVER use SUM when a WHERE clause uniquely identifies one row.
+ 
+6. WHERE conditions — include ALL filters explicitly stated, nothing more:
+   • Add a condition for EVERY filter criterion named in the question.
+   • Do NOT invent, infer, or add conditions not present in the question.
+   • SUPERLATIVE RULE: words like "tallest", "largest", "most recent" are NOT
+     WHERE conditions — represent them as MAX/MIN in the SELECT clause instead.
+     WRONG: WHERE height = (SELECT MAX(height) FROM wikisql_data)
+     RIGHT: SELECT MAX(height) FROM wikisql_data WHERE floors = 35
+   • No subqueries, nested SELECTs, or (SELECT ...) anywhere in the query.
+   • No ORDER BY ... LIMIT 1. Use MAX()/MIN() instead.
+ 
+7. COMPOUND WHERE VALUES — never split on commas:
+   • WHERE regular_season = '4th, Atlantic Division'  ← correct
+   • WHERE regular_season = '4th' AND ...             ← wrong
+ 
+8. String values: always quote with single quotes.
+   Numeric values: do NOT quote.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
+ 
 
 # ══════════════════════════════════════════════════════════════════════════════
 # Updated WikiSQL prompt template — replace IMPROVED_PROMPT_TEMPLATE_WIKISQL

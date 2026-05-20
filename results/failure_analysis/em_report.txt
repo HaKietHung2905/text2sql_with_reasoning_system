@@ -1,0 +1,970 @@
+================================================================================
+  WikiSQL Structural EM Failure Analysis
+================================================================================
+
+  Total evaluated   : 8421
+  Structural EM     : 69.53%  (5855/8421)
+  Total failures    : 2566
+
+── FAILURE CATEGORY BREAKDOWN ─────────────────────────────────────────
+
+  Category                Count  % of total   % of fails
+  ────────────────────── ──────  ──────────  ───────────
+  parse_fail_pred           115        1.4%         4.5%
+  agg                       518        6.2%        20.2%
+  sel                       139        1.7%         5.4%
+  cond                     1456       17.3%        56.7%
+  agg+sel                    87        1.0%         3.4%
+  agg+cond                  169        2.0%         6.6%
+  sel+cond                   39        0.5%         1.5%
+  agg+sel+cond               43        0.5%         1.7%
+
+── COND FAILURE SUB-CATEGORIES ────────────────────────────────────────
+
+  Sub-category                    Count   % of cond fails
+  ────────────────────────────── ──────  ────────────────
+  wrong_val                        1071             62.7%
+  op_mismatch                       301             17.6%
+  no_match                          171             10.0%
+  missing_cond                      158              9.3%
+  wrong_col                           6              0.4%
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: parse_fail_pred  (115 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 119  db=1-11449311-2
+  Q  : Give me the kickoff time of the game that was aired on CBS against the St. Louis Cardinals. 
+  SQL: SELECT kickoff_a FROM wikisql_data WHERE tv = 'cbs' AND opponent = 'st. louis cardinals'
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 429  db=1-1397655-1
+  Q  : how many is the minimum for citv
+  SQL: SELECT MIN(count(*)) FROM wikisql_data GROUP BY city
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 894  db=1-18064020-21
+  Q  : How many tackle assists for the player who averages 23.7?
+  SQL: SELECT COUNT(ast FROM wikisql_data WHERE avg_col = 23.7
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 917  db=1-1817852-1
+  Q  : If 4 went to iran and the amount that survived was less than 12.0 how many were there in 1990?
+  SQL: SELECT COUNT(col_1990) FROM wikisql_data WHERE to_iran = 4 AND survived < 12.0
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 1044  db=1-1942366-9
+  Q  : How many different C_{high} values are there for the good category?
+  SQL: SELECT COUNT(DISTINCT c_high) FROM wikisql_data WHERE category = 'good'
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 1045  db=1-1942366-9
+  Q  : What's the C_{high} when the C_{low} value is 250.5?
+  SQL: SELECT c_high FROM wikisql_data WHERE c_low = 250.5
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 1046  db=1-1942366-9
+  Q  : What's the i_{high} value when C_{low} is 250.5?
+  SQL: SELECT i_high FROM wikisql_data WHERE c_low = 250.5
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 1047  db=1-1942366-9
+  Q  : What's the C_{low} value when C_{high} is 12.0?
+  SQL: SELECT c_low FROM wikisql_data WHERE c_high = 12.0
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 1113  db=1-2008069-2
+  Q  : Name the uyghur for  瓦恰
+  SQL: SELECT uyghur_k_ona_yezik FROM wikisql_data WHERE chinese = '瓦恰'
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 1270  db=1-21602734-1
+  Q  : What is the highest number of divisions mentioned?
+  SQL: SELECT MAX(count_division) FROM (SELECT COUNT(division) AS count_division FROM wikisql_data GROUP BY division)
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 1575  db=1-24222929-3
+  Q  : How many total viewers (combined Live and SD) watched the episode with a share of 8?
+  SQL: SELECT SUM(live_sd_total_viewers) FROM wikisql_data WHERE share = 8
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 1577  db=1-24222929-3
+  Q  : What are the "18–49 Rating Live+SD" ratings and "Live+7" ratings, respectively, for the episode that originally aired on October 14, 2009?
+  SQL: SELECT col_18_49_rating_live_sd_live_7, live_7_day_dvr_total_viewers FROM wikisql_data WHERE original_airdate = 'October
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 1829  db=1-26173063-2
+  Q  : what is x when faisaly is 0-0?
+  SQL: SELECT col_x FROM wikisql_data WHERE faisaly = '0-0'
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 1896  db=1-26400041-2
+  Q  : If the peak reached is 6 cannot handle non-empty timestamp argument! 1992, what is the entered?
+  SQL: SELECT entered_a FROM wikisql_data WHERE peak_reached_a = 1992 AND peak = 6
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 1986  db=1-26910311-8
+  Q  : What was the score between Marseille and Manchester United on the second leg of the Champions League Round of 16?
+  SQL: SELECT col_2nd_leg_score FROM wikisql_data WHERE contest_and_round = 'Champions League Round of 16' AND opponent = 'Manc
+  ──────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: agg  (518 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 71  db=1-10935205-1
+  Q  : The canadian airdate of 11 february 2008 applied to what series number?
+  SQL: SELECT no_in_series FROM wikisql_data WHERE canadian_airdate = '11 february 2008'
+  AGG: gold='COUNT'  pred=''
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 96  db=1-11210576-4
+  Q  : what's the total number of final epbeingode count with first epbeingode being "l.a."
+  SQL: SELECT SUM(final_episode_count) FROM wikisql_data WHERE first_episode = "l.a."
+  AGG: gold='COUNT'  pred='SUM'
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 134  db=1-1160304-2
+  Q  : What was the total number of weeks on peak for the Ireland Albums Top 75 chart?
+  SQL: SELECT SUM(weeks_on_peak) FROM wikisql_data WHERE chart = 'ireland albums top 75'
+  AGG: gold='COUNT'  pred='SUM'
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 162  db=1-11800185-1
+  Q  : What is the number of sikhs in Japan?
+  SQL: SELECT COUNT(no_of_sikhs) FROM wikisql_data WHERE country = 'Japan'
+  AGG: gold=''      pred='COUNT'
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 225  db=1-1218784-1
+  Q  : How many goals were scored in the 2005-06 season?
+  SQL: SELECT SUM(goals) FROM wikisql_data WHERE season = '2005-06'
+  AGG: gold=''      pred='SUM'
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 228  db=1-1218784-1
+  Q  : What is the rank of manager Rob Mcdonald?
+  SQL: SELECT rank FROM wikisql_data WHERE manager = 'rob mcdonald'
+  AGG: gold='COUNT'  pred=''
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 261  db=1-12784134-24
+  Q  : Name the perfect stem for jo
+  SQL: SELECT perfect_stem FROM wikisql_data WHERE short_stem = 'jo'
+  AGG: gold='COUNT'  pred=''
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 274  db=1-1281200-1
+  Q  : When looking at new entries this round and seeing 8; what number in total is there for clubs remaining?
+  SQL: SELECT clubs_remaining FROM wikisql_data WHERE new_entries_this_round = 8
+  AGG: gold='COUNT'  pred=''
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 285  db=1-13282157-3
+  Q  : Name the number of points for south korea
+  SQL: SELECT points FROM wikisql_data WHERE country = 'south korea'
+  AGG: gold='COUNT'  pred=''
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 286  db=1-13337302-16
+  Q  : How many dismissals did the player Peter McGlashan have?
+  SQL: SELECT COUNT(dismissals) FROM wikisql_data WHERE player = 'Peter McGlashan'
+  AGG: gold=''      pred='COUNT'
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 287  db=1-13337302-16
+  Q  : How many stumpings did the player Tim Latham have?
+  SQL: SELECT COUNT(stumpings) FROM wikisql_data WHERE player = 'Tim Latham'
+  AGG: gold='MAX'   pred='COUNT'
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 308  db=1-13416000-3
+  Q  : How many champions were there when the last driver for September 22, 2013 was vladimir arabadzhiev ( 2010 )?
+  SQL: SELECT COUNT(champions) FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = "vladimir arabadzhiev ( 2010 )
+  AGG: gold=''      pred='COUNT'
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 310  db=1-13416000-3
+  Q  : How many champions were there when the last driver was Gianmarco Raimondo?
+  SQL: SELECT COUNT(champions) FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = "Gianmarco Raimondo"
+  AGG: gold=''      pred='COUNT'
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 384  db=1-13564702-4
+  Q  : How many tries against got the club with 62 tries for?
+  SQL: SELECT COUNT(tries_against) FROM wikisql_data WHERE tries_for = 62
+  AGG: gold=''      pred='COUNT'
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 475  db=1-14345690-4
+  Q  : Name the finished for kerry katona
+  SQL: SELECT finished FROM wikisql_data WHERE celebrity = 'kerry katona'
+  AGG: gold='COUNT'  pred=''
+  ──────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: sel  (139 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 13  db=1-10026563-1
+  Q  : When did the Prime Minister of Italy take office?
+  SQL: SELECT began_time_as_senior_g8_leader FROM wikisql_data WHERE office = 'prime minister of italy'
+  SEL: gold='Entered office as Head of State or Government'  pred='Began time as senior G8 leader'
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 14  db=1-1008653-1
+  Q  : What is the English name of the country whose official native language is Dutch Papiamento?
+  SQL: SELECT country_endonym FROM wikisql_data WHERE official_or_native_language_s_alphabet_script = 'dutch papiamento'
+  SEL: gold='Country ( exonym )'  pred='Country ( endonym )'
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 405  db=1-13677808-1
+  Q  : What country has a 5.5 mark for security?
+  SQL: SELECT country FROM wikisql_data WHERE security = 5.5
+  SEL: gold='Rank'                pred='Country'
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 424  db=1-13805773-2
+  Q  : What is highest place reached by artist Ray Adams?
+  SQL: SELECT highest_position FROM wikisql_data WHERE artist = 'ray adams'
+  SEL: gold='Position'            pred='Highest position'
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 492  db=1-1449169-1
+  Q  : Where does the common of Galliate rank in population?
+  SQL: SELECT population FROM wikisql_data WHERE common = 'galliate'
+  SEL: gold='Rank'                pred='Population'
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 534  db=1-14903081-1
+  Q  : Which current venues location is Mason, Ohio?
+  SQL: SELECT location FROM wikisql_data WHERE current_venue = 'Mason, Ohio'
+  SEL: gold='Current Venue'       pred='Location'
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 539  db=1-14929574-3
+  Q  : Which episode number drew in 3.84 million viewers in the U.S.?
+  SQL: SELECT production_code FROM wikisql_data WHERE u_s_viewers_million = 3.84
+  SEL: gold='Series #'            pred='Production code'
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 542  db=1-14929574-3
+  Q  : Which episode number was directed by Bill Eagles?
+  SQL: SELECT production_code FROM wikisql_data WHERE directed_by = 'Bill Eagles'
+  SEL: gold='Series #'            pred='Production code'
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 570  db=1-150343-3
+  Q  : What is Venezuela's total rank?
+  SQL: SELECT rank FROM wikisql_data WHERE country_territory = 'venezuela'
+  SEL: gold='Total'               pred='Rank'
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 572  db=1-150343-3
+  Q  : Which countries have a 5th runner-up ranking is 2 and the 3rd runner-up ranking is 0
+  SQL: SELECT country_territory FROM wikisql_data WHERE col_5th_runner_up = 2 AND col_3rd_runner_up = 0
+  SEL: gold='Total'               pred='Country/Territory'
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 593  db=1-15187735-17
+  Q  : for the shows featuring beet sugar, what was on before that
+  SQL: SELECT segment_a FROM wikisql_data WHERE segment_b = 'beet sugar'
+  SEL: gold='Segment B'           pred='Segment A'
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 615  db=1-15581223-8
+  Q  : Name the most tackles for 3.5 sacks
+  SQL: SELECT player FROM wikisql_data WHERE sacks = 3.5 ORDER BY tackles DESC LIMIT 1
+  SEL: gold='Tackles'             pred='Player'
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 718  db=1-16381914-1
+  Q  : What kind of school is Canton, New York?
+  SQL: SELECT institution FROM wikisql_data WHERE location = 'Canton, New York'
+  SEL: gold='Affiliation'         pred='Institution'
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 767  db=1-16907214-1
+  Q  : What is the ISBN of "Dead as a Doornail?
+  SQL: SELECT col_x FROM wikisql_data WHERE title = 'Dead as a Doornail'
+  SEL: gold='Paperback'           pred='#'
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 818  db=1-17311759-7
+  Q  : who made high assists on february 4
+  SQL: SELECT team FROM wikisql_data WHERE high_assists IS NOT NULL AND date = 'february 4'
+  SEL: gold='High assists'        pred='Team'
+  ──────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: cond  (1456 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 5  db=1-10015132-11
+  Q  : What player played guard for toronto in 1996-97?
+  SQL: SELECT player FROM wikisql_data WHERE position = 'guard' AND years_in_toronto = '1996-97'
+  COND gold: Position = 'guard' AND Years in Toronto = '1996-97'
+  COND pred: Position = 'guard' AND Years in Toronto OP '_toronto'
+  WHY:       op_mismatch(Position) | wrong_val(Years in Toronto: gold='1996-97' pred='_toronto')
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 8  db=1-10015132-9
+  Q  : What are the total amount of numbers on the Toronto team in 2005-06?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE years_in_toronto = '2005-06'
+  COND gold: Years in Toronto = '2005-06'
+  COND pred: Years in Toronto OP '_toronto'
+  WHY:       wrong_val(Years in Toronto: gold='2005-06' pred='_toronto')
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 9  db=1-10015132-9
+  Q  : What are the total number of positions on the Toronto team in 2006-07?
+  SQL: SELECT COUNT(position) FROM wikisql_data WHERE years_in_toronto = '2006-07'
+  COND gold: Years in Toronto = '2006-07'
+  COND pred: Years in Toronto OP '_toronto'
+  WHY:       wrong_val(Years in Toronto: gold='2006-07' pred='_toronto')
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 23  db=1-10342194-3
+  Q  : What is the amount of trees, that require replacement when prevailing types, % is pine — 29.37 poplar — 26.12 acer negundo — 13.2?
+  SQL: SELECT amount_of_trees_that_require_replacement FROM wikisql_data WHERE prevailing_types = 'pine — 29.37 poplar — 26.12 
+  COND gold: Prevailing types, % = 'pine — 29.37 poplar — 26.12 acer negundo — 13.2'
+  COND pred: Prevailing types, % OP 'g_types'
+  WHY:       wrong_val(Prevailing types, %: gold='pine — 29.37 poplar — 26.12 a pred='g_types')
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 25  db=1-10342194-3
+  Q  : What is the district when the total amount of trees is smaller than 150817.6878461314 and amount of old trees is 1,928 (1.89%)?
+  SQL: SELECT district FROM wikisql_data WHERE total_amount_of_trees < 150817.6878461314 AND amount_of_old_trees = 1928
+  COND gold: Total amount of trees < '150817.6878461314' AND Amount of old trees = '1,928 (1.89%)'
+  COND pred: Total amount of trees < '150817.6878461314' AND Amount of old trees = '1928'
+  WHY:       op_mismatch(Total amount of trees) | wrong_val(Amount of old trees: gold='1,928 (1.89%)' pred=1928)
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 28  db=1-10342194-3
+  Q  : What is the district when prevailing types, % is acer negundo — 30.22 tilia — 18.6 poplar — 15.23?
+  SQL: SELECT district FROM wikisql_data WHERE prevailing_types = 'acer negundo — 30.22 tilia — 18.6 poplar — 15.23'
+  COND gold: Prevailing types, % = 'acer negundo — 30.22 tilia — 18.6 poplar — 15.23'
+  COND pred: Prevailing types, % OP 'g_types'
+  WHY:       wrong_val(Prevailing types, %: gold='acer negundo — 30.22 tilia —  pred='g_types')
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 29  db=1-10429820-13
+  Q  : When the value of "since beginning of big 12" is synonymous with its' category, what are the in Ames values?
+  SQL: SELECT in_ames FROM wikisql_data WHERE since_beginning_of_big_12 = overall_record
+  COND gold: Since Beginning of Big 12 = 'since beginning of big 12'
+  COND pred: Since Beginning of Big 12 OP 'ce_beginning_of_big_12'
+  WHY:       wrong_val(Since Beginning of Big 12: gold='since beginning of big 12' pred='ce_beginning_of_big_12')
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 43  db=1-10706961-2
+  Q  : How many reports are there in the race that Forsythe Racing won and Teo Fabi had the pole position in?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE winning_team = 'forsythe racing' AND pole_position = 'teo fabi'
+  COND gold: Winning team = 'forsythe racing' AND Pole Position = 'teo fabi'
+  COND pred: Winning driver OP 'ning_team' AND Pole Position = 'teo fabi'
+  WHY:       no_match(Winning team=''forsythe racing'') | op_mismatch(Pole Position)
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 45  db=1-10706961-2
+  Q  : Which teams won when Bobby Rahal was their winning driver?
+  SQL: SELECT winning_team FROM wikisql_data WHERE winning_driver = 'bobby rahal'
+  COND gold: Winning driver = 'bobby rahal'
+  COND pred: Winning driver OP 'ning_driver'
+  WHY:       wrong_val(Winning driver: gold='bobby rahal' pred='ning_driver')
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 47  db=1-10707176-2
+  Q  : What report was there for the porsche north america?
+  SQL: SELECT report FROM wikisql_data WHERE winning_team = 'porsche north america'
+  COND gold: Winning team = 'porsche north america'
+  COND pred: Winning driver OP 'ning_team'
+  WHY:       no_match(Winning team=''porsche north ameri')
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 87  db=1-11044765-1
+  Q  : What city and state are the miners located in?
+  SQL: SELECT location FROM wikisql_data
+  COND gold: Mascot = 'miners'
+  COND pred: 
+  WHY:       missing_cond(1 of 1 absent)
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 98  db=1-11210576-4
+  Q  : what's the first epbeingode with final epbeingode being "rio"
+  SQL: SELECT first_episode FROM wikisql_data WHERE final_episode = "rio"
+  COND gold: Final Episode = 'rio'
+  COND pred: Fate OP 'al_episode'
+  WHY:       no_match(Final Episode=''rio'')
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 100  db=1-11214772-2
+  Q  : How many teams were listed as runner up in 2005 and there the first semi finalist was Western Carolina?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE year = 2005 AND semi_finalist_1 = 'Western Carolina'
+  COND gold: Semi-Finalist #1 = 'western carolina' AND Year = '2005'
+  COND pred: Year = '2005' AND Semi-Finalist #1 OP 'alist_1'
+  WHY:       wrong_val(Semi-Finalist #1: gold='western carolina' pred='alist_1') | op_mismatch(Year)
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 101  db=1-11214772-2
+  Q  : List the scores of all games when Miami were listed as the first Semi finalist
+  SQL: SELECT score FROM wikisql_data WHERE semi_finalist_1 = 'Miami'
+  COND gold: Semi-Finalist #1 = 'miami'
+  COND pred: Semi-Finalist #1 OP 'alist_1'
+  WHY:       wrong_val(Semi-Finalist #1: gold='miami' pred='alist_1')
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 102  db=1-11214772-2
+  Q  : When Embry-Riddle made it to the first semi finalist slot, list all the runners up.
+  SQL: SELECT runner_up FROM wikisql_data WHERE semi_finalist_1 = 'Embry-Riddle'
+  COND gold: Semi-Finalist #1 = 'embry-riddle'
+  COND pred: Semi-Finalist #1 OP 'alist_1'
+  WHY:       wrong_val(Semi-Finalist #1: gold='embry-riddle' pred='alist_1')
+  ──────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: agg+sel  (87 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 31  db=1-1046170-5
+  Q  : how many division  did not qualify for u.s. open cup in 2003
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE year = 2003 AND u_s_open_cup = 'did not qualify'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Division'            pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 156  db=1-11734041-9
+  Q  : What is the number of the player who went to Southern University?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE school_club_team_country = 'southern university'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='No.(s)'              pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 252  db=1-12570759-2
+  Q  : How many millions of U.S. viewers watched the episode directed by Rob Bailey and written by Pam Veasey?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE directed_by = 'Rob Bailey' AND written_by = 'Pam Veasey'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='U.S. viewers (millions)'  pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 307  db=1-13416000-3
+  Q  : How many entries are there for total drivers when the Last driver for september 22, 2013 was gianmarco raimondo?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = 'gianmarco raimondo'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Total Drivers'       pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 352  db=1-1342338-3
+  Q  : How many in lost renomination results were elected first?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE result = 'lost renomination' AND first_elected != 'unknown'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='First elected'       pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 469  db=1-14342592-8
+  Q  : Name the most field goals
+  SQL: SELECT player FROM wikisql_data ORDER BY field_goals DESC LIMIT 1
+  AGG: gold='MAX'   pred=''
+  SEL: gold='Field goals'         pred='Player'
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 541  db=1-14929574-3
+  Q  : Which episode number drew in 3.35 million viewers in the United States?
+  SQL: SELECT production_code FROM wikisql_data WHERE u_s_viewers_million = 3.35
+  AGG: gold='COUNT'  pred=''
+  SEL: gold='Series #'            pred='Production code'
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 592  db=1-15187735-17
+  Q  : how many segments involve wood boring augers
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE segment_a = 'wood boring augers' OR segment_b = 'wood boring augers' OR segment_
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Segment A'           pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 594  db=1-15187735-17
+  Q  : are rolled wafers in many episodes
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE segment_a = 'rolled wafers'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Series Ep.'          pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 668  db=1-15887683-15
+  Q  : How many television service are in italian and n°is greater than 856.0?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE language = 'italian' AND n > 856.0
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Television service'  pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 671  db=1-15887683-15
+  Q  : How many dar are in germany?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE country = 'germany'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='DAR'                 pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 693  db=1-16099880-5
+  Q  : In what position did the winning driver finish at Chicagoland?
+  SQL: SELECT pole_position FROM wikisql_data WHERE rd = 'Chicagoland'
+  AGG: gold='COUNT'  pred=''
+  SEL: gold='Winning driver'      pred='Pole position'
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 910  db=1-1817879-2
+  Q  : How many news stations opened on the date of June 24, 2000?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE date_opened = 'June 24, 2000'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='# of new stations'   pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 912  db=1-1817879-2
+  Q  : How many lines have the segment description of red line mos-2 west?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE segment_description = 'red line mos-2 west'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Line(s)'             pred='?'
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 928  db=1-18207285-2
+  Q  : How many opponents played 1 game with a result win?
+  SQL: SELECT COUNT(DISTINCT opponent) FROM wikisql_data WHERE result = 'win' AND game = 1
+  AGG: gold='MAX'   pred='COUNT'
+  SEL: gold='Opponents'           pred='Opponent'
+  ──────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: agg+cond  (169 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 90  db=1-1121352-2
+  Q  : Where is the margin of victory dated mar 28, 2004?
+  SQL: SELECT tournament FROM wikisql_data WHERE margin_of_victory = (SELECT MAX(margin_of_victory) FROM wikisql_data WHERE dat
+  AGG: gold=''      pred='MAX'
+  COND gold: Date = 'mar 28, 2004'
+  COND pred: Margin of victory OP '_of_victory'
+  WHY:       no_match(Date=''mar 28, 2004'')
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 104  db=1-1132600-3
+  Q  : Which round had Michael Schumacher in the pole position, David Coulthard with the fastest lap, and McLaren - Mercedes as the winning constructor?
+  SQL: SELECT round FROM wikisql_data WHERE pole_position = 'michael schumacher' AND fastest_lap = 'david coulthard' AND winnin
+  AGG: gold='COUNT'  pred=''
+  COND gold: Pole Position = 'michael schumacher' AND Fastest Lap = 'david coulthard' AND Winning Constructor = 'mclaren - mercedes'
+  COND pred: Pole Position = 'michael schumacher' AND Fastest Lap = 'david coulthard' AND Winning Driver OP 'ning_constructor'
+  WHY:       op_mismatch(Pole Position) | op_mismatch(Fastest Lap) | no_match(Winning Constructor=''mclaren - mercedes'')
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 145  db=1-11727969-1
+  Q  : what's the total number of species in the peruvian amazon with 8411 species in the world 
+  SQL: SELECT SUM(species_in_the_peruvian_amazon) FROM wikisql_data WHERE species_in_the_world = 8411
+  AGG: gold='COUNT'  pred='SUM'
+  COND gold: Species in the world = '8411'
+  COND pred: Species in the world OP '_the_world'
+  WHY:       wrong_val(Species in the world: gold=8411 pred='_the_world')
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 202  db=1-12094609-1
+  Q  : what is the total number of average where evening gown is 8.988
+  SQL: SELECT SUM(average) FROM wikisql_data WHERE evening_gown = 8.988
+  AGG: gold='COUNT'  pred='SUM'
+  COND gold: Evening Gown = '8.988'
+  COND pred: Evening Gown OP 'g_gown'
+  WHY:       wrong_val(Evening Gown: gold=8.988 pred='g_gown')
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 229  db=1-12310814-1
+  Q  : What's the order number of the song originally performed by Rickie Lee Jones?
+  SQL: SELECT COUNT(order_col) FROM wikisql_data WHERE original_artist = 'Rickie Lee Jones'
+  AGG: gold=''      pred='COUNT'
+  COND gold: Original artist = 'rickie lee jones'
+  COND pred: Original artist OP 'al_artist'
+  WHY:       wrong_val(Original artist: gold='rickie lee jones' pred='al_artist')
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 237  db=1-123462-2
+  Q  : What is the election year when the # of candidates nominated was 262?
+  SQL: SELECT election FROM wikisql_data WHERE of_candidates_nominated = 262
+  AGG: gold='COUNT'  pred=''
+  COND gold: # of candidates nominated = '262'
+  COND pred: # of candidates nominated OP 'ated'
+  WHY:       wrong_val(# of candidates nominated: gold=262 pred='ated')
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 306  db=1-13416000-3
+  Q  : How many champions were there when the first driver was hiroki yoshimoto ( 2005 )?
+  SQL: SELECT COUNT(champions) FROM wikisql_data WHERE first_driver_s = 'hiroki yoshimoto (2005)'
+  AGG: gold=''      pred='COUNT'
+  COND gold: First driver(s) = 'hiroki yoshimoto ( 2005 )'
+  COND pred: First driver(s) = 'hiroki yoshimoto (2005)'
+  WHY:       wrong_val(First driver(s): gold='hiroki yoshimoto ( 2005 )' pred='hiroki yoshimoto (2005)')
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 413  db=1-1370559-1
+  Q  : What is the total number of ends won when the locale is Northwest Territories Yukon?
+  SQL: SELECT SUM(ends_won) FROM wikisql_data WHERE locale = 'Northwest Territories/Yukon'
+  AGG: gold='COUNT'  pred='SUM'
+  COND gold: Locale = 'northwest territories yukon'
+  COND pred: Locale = 'northwest territories/yukon'
+  WHY:       wrong_val(Locale: gold='northwest territories yukon' pred='northwest territories/yukon')
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 416  db=1-13758945-3
+  Q  :  how many losing bonus with won being 10 and points against being 283
+  SQL: SELECT sum(losing_bonus) FROM wikisql_data WHERE won = 10 AND points_against = 283
+  AGG: gold='COUNT'  pred='SUM'
+  COND gold: Won = '10' AND Points against = '283'
+  COND pred: Won = '10' AND Points for OP 'ts_against'
+  WHY:       op_mismatch(Won) | no_match(Points against='283')
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 650  db=1-15780049-5
+  Q  : Who scored the most points against Washington?
+  SQL: SELECT team FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE team = 'Washington') 
+  AGG: gold=''      pred='MAX'
+  COND gold: Team = 'washington'
+  COND pred: High points OP 'ts'
+  WHY:       no_match(Team=''washington'')
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 677  db=1-15986020-3
+  Q  : What was the total opponents points for the game were the Oilers scored 21?
+  SQL: SELECT SUM(opponents) FROM wikisql_data WHERE oilers_points = 21
+  AGG: gold=''      pred='SUM'
+  COND gold: Oilers points = '21'
+  COND pred: Oilers points OP 'ts'
+  WHY:       wrong_val(Oilers points: gold=21 pred='ts')
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 680  db=1-160510-1
+  Q  : What is the modern equivalent of the former kingdom "silla" with the hanja 尙州?
+  SQL: SELECT modern_equivalent FROM wikisql_data WHERE former_kingdom = 'silla' AND hanja = '尙州'
+  AGG: gold='COUNT'  pred=''
+  COND gold: Former kingdom = 'silla' AND Hanja = '尙州'
+  COND pred: Former kingdom OP 'gdom' AND Hanja = '尙州'
+  WHY:       wrong_val(Former kingdom: gold='silla' pred='gdom') | op_mismatch(Hanja)
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 687  db=1-16066063-1
+  Q  : How many passengers (in millions) flew through along the route that is 1075km long in 2012?
+  SQL: SELECT COUNT(col_2012_passengers_in_millions) FROM wikisql_data WHERE distance = 1075
+  AGG: gold=''      pred='COUNT'
+  COND gold: Distance = '1075km'
+  COND pred: Distance = '1075'
+  WHY:       wrong_val(Distance: gold='1075km' pred=1075)
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 688  db=1-16066063-1
+  Q  : How many passengers (in millions) in 2011 flew through along the route that had 6.640 million passengers in 2012?
+  SQL: SELECT COUNT(col_2011_passengers_in_millions) FROM wikisql_data WHERE col_2012_passengers_in_millions = 6.640
+  AGG: gold=''      pred='COUNT'
+  COND gold: 2012 Passengers (in millions) = '6.64'
+  COND pred: 
+  WHY:       missing_cond(1 of 1 absent)
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 742  db=1-16751596-5
+  Q  : what is the percentage for john kerry and dates administered is april 22, 2008?
+  SQL: SELECT AVG(democrat_john_kerry) FROM wikisql_data WHERE dates_administered = 'april 22, 2008'
+  AGG: gold=''      pred='AVG'
+  COND gold: Dates administered = 'april 22, 2008'
+  COND pred: Dates administered OP 'istered'
+  WHY:       wrong_val(Dates administered: gold='april 22, 2008' pred='istered')
+  ──────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: sel+cond  (39 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 32  db=1-1046170-5
+  Q  : which round is u.s. open cup division semifinals
+  SQL: SELECT playoffs FROM wikisql_data WHERE u_s_open_cup = 'semifinals'
+  SEL: gold='U.S. Open Cup'       pred='Playoffs'
+  COND gold: Playoffs = 'division semifinals'
+  COND pred: U.S. Open Cup = 'semifinals'
+  WHY:       no_match(Playoffs=''division semifinals')
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 55  db=1-10706879-3
+  Q  : What are the races that johnny rutherford has won?
+  SQL: SELECT rd FROM wikisql_data WHERE winning_driver = 'johnny rutherford'
+  SEL: gold='Name'                pred='Rd'
+  COND gold: Winning driver = 'johnny rutherford'
+  COND pred: Winning driver OP 'ning_driver'
+  WHY:       wrong_val(Winning driver: gold='johnny rutherford' pred='ning_driver')
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 449  db=1-14209455-1
+  Q  : what tims is wed may 28 and mon may 26 is 17' 58.34 125.960mph?
+  SQL: SELECT rider FROM wikisql_data WHERE wed_28_may = '17\' 58.34" 125.960mph' AND mon_26_may = '17\' 58.34" 125.960mph'
+  SEL: gold='Wed 28 May'          pred='Rider'
+  COND gold: Mon 26 May = '17'
+  COND pred: Wed 28 May = '17' 58.34" 125.960mph' AND Mon 26 May = '17' 58.34" 125.960mph'
+  WHY:       wrong_val(Mon 26 May: gold=17 pred='17\' 58.34" 125.960mph')
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 453  db=1-14286908-1
+  Q  : What are the names that had a finalist score of 2?
+  SQL: SELECT winners FROM wikisql_data WHERE finalists = 2
+  SEL: gold='School'              pred='Winners'
+  COND gold: Finalists = '2'
+  COND pred: Finalists OP 'alists'
+  WHY:       wrong_val(Finalists: gold=2 pred='alists')
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 612  db=1-15530244-2
+  Q  : Which race number in the Indy F3 Challenge circuit had John Martin in pole position?
+  SQL: SELECT round FROM wikisql_data WHERE circuit = 'indianapolis motor speedway' AND pole_position = 'john martin'
+  SEL: gold='Race'                pred='Round'
+  COND gold: Circuit = 'indy f3 challenge' AND Pole Position = 'john martin'
+  COND pred: Circuit = 'indianapolis motor speedway' AND Pole Position = 'john martin'
+  WHY:       wrong_val(Circuit: gold='indy f3 challenge' pred='indianapolis motor speedway') | op_mismatch(Pole Position)
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 613  db=1-15530244-2
+  Q  : What is the highest race number in the Phillip Island circuit with James Winslow as the winning driver and pole position?
+  SQL: SELECT MAX(round) FROM wikisql_data WHERE circuit = 'phillip island' AND winning_driver = 'james winslow' AND pole_posit
+  SEL: gold='Race'                pred='Round'
+  COND gold: Circuit = 'phillip island' AND Winning driver = 'james winslow' AND Pole Position = 'james winslow'
+  COND pred: Circuit = 'phillip island' AND Winning driver OP 'ning_driver' AND Pole Position = 'james winslow'
+  WHY:       op_mismatch(Circuit) | wrong_val(Winning driver: gold='james winslow' pred='ning_driver') | op_mismatch(Pole Position)
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 961  db=1-18540104-1
+  Q  : What is the title with an average rating of 22.4%?
+  SQL: SELECT japanese_title FROM wikisql_data WHERE average_ratings = 22.4
+  SEL: gold='Romaji Title'        pred='Japanese Title'
+  COND gold: Average Ratings = '22.4'
+  COND pred: Average Ratings OP 'gs'
+  WHY:       wrong_val(Average Ratings: gold=22.4 pred='gs')
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 1095  db=1-1984697-53
+  Q  : Where's the school that Mark Fletcher is the principal of?
+  SQL: SELECT school FROM wikisql_data WHERE principal = 'Mark Fletcher'
+  SEL: gold='City / Town'         pred='School'
+  COND gold: Principal = 'mark fletcher'
+  COND pred: Principal OP 'cipal'
+  WHY:       wrong_val(Principal: gold='mark fletcher' pred='cipal')
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 1379  db=1-22779004-1
+  Q  : Who won the tournament when Idaho State won the regular season?
+  SQL: SELECT tournament_winner FROM wikisql_data WHERE regular_season_winner = 'Idaho State'
+  SEL: gold='Conference Tournament'  pred='Tournament Winner'
+  COND gold: Regular Season Winner = 'idaho state'
+  COND pred: Regular Season Winner OP 'ner'
+  WHY:       wrong_val(Regular Season Winner: gold='idaho state' pred='ner')
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 1672  db=1-2508175-1
+  Q  : when the gdp (current, in billions of us dollars) is 162.50, what is the GDP?
+  SQL: SELECT gdp_current_in_billions_of_us_dollars FROM wikisql_data WHERE gdp_current_in_billions_of_us_dollars = 162.50
+  SEL: gold='GDP per Emissions (in US dollars per ton)'  pred='GDP (current, in billions of US dollars)'
+  COND gold: GDP (current, in billions of US dollars) = '162.5'
+  COND pred: GDP (current, in billions of US dollars) OP '_billions_of_us_dollars'
+  WHY:       wrong_val(GDP (current, in billions of US dollars): gold=162.5 pred='_billions_of_us_dollars')
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 1755  db=1-2562572-11
+  Q  : What is the second way of writting плавна.
+  SQL: SELECT cyrillic_name_other_names FROM wikisql_data WHERE cyrillic_name_other_names LIKE '%плавна%'
+  SEL: gold='Settlement'          pred='Cyrillic Name Other Names'
+  COND gold: Cyrillic Name Other Names = 'плавна'
+  COND pred: Cyrillic Name Other Names OP '%плавна'
+  WHY:       wrong_val(Cyrillic Name Other Names: gold='плавна' pred='%плавна')
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 1773  db=1-256286-20
+  Q  : Who had 41.76% yes votes
+  SQL: SELECT meas_num FROM wikisql_data WHERE yes_votes / (yes_votes + no_votes) = 0.4176
+  SEL: gold='description'         pred='meas. num'
+  COND gold: % YES = '41.76'
+  COND pred: NO votes = '0.4176'
+  WHY:       no_match(% YES='41.76')
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 1898  db=1-26400041-2
+  Q  : What was the peak reached for a single with 4 weeks in the top 10 and entered in 7 cannot handle non-empty timestamp argument! 1992?
+  SQL: SELECT peak_reached_a FROM wikisql_data WHERE weeks_in_top_10 = 4 AND entered_a = '1992'
+  SEL: gold='Peak reached [A ]'   pred='Peak'
+  COND gold: Entered [A ] = '7 cannot handle non-empty timestamp argument! 1992' AND Weeks in top 10 = '4'
+  COND pred: Weeks in top 10 OP '_top_10'
+  WHY:       missing_cond(1 of 2 absent)
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 2189  db=1-28195898-1
+  Q  : What is the season 4 # for the production code of 4abb07?
+  SQL: SELECT production_code FROM wikisql_data WHERE col_x = '4' AND col_x_2 = '7'
+  SEL: gold='#'                   pred='Production code'
+  COND gold: Production code = '4abb07'
+  COND pred: # = '4' AND # = '7'
+  WHY:       no_match(Production code=''4abb07'')
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 2477  db=2-10301911-6
+  Q  : Which places have points larger than 10?
+  SQL: SELECT place FROM wikisql_data WHERE points > 10
+  SEL: gold='Points'              pred='Place'
+  COND gold: Place > '10'
+  COND pred: Points OP 'ts'
+  WHY:       no_match(Place='10')
+  ──────────────────────────────────────────────────────────────────────
+
+
+════════════════════════════════════════════════════════════════════════════════
+  CATEGORY: agg+sel+cond  (43 total failures)
+════════════════════════════════════════════════════════════════════════════════
+
+  [1] Line 267  db=1-12792876-4
+  Q  : Name the tries against for drawn
+  SQL: SELECT tries_against FROM wikisql_data WHERE drawn = (SELECT MAX(drawn) FROM wikisql_data)
+  AGG: gold='COUNT'  pred='MAX'
+  SEL: gold='Tries against'       pred='Drawn'
+  COND gold: Drawn = 'drawn'
+  COND pred: Drawn = '?'
+  WHY:       wrong_val(Drawn: gold='drawn' pred='?')
+  ──────────────────────────────────────────────────────────────────────
+
+  [2] Line 456  db=1-14286908-1
+  Q  : How many total finals where there when the last win was in 2012-13?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE year_of_last_win = '2012-13'
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Total Finals'        pred='?'
+  COND gold: Year of last win = '2012-13'
+  COND pred: Year of last win OP '='
+  WHY:       wrong_val(Year of last win: gold='2012-13' pred='=')
+  ──────────────────────────────────────────────────────────────────────
+
+  [3] Line 898  db=1-18064020-21
+  Q  : How many yards for the player with tfl-yds of 2.5-4?
+  SQL: SELECT COUNT(tfl_yds) FROM wikisql_data WHERE tfl_yds BETWEEN 2.5 AND 4
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='No.-Yds'             pred='TFL-Yds'
+  COND gold: TFL-Yds = '2.5-4'
+  COND pred: 
+  WHY:       missing_cond(1 of 1 absent)
+  ──────────────────────────────────────────────────────────────────────
+
+  [4] Line 929  db=1-18220102-1
+  Q  : Which award-winning film has a screening number of 50 films 50 televised?
+  SQL: SELECT COUNT(number_of_screening) FROM wikisql_data WHERE number_of_screening = 50 AND award_winning_film IS NOT NULL
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Award-Winning Film'  pred='Number of Screening'
+  COND gold: Number of Screening = '50 films 50 televised'
+  COND pred: Number of Screening OP 'g' AND Award-Winning Film OP 'ning_film'
+  WHY:       wrong_val(Number of Screening: gold='50 films 50 televised' pred='g')
+  ──────────────────────────────────────────────────────────────────────
+
+  [5] Line 1445  db=1-23281862-6
+  Q  : Where was the game in which Carl Landry (25) did the most high points played?
+  SQL: SELECT location_attendance FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE high_p
+  AGG: gold=''      pred='MAX'
+  SEL: gold='Location Attendance'  pred='High points'
+  COND gold: High points = 'carl landry (25)'
+  COND pred: High points OP 'ts'
+  WHY:       wrong_val(High points: gold='carl landry (25)' pred='ts')
+  ──────────────────────────────────────────────────────────────────────
+
+  [6] Line 1456  db=1-23286112-6
+  Q  : Where was the game in which Kevin Durant (25) did the most high points played?
+  SQL: SELECT location_attendance FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE high_p
+  AGG: gold=''      pred='MAX'
+  SEL: gold='Location Attendance'  pred='High points'
+  COND gold: High points = 'kevin durant (25)'
+  COND pred: High points OP 'ts'
+  WHY:       wrong_val(High points: gold='kevin durant (25)' pred='ts')
+  ──────────────────────────────────────────────────────────────────────
+
+  [7] Line 1465  db=1-23286223-5
+  Q  : What's the number of the game in which Carlos Boozer (8) did the high rebounds?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE high_rebounds = 8
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Game'                pred='?'
+  COND gold: High rebounds = 'carlos boozer (8)'
+  COND pred: High rebounds = '8'
+  WHY:       wrong_val(High rebounds: gold='carlos boozer (8)' pred=8)
+  ──────────────────────────────────────────────────────────────────────
+
+  [8] Line 1524  db=1-2387461-1
+  Q  : How many games played have 4.7 as points per game?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE points_per_game = 4.7
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='Games played'        pred='?'
+  COND gold: Points per game = '4.7'
+  COND pred: Points per game OP 'ts_per_game'
+  WHY:       wrong_val(Points per game: gold=4.7 pred='ts_per_game')
+  ──────────────────────────────────────────────────────────────────────
+
+  [9] Line 2406  db=1-30087032-5
+  Q  : In what series did Charles Barkley (34) did most high points?
+  SQL: SELECT series FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE high_points = 34)
+  AGG: gold=''      pred='MAX'
+  SEL: gold='Series'              pred='High points'
+  COND gold: High points = 'charles barkley (34)'
+  COND pred: High points OP 'ts'
+  WHY:       wrong_val(High points: gold='charles barkley (34)' pred='ts')
+  ──────────────────────────────────────────────────────────────────────
+
+  [10] Line 2803  db=2-14173105-6
+  Q  : what opponent has an average less than 62 and a January average less than 6
+  SQL: SELECT opponent FROM wikisql_data WHERE avg(score) < 62 AND avg(january) < 6
+  AGG: gold=''      pred='AVG'
+  SEL: gold='Opponent'            pred='Score'
+  COND gold: Points < '62' AND January < '6'
+  COND pred: 
+  WHY:       missing_cond(2 of 2 absent)
+  ──────────────────────────────────────────────────────────────────────
+
+  [11] Line 3152  db=2-13910113-4
+  Q  : What is the number of points of the game less than number 17 with an 11-6-0 record?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE record = '11-6-0' AND points < 17
+  AGG: gold='SUM'   pred='COUNT'
+  SEL: gold='Points'              pred='?'
+  COND gold: Record = '11-6-0' AND Game # < '17'
+  COND pred: Record = '11-6-0' AND Points OP 'ts'
+  WHY:       op_mismatch(Record) | no_match(Game #='17')
+  ──────────────────────────────────────────────────────────────────────
+
+  [12] Line 3261  db=2-1493427-1
+  Q  : Record description of maximum load to m (ft), and a Date of 23 september 1961 is what pilot?
+  SQL: SELECT pilot FROM wikisql_data WHERE record_description = (SELECT MAX(record_description) FROM wikisql_data WHERE type =
+  AGG: gold=''      pred='MAX'
+  SEL: gold='Pilot'               pred='Record description'
+  COND gold: Record description = 'maximum load to m (ft)' AND Date = '23 september 1961'
+  COND pred: Record description = '?'
+  WHY:       missing_cond(1 of 2 absent)
+  ──────────────────────────────────────────────────────────────────────
+
+  [13] Line 3401  db=2-15145581-1
+  Q  : How many new entries this round have clubs 2 → 1?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE clubs = 2 AND new_entries_this_round = 1
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='New entries this round'  pred='?'
+  COND gold: Clubs = '2 → 1'
+  COND pred: Clubs = '2' AND New entries this round = '1'
+  WHY:       wrong_val(Clubs: gold='2 → 1' pred=2)
+  ──────────────────────────────────────────────────────────────────────
+
+  [14] Line 3403  db=2-15145581-1
+  Q  : How many new entries this round are there with more than 16 matches and a third round qualifying?
+  SQL: SELECT COUNT(*) FROM wikisql_data WHERE new_entries_this_round > 0 AND matches > 16 AND round = 3
+  AGG: gold=''      pred='COUNT'
+  SEL: gold='New entries this round'  pred='?'
+  COND gold: Matches > '16' AND Round = 'third round qualifying'
+  COND pred: New entries this round > '0' AND Matches > '16' AND Round = '3'
+  WHY:       op_mismatch(Matches) | wrong_val(Round: gold='third round qualifying' pred=3)
+  ──────────────────────────────────────────────────────────────────────
+
+  [15] Line 3441  db=2-14001393-4
+  Q  : What league has a number less than 122, and least wins as the record?
+  SQL: SELECT league FROM wikisql_data WHERE number < 122 AND record = (SELECT MIN(record) FROM wikisql_data)
+  AGG: gold=''      pred='MIN'
+  SEL: gold='League'              pred='Record'
+  COND gold: Number < '122' AND Record = 'least wins'
+  COND pred: Number < '122' AND Record = '?'
+  WHY:       op_mismatch(Number) | wrong_val(Record: gold='least wins' pred='?')
+  ──────────────────────────────────────────────────────────────────────

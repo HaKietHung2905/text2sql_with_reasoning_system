@@ -25,51 +25,69 @@ except ImportError:
 WIKISQL_ANNOTATION_RULES = """\
 ━━━ WIKISQL ANNOTATION RULES (follow exactly) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():
-   • "What is the X?" / "Which X?" / "Name the X"
-   • 'The [date/event] of X applied to what Y?' → MAX or COUNT
-   • 'The [date/event] of X had a Y of what?' → MAX
+   Applies to: "What is the X?" / "Which X?" / "Name the X" /
+               "The [date] of X had a Y of what?" / "The [event] applied to what X?"
    → SELECT MAX(col) FROM wikisql_data WHERE ...
-
+   Examples:
+     "What is the pick number for Northwestern?"
+       → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
+     "What is the United States rank?"
+       → SELECT COUNT(rank) FROM wikisql_data WHERE country = 'United States'
+     "Name the finished position for Kerry Katona"
+       → SELECT COUNT(finished) FROM wikisql_data WHERE celebrity = 'Kerry Katona'
+ 
 2. MINIMUM RETRIEVAL — use MIN() when lowest/earliest/first is implied:
-   • "What is the lowest/first/earliest X?" / "Name the minimum X"
    → SELECT MIN(col) FROM wikisql_data WHERE ...
-   • Example: "Name the minimum ties played for 6 years."
+   Example: "Name the minimum ties played for 6 years."
      → SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6
-
-3. COUNTING — always use COUNT(col), never COUNT(*):
-   • "How many X?" / "What is the total number of X?"
+ 
+3. COUNTING RECORDS — use COUNT(col), NEVER COUNT(*):
+   Applies to: "How many [entities]?" / "What is the total number of X?"
+               "Name the number of X" / "Number of X with Y"
    → SELECT COUNT(col) FROM wikisql_data WHERE ...
-   • Use the column being counted, not *.
-   • Example: "How many players played in 2005-06?"
-     → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
-
-3b. EXCEPTION — plain SELECT when a schema column already holds the count:
-   • If a column named goals/viewers/points/seats/attendance exists in the
-     schema and the question asks "how many [that noun]", use plain SELECT.
-   • "How many goals were scored in 2005-06?"
-     → SELECT goals FROM wikisql_data WHERE season = '2005-06'
-   Rule: check the schema first — if the noun maps to a column name, SELECT it.
-3c. COUNT vs SUM — critical distinction:
-   • 'total number of X' → COUNT(col)  ← ALWAYS, even if X sounds numeric
-   • 'total X' (bare)    → SUM(col)
-   • 'how many X'        → COUNT(col)
-   • Example: 'total number of episode count' → COUNT(final_episode_count)
-   • Example: 'total attendance'              → SUM(attendance)
-
-4. WHERE conditions — include ALL filters explicitly stated, nothing more:
+   Examples:
+     "How many players are on the Toronto team in 2005-06?"
+       → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
+     "Name the total number of points for South Korea"
+       → SELECT COUNT(points) FROM wikisql_data WHERE country = 'South Korea'
+   NEVER COUNT(*), always COUNT(specific_column).
+   NEVER COUNT(DISTINCT ...), always COUNT(col).
+ 
+4. NUMERIC VALUE IN A COLUMN — use bare SELECT (NOT SUM, NOT COUNT):
+   CRITICAL: When the question asks for a numeric quantity that IS ALREADY
+   stored in a column, use plain SELECT — NOT SUM, NOT AVG.
+   Test: if the column name contains the answer unit (goals, viewers, votes,
+         points, passengers, runs), use SELECT col.
+   Examples:
+     "How many goals were scored in the 2005-06 season?"  (goals = column)
+       → SELECT goals FROM wikisql_data WHERE season = '2005-06'
+       ✗ NOT: SELECT SUM(goals) FROM wikisql_data WHERE season = '2005-06'
+     "How many viewers did the David Nutter episode draw in?"  (viewers = column)
+       → SELECT u_s_viewers_million FROM wikisql_data WHERE directed_by = 'David Nutter'
+       ✗ NOT: SELECT SUM(u_s_viewers_million) FROM ...
+     "How many votes were cast in midlothian?"  (votes = column)
+       → SELECT votes_cast FROM wikisql_data WHERE constituency = 'midlothian'
+ 
+5. TOTAL/SUM OVER MULTIPLE ROWS — use SUM() only when combining across many rows:
+   Use SUM ONLY when no WHERE condition uniquely identifies a single row.
+   "What is the total X for all Y?" (no unique filter) → SUM(X)
+   NEVER use SUM when a WHERE clause uniquely identifies one row.
+ 
+6. WHERE conditions — include ALL filters explicitly stated, nothing more:
    • Add a condition for EVERY filter criterion named in the question.
    • Do NOT invent, infer, or add conditions not present in the question.
    • SUPERLATIVE RULE: words like "tallest", "largest", "most recent" are NOT
      WHERE conditions — represent them as MAX/MIN in the SELECT clause instead.
      WRONG: WHERE height = (SELECT MAX(height) FROM wikisql_data)
-     RIGHT:  SELECT MAX(height) FROM wikisql_data WHERE floors = 35
+     RIGHT: SELECT MAX(height) FROM wikisql_data WHERE floors = 35
    • No subqueries, nested SELECTs, or (SELECT ...) anywhere in the query.
-
-5. COMPOUND WHERE VALUES — never split on commas:
+   • No ORDER BY ... LIMIT 1. Use MAX()/MIN() instead.
+ 
+7. COMPOUND WHERE VALUES — never split on commas:
    • WHERE regular_season = '4th, Atlantic Division'  ← correct
    • WHERE regular_season = '4th' AND ...             ← wrong
-
-6. String values: always quote with single quotes.
+ 
+8. String values: always quote with single quotes.
    Numeric values: do NOT quote.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
@@ -422,6 +440,11 @@ class SQLGenerator:
             "- Table name is always: wikisql_data\n"
             "- Use EXACTLY the column names from the schema below (case-preserved).\n\n"
             "- NEVER use subqueries, nested SELECT, or correlated queries.\n"
+            "- COUNTING RULE: 'how many [entities]?' / 'number of [X]?' → COUNT(col), not bare SELECT.\n"
+            "  Example: 'How many players on Toronto in 2005-06?'\n"
+            "  → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n"
+            "- NUMERIC RULE: 'how many viewers/goals/points for Y?' (column stores the value) → SELECT col.\n"
+            "  → SELECT viewers FROM wikisql_data WHERE director = 'X'  (NOT SUM or COUNT)\n"
             f"{WIKISQL_ANNOTATION_RULES}\n"
             f"Database Schema:\n{schema_str}\n\n"
             "EXAMPLES:\n"

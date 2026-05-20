@@ -1,0 +1,60 @@
+#!/bin/bash
+# run_regen.sh — Re-generate "how many" predictions with COUNT rules
+# Usage: bash run_regen.sh
+
+set -e
+
+PREDICT="results/predictions_wikisql_v2.tsv"
+QUESTIONS="data/raw/wikisql/dev_spider_format.json"
+DB="data/raw/wikisql/database"
+SCRIPT="scripts/baselines/regen_failed.py"
+
+LINES="59 81 82 162 229 250 285 286 287 306 308 310 384 417 520 521 588 601 687 688 695 772 777 792 834 835 839 876 879 894 898 903 916 917 918 929 957 1033 1034 1035 1049 1064 1065 1073 1163 1164 1170 1360 1372 1391 1413 1481 1485 1499 1509 1522 1525 1526 1553 1585 1586 1587 1593 1598 1611 1727 1731 1740 1746 1774 1775 1782 1836 1889 1890 1897 1932 1934 1984 1987 1988 2027 2088 2102 2104 2119 2120 2131 2235 2236 2238 2243 2264 2269 2275 2297 2319 2322 2346 2392 2489 2550 2556 2571 2576 2577 2578 2603 2605 2644 2659 2679 2714 2775 2805 2857 3011 3087 3089 3096 3102 3105 3151 3195 3198 3256 3258 3294 3352 3459 3468 3487 3523 3536 3563 3590 3620 3639 3647 3649 3709 3741 3765 3818 3957 3958 3959 3991 3997 4000 4058 4145 4285 4315 4322 4341 4366 4453 4454 4565 4570 4572 4618 4675 4711 4745 4806 4908 4911 4951 5176 5213 5215 5287 5376 5405 5483 5484 5507 5520 5576 5606 5643 5668 5695 5714 5766 5807 5866 5919 5930 6009 6035 6036 6039 6041 6054 6056 6125 6194 6247 6250 6273 6275 6281 6282 6359 6378 6390 6407 6438 6439 6440 6442 6444 6445 6462 6479 6481 6587 6588 6679 6688 6692"
+
+# Split into batches of 50
+python3 - << 'PYEOF'
+import subprocess, sys
+
+lines = """59 81 82 162 229 250 285 286 287 306 308 310 384 417 520 521 588 601 687 688 695 772 777 792 834 835 839 876 879 894 898 903 916 917 918 929 957 1033 1034 1035 1049 1064 1065 1073 1163 1164 1170 1360 1372 1391 1413 1481 1485 1499 1509 1522 1525 1526 1553 1585 1586 1587 1593 1598 1611 1727 1731 1740 1746 1774 1775 1782 1836 1889 1890 1897 1932 1934 1984 1987 1988 2027 2088 2102 2104 2119 2120 2131 2235 2236 2238 2243 2264 2269 2275 2297 2319 2322 2346 2392 2489 2550 2556 2571 2576 2577 2578 2603 2605 2644 2659 2679 2714 2775 2805 2857 3011 3087 3089 3096 3102 3105 3151 3195 3198 3256 3258 3294 3352 3459 3468 3487 3523 3536 3563 3590 3620 3639 3647 3649 3709 3741 3765 3818 3957 3958 3959 3991 3997 4000 4058 4145 4285 4315 4322 4341 4366 4453 4454 4565 4570 4572 4618 4675 4711 4745 4806 4908 4911 4951 5176 5213 5215 5287 5376 5405 5483 5484 5507 5520 5576 5606 5643 5668 5695 5714 5766 5807 5866 5919 5930 6009 6035 6036 6039 6041 6054 6056 6125 6194 6247 6250 6273 6275 6281 6282 6359 6378 6390 6407 6438 6439 6440 6442 6444 6445 6462 6479 6481 6587 6588 6679 6688 6692""".split()
+
+batch_size = 50
+batches = [lines[i:i+batch_size] for i in range(0, len(lines), batch_size)]
+total = len(batches)
+
+print(f"Total lines: {len(lines)}, batches: {total} (size {batch_size})")
+
+for i, batch in enumerate(batches):
+    print(f"\n{'='*60}")
+    print(f"Batch {i+1}/{total} — lines {batch[0]}..{batch[-1]} ({len(batch)} queries)")
+    print(f"{'='*60}")
+
+    cmd = [
+        "python3", "scripts/baselines/regen_failed.py",
+        "--predict",   "results/predictions_wikisql_v2.tsv",
+        "--questions", "data/raw/wikisql/dev_spider_format.json",
+        "--db",        "data/raw/wikisql/database",
+        "--use_reasoning_bank",
+        "--use_chromadb",
+        "--use_semantic",
+        "--no_backup",
+        "--delay", "0.3",
+        "--lines", *batch,
+    ]
+
+    result = subprocess.run(cmd)
+    if result.returncode != 0:
+        print(f"\n✗ Batch {i+1} failed (exit {result.returncode}). Continuing...")
+
+print(f"\n{'='*60}")
+print("All batches done. Re-evaluating...")
+print(f"{'='*60}")
+
+eval_cmd = [
+    "python3", "scripts/evaluate_wikisql.py",
+    "--gold",    "data/raw/wikisql/dev_spider_format.json",
+    "--table",   "data/raw/wikisql/tables.json",
+    "--predict", "results/predictions_wikisql_v2.tsv",
+    "--etype",   "all",
+]
+subprocess.run(eval_cmd)
+PYEOF

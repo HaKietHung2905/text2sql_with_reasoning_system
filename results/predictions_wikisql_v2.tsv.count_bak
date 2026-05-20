@@ -10,8 +10,8 @@ SELECT COUNT(position) FROM wikisql_data WHERE years_in_toronto = '2006-07'	1-10
 SELECT nationality FROM wikisql_data WHERE school_club_team = 'fresno state'	1-10015132-9
 SELECT school_club_team FROM wikisql_data WHERE player = 'trey johnson'	1-10015132-9
 SELECT ended_time_as_senior_g8_leader FROM wikisql_data WHERE person = 'jacques chirac'	1-10026563-1
-SELECT began_time_as_senior_g8_leader FROM wikisql_data WHERE office = 'Prime Minister of Italy'	1-10026563-1
-SELECT country_exonym FROM wikisql_data WHERE official_or_native_language_s_alphabet_script = 'Dutch, Papiamento'	1-1008653-1
+SELECT began_time_as_senior_g8_leader FROM wikisql_data WHERE office = 'prime minister of italy'	1-10026563-1
+SELECT country_endonym FROM wikisql_data WHERE official_or_native_language_s_alphabet_script = 'dutch papiamento'	1-1008653-1
 SELECT official_or_native_language_s_alphabet_script FROM wikisql_data WHERE capital_endonym = 'canberra'	1-1008653-1
 SELECT capital_endonym FROM wikisql_data WHERE capital_exonym = 'canberra'	1-1008653-1
 SELECT capital_endonym FROM wikisql_data WHERE country_endonym = 'anguilla'	1-1008653-1
@@ -22,14 +22,14 @@ SELECT no_in_series FROM wikisql_data WHERE production_code = '8ABX15'	1-1008810
 SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6	1-10295819-2
 SELECT amount_of_trees_that_require_replacement FROM wikisql_data WHERE prevailing_types = 'pine — 29.37 poplar — 26.12 acer negundo — 13.2'	1-10342194-3
 SELECT amount_of_trees_that_require_replacement FROM wikisql_data WHERE district = 'leninsky'	1-10342194-3
-SELECT SELECT district FROM wikisql_data WHERE total_amount_of_trees < 150817.6878461314 AND amount_of_old_trees = '1,928 (1.89%)'	1-10342194-3
+SELECT district FROM wikisql_data WHERE total_amount_of_trees < 150817.6878461314 AND amount_of_old_trees = 1928	1-10342194-3
 SELECT amount_of_trees_that_require_replacement FROM wikisql_data WHERE district = 'motovilikhinsky'	1-10342194-3
 SELECT total_amount_of_trees FROM wikisql_data WHERE district = 'leninsky'	1-10342194-3
 SELECT district FROM wikisql_data WHERE prevailing_types = 'acer negundo — 30.22 tilia — 18.6 poplar — 15.23'	1-10342194-3
 SELECT in_ames FROM wikisql_data WHERE since_beginning_of_big_12 = overall_record	1-10429820-13
 SELECT u_s_open_cup FROM wikisql_data WHERE regular_season = '4th' AND division = 'atlantic'	1-1046170-5
-SELECT COUNT(division) FROM wikisql_data WHERE u_s_open_cup = 'Did not qualify' AND year = '2003'	1-1046170-5
-SELECT SELECT u_s_open_cup FROM wikisql_data WHERE playoffs = 'Division Semifinals'	1-1046170-5
+SELECT COUNT(*) FROM wikisql_data WHERE year = 2003 AND u_s_open_cup = 'did not qualify'	1-1046170-5
+SELECT playoffs FROM wikisql_data WHERE u_s_open_cup = 'semifinals'	1-1046170-5
 SELECT playoffs FROM wikisql_data WHERE regular_season = '1st, atlantic'	1-1046170-5
 SELECT playoffs FROM wikisql_data WHERE u_s_open_cup = '1st round'	1-1046170-5
 SELECT COUNT(*) FROM wikisql_data WHERE col_2nd_leg = '7-2' OR aggregate = '7-2'	1-1061075-1
@@ -52,7 +52,7 @@ SELECT COUNT(winning_driver) FROM wikisql_data WHERE rnd = 5	1-10707176-2
 SELECT min(rd) FROM wikisql_data WHERE name = 'tony bettenhausen 200'	1-10706879-3
 SELECT winning_team FROM wikisql_data WHERE name = 'los angeles times 500'	1-10706879-3
 SELECT COUNT(winning_driver) FROM wikisql_data WHERE name = 'kraco twin 125 (r2)'	1-10706879-3
-SELECT SELECT name FROM wikisql_data WHERE winning_driver = 'Johnny Rutherford'	1-10706879-3
+SELECT rd FROM wikisql_data WHERE winning_driver = 'johnny rutherford'	1-10706879-3
 SELECT COUNT(*) FROM wikisql_data WHERE rd = 10 AND fastest_lap IS NOT NULL	1-10706879-3
 SELECT licence_award_date FROM wikisql_data WHERE region = 'north east england'	1-10712301-5
 SELECT growth_2000_2008 FROM wikisql_data WHERE nation = 'ethiopia'	1-10733530-3
@@ -68,7 +68,7 @@ SELECT score FROM wikisql_data WHERE date = 'November 12'	1-10812293-3
 SELECT high_assists FROM wikisql_data WHERE team = 'san antonio'	1-10812293-3
 SELECT high_points FROM wikisql_data WHERE game = 4	1-10812293-3
 SELECT location_attendance FROM wikisql_data WHERE date = 'November 20'	1-10812293-3
-SELECT no_in_series FROM wikisql_data WHERE canadian_airdate = '11 February 2008'	1-10935205-1
+SELECT no_in_series FROM wikisql_data WHERE canadian_airdate = '11 february 2008'	1-10935205-1
 SELECT production_code FROM wikisql_data WHERE us_airdate = '4 april 2008'	1-10935205-1
 SELECT max(no_in_season) FROM wikisql_data WHERE title = 'don''t stop believin'	1-10935205-1
 SELECT canadian_airdate FROM wikisql_data WHERE us_airdate = '8 august 2008'	1-10935205-1
@@ -84,16 +84,16 @@ SELECT city_district_stadtteil FROM wikisql_data WHERE no_col = 47	1-10992-3
 SELECT league FROM wikisql_data WHERE mascot = 'Raiders'	1-11044765-1
 SELECT league FROM wikisql_data WHERE school = 'Galena'	1-11044765-1
 SELECT location FROM wikisql_data WHERE mascot = 'lancers'	1-11044765-1
-SELECT SELECT location FROM wikisql_data WHERE mascot = 'Miners'	1-11044765-1
+SELECT location FROM wikisql_data	1-11044765-1
 SELECT school FROM wikisql_data WHERE mascot = 'raiders'	1-11044765-1
 SELECT tournament FROM wikisql_data WHERE date = 'nov 3, 2002'	1-1121352-2
-SELECT SELECT tournament FROM wikisql_data WHERE date = 'Mar 28, 2004'	1-1121352-2
+SELECT tournament FROM wikisql_data WHERE margin_of_victory = (SELECT MAX(margin_of_victory) FROM wikisql_data WHERE date = 'mar 28, 2004') AND date = 'mar 28, 2004'	1-1121352-2
 SELECT to_par FROM wikisql_data WHERE date = 'may 4, 2003'	1-1121352-2
 SELECT date FROM wikisql_data WHERE runner_s_up = 'pat hurst juli inkster'	1-1121352-2
 SELECT COUNT(*) FROM wikisql_data WHERE character = 'rick stetler'	1-11210576-4
 SELECT actor FROM wikisql_data WHERE first_episode = "ambush"	1-11210576-4
 SELECT character FROM wikisql_data WHERE fate = 'deceased: knife wound'	1-11210576-4
-SELECT SELECT COUNT(final_episode_count) FROM wikisql_data WHERE first_episode = '"L.A."'	1-11210576-4
+SELECT SUM(final_episode_count) FROM wikisql_data WHERE first_episode = "l.a."	1-11210576-4
 SELECT actor FROM wikisql_data WHERE character = 'judge joseph ratner'	1-11210576-4
 SELECT first_episode FROM wikisql_data WHERE final_episode = "rio"	1-11210576-4
 SELECT semi_finalist_2 FROM wikisql_data WHERE year = 2007	1-11214772-2
@@ -101,7 +101,7 @@ SELECT COUNT(*) FROM wikisql_data WHERE year = 2005 AND semi_finalist_1 = 'Weste
 SELECT score FROM wikisql_data WHERE semi_finalist_1 = 'Miami'	1-11214772-2
 SELECT runner_up FROM wikisql_data WHERE semi_finalist_1 = 'Embry-Riddle'	1-11214772-2
 SELECT location FROM wikisql_data WHERE year = 2007	1-11214772-2
-SELECT SELECT round FROM wikisql_data WHERE pole_position = 'Michael Schumacher' AND fastest_lap = 'David Coulthard' AND winning_constructor = 'McLaren-Mercedes'	1-1132600-3
+SELECT round FROM wikisql_data WHERE pole_position = 'michael schumacher' AND fastest_lap = 'david coulthard' AND winning_constructor = 'mclaren - mercedes'	1-1132600-3
 SELECT COUNT(*) FROM wikisql_data WHERE grand_prix = 'italian grand prix'	1-1132600-3
 SELECT report FROM wikisql_data WHERE grand_prix = 'Belgian Grand Prix'	1-1132600-3
 SELECT fastest_lap FROM wikisql_data WHERE grand_prix = 'Belgian Grand Prix'	1-1132600-3
@@ -123,15 +123,15 @@ SELECT total FROM wikisql_data WHERE floor_exercise = 9.287	1-11542215-3
 SELECT margin FROM wikisql_data WHERE runner_s_up = 'phil mickelson'	1-11570261-1
 SELECT runner_s_up FROM wikisql_data WHERE col_54_holes = 'tied for lead' AND margin = '5 strokes'	1-11570261-1
 SELECT championship FROM wikisql_data WHERE col_54_holes = '1 shot lead' AND runner_s_up = 'chris dimarco'	1-11570261-1
-SELECT MIN(year) FROM wikisql_data WHERE winning_score = '−8 (71-63-69-69=272)'	1-11570261-1
-SELECT SELECT championship FROM wikisql_data WHERE winning_score = '−12 (74-66-65-71=276)'	1-11570261-1
-SELECT SELECT col_54_holes FROM wikisql_data WHERE winning_score = '−19 (67-66-67-69=269)'	1-11570261-1
-SELECT SELECT title FROM wikisql_data WHERE original_air_date = 'January 18, 2009'	1-11589522-3
+SELECT MIN(year) FROM wikisql_data WHERE winning_score = -8	1-11570261-1
+SELECT championship FROM wikisql_data WHERE winning_score = -12	1-11570261-1
+SELECT col_54_holes FROM wikisql_data WHERE winning_score = '-19'	1-11570261-1
+SELECT title FROM wikisql_data WHERE original_air_date = 'January 18, 2009'	1-11589522-3
 SELECT original_air_date FROM wikisql_data WHERE written_by = 'iain morris & damon beesley'	1-11589522-3
 SELECT allied_forces FROM wikisql_data WHERE target = 'woensdrecht'	1-1160161-12
 SELECT target_code_allied FROM wikisql_data WHERE target = 'ghent/sint-denijs-westrem'	1-1160161-12
 SELECT date_of_entry FROM wikisql_data WHERE chart = 'uk albums top 75'	1-1160304-2
-SELECT SUM(weeks_on_peak) FROM wikisql_data WHERE chart = 'Ireland Albums Top 75'	1-1160304-2
+SELECT SUM(weeks_on_peak) FROM wikisql_data WHERE chart = 'ireland albums top 75'	1-1160304-2
 SELECT date_of_exit FROM wikisql_data WHERE chart = 'Dutch Albums Top 100'	1-1160304-2
 SELECT COUNT(*) FROM wikisql_data WHERE purity = 'falling'	1-11609814-1
 SELECT permanence_of_the_body FROM wikisql_data WHERE purity = 'rudra'	1-11609814-1
@@ -143,7 +143,7 @@ SELECT original_air_date FROM wikisql_data WHERE title = 'firestorm'	1-11630008-
 SELECT title FROM wikisql_data WHERE production_code = '624'	1-11630008-8
 SELECT original_air_date FROM wikisql_data WHERE written_by = 'Karen Felix and Don Woodard'	1-11630008-8
 SELECT SUM(species_in_the_peruvian_amazon) FROM wikisql_data WHERE species_in_the_world = 8411	1-11727969-1
-SELECT MIN(species_in_the_peruvian_amazon) FROM wikisql_data WHERE taxonomy = 'ferns (Pteridophyta)'	1-11727969-1
+SELECT MIN(species_in_the_peruvian_amazon) FROM wikisql_data WHERE taxonomy = 'ferns (pteridophyta)'	1-11727969-1
 SELECT species_in_the_world FROM wikisql_data WHERE peruvian_amazon_vs_peru_percent = 63	1-11727969-1
 SELECT min(species_in_the_peruvian_amazon) FROM wikisql_data WHERE species_in_peru = 1000	1-11727969-1
 SELECT MIN(species_in_the_peruvian_amazon) FROM wikisql_data WHERE peru_vs_world_percent = 7	1-11727969-1
@@ -151,15 +151,15 @@ SELECT max(peru_vs_world_percent) FROM wikisql_data WHERE species_in_the_world =
 SELECT school_club_team_country FROM wikisql_data WHERE position = 'forward' AND no_s = 10	1-11734041-2
 SELECT height_in_ft FROM wikisql_data WHERE school_club_team_country = 'hartford'	1-11734041-2
 SELECT years_for_rockets FROM wikisql_data WHERE school_club_team_country = 'LaSalle'	1-11734041-2
-SELECT SELECT position FROM wikisql_data WHERE no_s = '35' AND height_in_ft = '6-6'	1-11734041-2
+SELECT position FROM wikisql_data WHERE no_s = 35 AND height_in_ft = 6.5	1-11734041-2
 SELECT player FROM wikisql_data WHERE years_for_rockets = '1986-92'	1-11734041-9
-SELECT SELECT no_s FROM wikisql_data WHERE school_club_team_country = 'Southern University'	1-11734041-9
+SELECT COUNT(*) FROM wikisql_data WHERE school_club_team_country = 'southern university'	1-11734041-9
 SELECT height_in_ft FROM wikisql_data WHERE player = 'jones, major major jones'	1-11734041-9
 SELECT member FROM wikisql_data WHERE week_sent_to_third_island = 1	1-11764007-2
 SELECT week_sent_to_third_island FROM wikisql_data WHERE week_arrived_on_main_island = 6	1-11764007-2
 SELECT COUNT(*) FROM wikisql_data WHERE week_arrived_on_main_island = 4	1-11764007-2
 SELECT week_arrived_on_main_island FROM wikisql_data WHERE original_tribe = 'shark' AND week_sent_to_third_island = 14	1-11764007-2
-SELECT SELECT no_of_sikhs FROM wikisql_data WHERE country = "Japan"	1-11800185-1
+SELECT COUNT(no_of_sikhs) FROM wikisql_data WHERE country = 'Japan'	1-11800185-1
 SELECT evening_gown FROM wikisql_data WHERE swimsuit = 9.61	1-11884814-3
 SELECT swimsuit FROM wikisql_data WHERE interview = 9.74	1-11884814-3
 SELECT country FROM wikisql_data WHERE interview = 9.40 AND average = 9.44	1-11884814-3
@@ -168,10 +168,10 @@ SELECT average FROM wikisql_data WHERE swimsuit = 9.57	1-11884814-3
 SELECT interview FROM wikisql_data WHERE country = 'Hawaii'	1-11884814-3
 SELECT date FROM wikisql_data WHERE game = 50	1-11960407-5
 SELECT high_points FROM wikisql_data WHERE game = 49	1-11960407-5
-SELECT SELECT COUNT(DISTINCT team) FROM wikisql_data WHERE location_attendance = 'Philips Arena 19,335'	1-11961582-6
-SELECT SELECT team FROM wikisql_data WHERE location_attendance = 'Philips Arena 18,227'	1-11961582-6
+SELECT COUNT(DISTINCT team) FROM wikisql_data WHERE location_attendance = 19335	1-11961582-6
+SELECT team FROM wikisql_data WHERE location_attendance = 18227	1-11961582-6
 SELECT record FROM wikisql_data WHERE score = 'w 98–91'	1-11964047-7
-SELECT record FROM wikisql_data WHERE score = 'L 109–116 2OT'	1-11964047-7
+SELECT record FROM wikisql_data WHERE score = '109–116 2OT'	1-11964047-7
 SELECT visitor FROM wikisql_data WHERE record = '25–18'	1-11964047-7
 SELECT visitor FROM wikisql_data WHERE leading_scorer = 'roy : 25'	1-11964047-7
 SELECT COUNT(date) FROM wikisql_data WHERE leading_scorer = 'gordon : 32'	1-11964047-7
@@ -199,19 +199,19 @@ SELECT swimsuit FROM wikisql_data WHERE average = 8.670	1-12094609-1
 SELECT evening_gown FROM wikisql_data WHERE preliminaries = 8.977	1-12094609-1
 SELECT preliminaries FROM wikisql_data WHERE state = 'south dakota'	1-12094609-1
 SELECT evening_gown FROM wikisql_data WHERE state = 'south dakota'	1-12094609-1
-SELECT COUNT(average) FROM wikisql_data WHERE evening_gown = '8.988'	1-12094609-1
+SELECT SUM(average) FROM wikisql_data WHERE evening_gown = 8.988	1-12094609-1
 SELECT mens_singles FROM wikisql_data WHERE womens_doubles = 'marina yakusheva elena shimko'	1-12104319-1
 SELECT womens_singles FROM wikisql_data WHERE mens_singles = 'imam sodikin irawan andi tandaputra'	1-12104319-1
 SELECT womens_singles FROM wikisql_data WHERE womens_doubles = 'naoko fukuman kurumi yonao'	1-12104319-1
 SELECT womens_singles FROM wikisql_data WHERE mens_doubles = 'marcus ellis' AND womens_doubles = 'gabrielle white'	1-12104319-1
 SELECT mens_singles FROM wikisql_data WHERE year = 2008	1-12104319-1
 SELECT gdp_bn FROM wikisql_data WHERE capital = 'capital'	1-12108-1
-SELECT SELECT population FROM wikisql_data WHERE area_sq_mi = 'Area (sq. mi.)'	1-12108-1
+SELECT population FROM wikisql_data WHERE area_sq_mi = area_sq_mi	1-12108-1
 SELECT light_vehicle FROM wikisql_data WHERE heavy_vehicle_2_axles = 'r87.00'	1-1211545-2
 SELECT name FROM wikisql_data WHERE heavy_vehicle_2_axles = 'r87.00'	1-1211545-2
 SELECT heavy_vehicle_3_4_axles FROM wikisql_data WHERE name = 'verkeerdevlei toll plaza'	1-1211545-2
 SELECT location FROM wikisql_data WHERE name = 'carousel toll plaza'	1-1211545-2
-SELECT light_vehicle FROM wikisql_data WHERE location = 'Bela Bela to Modimolle'	1-1211545-2
+SELECT light_vehicle FROM wikisql_data WHERE location = 'bela bela - modimolle'	1-1211545-2
 SELECT name FROM wikisql_data WHERE heavy_vehicle_2_axles = 'r20.50'	1-1211545-2
 SELECT inclination FROM wikisql_data WHERE alt_name = 'OPS-1584'	1-12141496-1
 SELECT max(apogee_km) FROM wikisql_data WHERE alt_name = 'samos f3-3'	1-12141496-1
@@ -222,19 +222,19 @@ SELECT second_baseman FROM wikisql_data WHERE first_baseman = 'nomar garciaparra
 SELECT rightfielder FROM wikisql_data WHERE starting_pitcher = 'vicente padilla'	1-12142298-2
 SELECT shortstop FROM wikisql_data WHERE second_baseman = 'jim lefebvre' AND centerfielder = 'willie davis' AND starting_pitcher = 'don drysdale'	1-12142298-2
 SELECT top_scorer FROM wikisql_data WHERE gf = 41	1-1218784-1
-SELECT SELECT gf FROM wikisql_data WHERE season = '2005-06'	1-1218784-1
+SELECT SUM(goals) FROM wikisql_data WHERE season = '2005-06'	1-1218784-1
 SELECT COUNT(*) FROM wikisql_data WHERE rank = 16	1-1218784-1
 SELECT manager FROM wikisql_data WHERE rank = 16	1-1218784-1
-SELECT SELECT rank FROM wikisql_data WHERE manager = 'Rob Mcdonald'	1-1218784-1
-SELECT SELECT order_col FROM wikisql_data WHERE original_artist = 'Rickie Lee Jones'	1-12310814-1
-SELECT SELECT result FROM wikisql_data WHERE episode = 'Top 3'	1-12310814-1
+SELECT rank FROM wikisql_data WHERE manager = 'rob mcdonald'	1-1218784-1
+SELECT COUNT(order_col) FROM wikisql_data WHERE original_artist = 'Rickie Lee Jones'	1-12310814-1
+SELECT result FROM wikisql_data WHERE order_col <= 3	1-12310814-1
 SELECT COUNT(*) FROM wikisql_data WHERE original_artist = 'anna nalick'	1-12310814-1
 SELECT song_choice FROM wikisql_data WHERE original_artist = 'Rickie Lee Jones'	1-12310814-1
-SELECT SELECT original_artist FROM wikisql_data WHERE episode = 'Top 3'	1-12310814-1
+SELECT original_artist FROM wikisql_data WHERE order_col <= 3	1-12310814-1
 SELECT of_seats_won FROM wikisql_data WHERE election = '1974'	1-123462-2
 SELECT COUNT(*) FROM wikisql_data WHERE of_total_votes = 2582322	1-123462-2
 SELECT election FROM wikisql_data WHERE of_seats_won = 65	1-123462-2
-SELECT SELECT election FROM wikisql_data WHERE of_candidates_nominated = 262	1-123462-2
+SELECT election FROM wikisql_data WHERE of_candidates_nominated = 262	1-123462-2
 SELECT min(of_total_votes) FROM wikisql_data	1-123462-2
 SELECT strongs_words_compounded FROM wikisql_data WHERE english_spelling = 'jonadab'	1-1242447-1
 SELECT strongs_words_compounded FROM wikisql_data WHERE strongs_transliteration = 'yowyariyb'	1-1242447-1
@@ -249,7 +249,7 @@ SELECT COUNT(*) FROM wikisql_data WHERE year = 1947	1-12555835-1
 SELECT MIN(population_mareeba) FROM wikisql_data	1-12555835-1
 SELECT COUNT(u_s_viewers_millions) FROM wikisql_data WHERE title = "Buzzkill"	1-12570759-2
 SELECT COUNT(*) FROM wikisql_data WHERE u_s_viewers_millions = 12.72	1-12570759-2
-SELECT SELECT u_s_viewers_millions FROM wikisql_data WHERE directed_by = 'Rob Bailey' AND written_by = 'Pam Veasey'	1-12570759-2
+SELECT COUNT(*) FROM wikisql_data WHERE directed_by = 'Rob Bailey' AND written_by = 'Pam Veasey'	1-12570759-2
 SELECT COUNT(*) FROM wikisql_data WHERE immunity = 'yes' AND eliminated = 'Wanda'	1-1272844-2
 SELECT episode_title FROM wikisql_data WHERE eliminated = 'Jenn'	1-1272844-2
 SELECT vote FROM wikisql_data WHERE air_date = 'May 5, 2005'	1-1272844-2
@@ -264,14 +264,14 @@ SELECT try_bonus FROM wikisql_data WHERE points_against = 430	1-12792876-4
 SELECT losing_bonus FROM wikisql_data WHERE points = 96	1-12792876-4
 SELECT points_against FROM wikisql_data WHERE points = 51	1-12792876-4
 SELECT tries_against FROM wikisql_data WHERE points = 87	1-12792876-4
-SELECT SELECT tries_against FROM wikisql_data WHERE drawn = 'drawn' is not a valid response as we don't know the value of drawn. A more appropriate response is	1-12792876-4
+SELECT tries_against FROM wikisql_data WHERE drawn = (SELECT MAX(drawn) FROM wikisql_data)	1-12792876-4
 SELECT losing_bonus FROM wikisql_data WHERE played = 27	1-12792876-4
 SELECT rear_sight FROM wikisql_data WHERE colt_model_no = 735	1-12834315-1
 SELECT colt_model_no FROM wikisql_data WHERE name = 'GAU-5A/A' AND bayonet_lug = 'no' AND case_deflector = 'no' AND stock = '2nd generation'	1-12834315-1
 SELECT muzzle_device FROM wikisql_data WHERE hand_guards = 'round'	1-12834315-1
 SELECT winners_from_previous_round FROM wikisql_data WHERE clubs_involved = 8	1-1281200-1
 SELECT new_entries_this_round FROM wikisql_data WHERE round = 'third round'	1-1281200-1
-SELECT clubs_remaining FROM wikisql_data WHERE new_entries_this_round = '8'	1-1281200-1
+SELECT clubs_remaining FROM wikisql_data WHERE new_entries_this_round = 8	1-1281200-1
 SELECT winners_from_previous_round FROM wikisql_data WHERE phase = 'first phase' AND clubs_involved = 16	1-1281200-1
 SELECT phase FROM wikisql_data WHERE new_entries_this_round = 12	1-1281200-1
 SELECT submitting_country FROM wikisql_data WHERE original_title = 'miehen työ'	1-12842068-1
@@ -282,9 +282,9 @@ SELECT football_stadium FROM wikisql_data WHERE enrollment = 43579	1-12896884-1
 SELECT count(*) FROM wikisql_data WHERE football_stadium = 'mosaic stadium'	1-12896884-1
 SELECT enrollment FROM wikisql_data WHERE football_stadium = 'foote field'	1-12896884-1
 SELECT COUNT(*) FROM wikisql_data WHERE enrollment = 19082	1-12896884-1
-SELECT points FROM wikisql_data WHERE country = 'South Korea'	1-13282157-3
-SELECT MAX(dismissals) FROM wikisql_data WHERE player = 'Peter McGlashan'	1-13337302-16
-SELECT SELECT stumpings FROM wikisql_data WHERE player = 'Tim Latham'	1-13337302-16
+SELECT points FROM wikisql_data WHERE country = 'south korea'	1-13282157-3
+SELECT COUNT(dismissals) FROM wikisql_data WHERE player = 'Peter McGlashan'	1-13337302-16
+SELECT COUNT(stumpings) FROM wikisql_data WHERE player = 'Tim Latham'	1-13337302-16
 SELECT rank FROM wikisql_data WHERE dismissals = 4	1-13337302-16
 SELECT COUNT(*) FROM wikisql_data WHERE catches = 2 AND stumpings = 0	1-13337302-16
 SELECT district FROM wikisql_data WHERE incumbent = 'Steve Chabot'	1-1341395-36
@@ -303,11 +303,11 @@ SELECT district FROM wikisql_data WHERE incumbent = 'Nick Lampson'	1-1341453-45
 SELECT first_elected FROM wikisql_data WHERE incumbent = 'jim mcdermott'	1-1341522-50
 SELECT status FROM wikisql_data WHERE incumbent = 'doc hastings (r)' AND opponent = 'jay inslee (d)'	1-1341522-50
 SELECT district FROM wikisql_data WHERE incumbent = 'Curt Weldon'	1-1341568-39
-SELECT SELECT champions FROM wikisql_data WHERE first_driver_s = 'Hiroki Yoshimoto ( 2005 )'	1-13416000-3
-SELECT COUNT(total_drivers) FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = 'Gianmarco Raimondo'	1-13416000-3
-SELECT SELECT champions FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = 'Vladimir Arabadzhiev ( 2010 )'	1-13416000-3
+SELECT COUNT(champions) FROM wikisql_data WHERE first_driver_s = 'hiroki yoshimoto (2005)'	1-13416000-3
+SELECT COUNT(*) FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = 'gianmarco raimondo'	1-13416000-3
+SELECT COUNT(champions) FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = "vladimir arabadzhiev ( 2010 )"	1-13416000-3
 SELECT COUNT(*) FROM wikisql_data WHERE country = 'canada'	1-13416000-3
-SELECT SELECT champions FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = 'Gianmarco Raimondo'	1-13416000-3
+SELECT COUNT(champions) FROM wikisql_data WHERE last_current_driver_s_september_22_2013 = "Gianmarco Raimondo"	1-13416000-3
 SELECT candidates FROM wikisql_data WHERE district = 'Georgia 8'	1-1341604-11
 SELECT party FROM wikisql_data WHERE district = 'Georgia 4'	1-1341604-11
 SELECT party FROM wikisql_data WHERE incumbent = 'jack thomas brinkley'	1-1341604-11
@@ -329,7 +329,7 @@ SELECT party FROM wikisql_data WHERE candidates = 'tim lee hall'	1-1341672-14
 SELECT candidates FROM wikisql_data WHERE district = 'Illinois 15'	1-1341672-14
 SELECT first_elected FROM wikisql_data WHERE incumbent = 'abner j. mikva'	1-1341672-14
 SELECT COUNT(*) FROM wikisql_data WHERE first_elected = '1944'	1-1341672-14
-SELECT COUNT(incumbent) FROM wikisql_data WHERE district = 'Alvin Bush'	1-1341930-38
+SELECT COUNT(*) FROM wikisql_data WHERE district = (SELECT district FROM wikisql_data WHERE incumbent = 'alvin bush')	1-1341930-38
 SELECT candidates FROM wikisql_data WHERE district = 'Kentucky 4'	1-1342218-17
 SELECT COUNT(*) FROM wikisql_data WHERE incumbent = 'Noble Jones Gregory' AND first_elected IS NOT NULL	1-1342218-17
 SELECT result FROM wikisql_data WHERE district = 'Kentucky 2'	1-1342218-17
@@ -349,7 +349,7 @@ SELECT party FROM wikisql_data WHERE district = 'Arkansas 6'	1-1342249-5
 SELECT MIN(first_elected) FROM wikisql_data	1-1342249-5
 SELECT party FROM wikisql_data WHERE incumbent = 'Brooks Hays'	1-1342249-5
 SELECT party FROM wikisql_data WHERE district = 'Alabama 1'	1-1342338-3
-SELECT SELECT first_elected FROM wikisql_data WHERE result = 'Lost renomination'	1-1342338-3
+SELECT COUNT(*) FROM wikisql_data WHERE result = 'lost renomination' AND first_elected != 'unknown'	1-1342338-3
 SELECT COUNT(*) FROM wikisql_data WHERE result = 'lost renomination'	1-1342338-3
 SELECT district FROM wikisql_data WHERE incumbent = 'John E. Miller'	1-1342338-5
 SELECT COUNT(*) FROM wikisql_data WHERE incumbent = 'David Delano Glover'	1-1342338-5
@@ -381,7 +381,7 @@ SELECT median_family_income FROM wikisql_data WHERE county = 'riverside'	1-13565
 SELECT median_household_income FROM wikisql_data WHERE county = 'butte'	1-1356555-2
 SELECT club FROM wikisql_data WHERE points_against = 239	1-13564702-4
 SELECT points FROM wikisql_data WHERE lost = "lost"	1-13564702-4
-SELECT SELECT tries_against FROM wikisql_data WHERE tries_for = '62'	1-13564702-4
+SELECT COUNT(tries_against) FROM wikisql_data WHERE tries_for = 62	1-13564702-4
 SELECT group_col FROM wikisql_data WHERE weight_kg = 56.5	1-1358608-2
 SELECT result FROM wikisql_data WHERE race = 'railway stakes'	1-1358608-2
 SELECT district FROM wikisql_data WHERE incumbent = 'terry kilgore'	1-13618584-2
@@ -392,7 +392,7 @@ SELECT score FROM wikisql_data WHERE team = 'san antonio'	1-13619053-4
 SELECT COUNT(*) FROM wikisql_data WHERE record = '1-3'	1-13619053-4
 SELECT team FROM wikisql_data WHERE game = 53 AND team != (SELECT team FROM wikisql_data WHERE game = 53 LIMIT 1)	1-13619135-6
 SELECT COUNT(*) FROM wikisql_data WHERE record = '26-21'	1-13619135-6
-SELECT high_assists FROM wikisql_data WHERE team = 'Minnesota'	1-13619135-7
+SELECT COUNT(*) FROM wikisql_data WHERE high_assists = 'minnesota'	1-13619135-7
 SELECT high_rebounds FROM wikisql_data WHERE team = 'charlotte'	1-13619135-7
 SELECT location_attendance FROM wikisql_data WHERE team = 'new jersey'	1-13619135-7
 SELECT date FROM wikisql_data WHERE location_attendance = 18176 AND location_attendance IS NOT NULL AND lower(location_attendance) = 'staples center'	1-13619135-7
@@ -402,7 +402,7 @@ SELECT name FROM wikisql_data WHERE first_operational = 'March 1945'	1-13636-1
 SELECT computing_mechanism FROM wikisql_data WHERE first_operational = 'February 1944'	1-13636-1
 SELECT turing_complete FROM wikisql_data WHERE name = 'atanasoff–berry computer (us)'	1-13636-1
 SELECT first_operational FROM wikisql_data WHERE programming = 'not programmable—single purpose'	1-13636-1
-SELECT SELECT country FROM wikisql_data WHERE security = '5.5'	1-13677808-1
+SELECT country FROM wikisql_data WHERE security = 5.5	1-13677808-1
 SELECT COUNT(*) FROM wikisql_data WHERE country = 'denmark' AND technology = 'ranked'	1-13677808-1
 SELECT environment FROM wikisql_data WHERE overall_average = 4.7	1-13677808-1
 SELECT migration FROM wikisql_data WHERE trade = 5.7	1-13677808-1
@@ -413,21 +413,21 @@ SELECT pa FROM wikisql_data WHERE pf = 77	1-1370559-1
 SELECT SUM(ends_won) FROM wikisql_data WHERE locale = 'Northwest Territories/Yukon'	1-1370559-1
 SELECT won FROM wikisql_data WHERE try_bonus = 8	1-13758945-3
 SELECT club FROM wikisql_data WHERE losing_bonus = 1	1-13758945-3
-SELECT COUNT(losing_bonus) FROM wikisql_data WHERE won = '10' AND points_against = '283'	1-13758945-3
+SELECT sum(losing_bonus) FROM wikisql_data WHERE won = 10 AND points_against = 283	1-13758945-3
 SELECT COUNT(points_against) FROM wikisql_data WHERE tries_for = 43	1-13758945-3
 SELECT points FROM wikisql_data WHERE tries_for = 64	1-13758945-3
 SELECT won FROM wikisql_data WHERE points_against = 597	1-13758945-3
 SELECT type FROM wikisql_data WHERE transfer_fee = '€20m'	1-13770460-3
 SELECT eu FROM wikisql_data WHERE name = 'esp'	1-13770460-3
-SELECT COUNT(n) FROM wikisql_data WHERE ends = '1 year'	1-13770460-3
+SELECT COUNT(*) FROM wikisql_data WHERE ends LIKE '%1'	1-13770460-3
 SELECT song_title FROM wikisql_data WHERE artist = 'billy vaughn'	1-13804825-2
-SELECT SELECT highest_position FROM wikisql_data WHERE artist = 'Ray Adams'	1-13805773-2
+SELECT highest_position FROM wikisql_data WHERE artist = 'ray adams'	1-13805773-2
 SELECT song_title FROM wikisql_data WHERE points = 259	1-13805773-2
 SELECT max(per_lift) FROM wikisql_data	1-13950065-1
 SELECT COUNT(*) FROM wikisql_data WHERE year_acquired = 1997	1-1397655-1
 SELECT COUNT(*) FROM wikisql_data WHERE primary_programming_source = 'chan'	1-1397655-1
 SELECT MIN(count(*)) FROM wikisql_data GROUP BY city	1-1397655-1
-SELECT SELECT city FROM wikisql_data WHERE station = 'CITV'	1-1397655-1
+SELECT city FROM wikisql_data	1-1397655-1
 SELECT station FROM wikisql_data WHERE city = 'edmonton'	1-1397655-1
 SELECT outcome FROM wikisql_data WHERE year = 1989	1-1399994-5
 SELECT COUNT(*) FROM wikisql_data WHERE partner = 'claudia kohde-kilsch eva pfaff'	1-1399994-5
@@ -445,15 +445,15 @@ SELECT MIN(games_played) FROM wikisql_data WHERE goals_for_against = '7-5'	1-141
 SELECT nationality FROM wikisql_data WHERE college_junior_club_team_league = 'Seattle Thunderbirds (WHL)'	1-14209245-9
 SELECT college_junior_club_team_league FROM wikisql_data WHERE pick = 130	1-14209245-9
 SELECT pick FROM wikisql_data WHERE round = 2	1-14209245-9
-SELECT SELECT mon_26_may FROM wikisql_data WHERE fri_30_may = '18'' 28.27 122.599mph'	1-14209455-1
-SELECT SELECT wed_28_may FROM wikisql_data WHERE mon_26_may = '17'' 58.34 125.960mph'	1-14209455-1
+SELECT mon_26_may, fri_30_may FROM wikisql_data WHERE rider = '18\' 28.27 122.599mph'	1-14209455-1
+SELECT rider FROM wikisql_data WHERE wed_28_may = '17\' 58.34" 125.960mph' AND mon_26_may = '17\' 58.34" 125.960mph'	1-14209455-1
 SELECT fri_30_may FROM wikisql_data WHERE mon_26_may = '19'' 02.890 118.847mph'	1-14209455-1
 SELECT school FROM wikisql_data WHERE year_of_last_win = '2007-08'	1-14286908-1
 SELECT COUNT(*) FROM wikisql_data WHERE winners = 'banbridge academy'	1-14286908-1
-SELECT SELECT school FROM wikisql_data WHERE finalists = '2'	1-14286908-1
+SELECT winners FROM wikisql_data WHERE finalists = 2	1-14286908-1
 SELECT year_of_last_win FROM wikisql_data WHERE total_finals = 10	1-14286908-1
 SELECT school FROM wikisql_data WHERE year_of_last_win = '1985-86'	1-14286908-1
-SELECT SELECT total_finals FROM wikisql_data WHERE year_of_last_win = '2012-13'	1-14286908-1
+SELECT COUNT(*) FROM wikisql_data WHERE year_of_last_win = '2012-13'	1-14286908-1
 SELECT team FROM wikisql_data WHERE col_1993_94 = 32	1-14323347-1
 SELECT team FROM wikisql_data WHERE played = (SELECT MAX(played) FROM wikisql_data)	1-14323347-1
 SELECT COUNT(*) FROM wikisql_data WHERE col_1992_93 = 115 AND points = 115	1-14323347-1
@@ -466,30 +466,30 @@ SELECT COUNT(*) FROM wikisql_data WHERE field_goals = 1	1-14342480-6
 SELECT max(touchdowns) FROM wikisql_data WHERE player = 'becker'	1-14342592-8
 SELECT extra_points FROM wikisql_data WHERE position = 'left guard'	1-14342592-8
 SELECT min(touchdowns) FROM wikisql_data WHERE points = 11	1-14342592-8
-SELECT MAX(field_goals) FROM wikisql_data	1-14342592-8
+SELECT player FROM wikisql_data ORDER BY field_goals DESC LIMIT 1	1-14342592-8
 SELECT COUNT(*) FROM wikisql_data WHERE extra_points = 19	1-14342592-8
 SELECT max(touchdowns) FROM wikisql_data WHERE player = 'norcross'	1-14342592-8
-SELECT SELECT celebrity FROM wikisql_data WHERE famous_for = 'Finished in 9th'	1-14345690-4
-SELECT SELECT finished FROM wikisql_data WHERE exited = 'Day 13'	1-14345690-4
+SELECT famous_for FROM wikisql_data WHERE finished = 9	1-14345690-4
+SELECT finished FROM wikisql_data WHERE exited = 13	1-14345690-4
 SELECT entered FROM wikisql_data WHERE famous_for = 'page 3 model'	1-14345690-4
-SELECT SELECT finished FROM wikisql_data WHERE celebrity = 'Kerry Katona'	1-14345690-4
-SELECT SELECT finished FROM wikisql_data WHERE exited = 'Day 13'	1-14345690-4
+SELECT finished FROM wikisql_data WHERE celebrity = 'kerry katona'	1-14345690-4
+SELECT finished FROM wikisql_data WHERE exited = 13	1-14345690-4
 SELECT COUNT(*) FROM wikisql_data WHERE famous_for = 'athlete'	1-14345690-4
 SELECT COUNT(teleplay_by) FROM wikisql_data WHERE series = '35'	1-14346950-1
 SELECT teleplay_by FROM wikisql_data WHERE directed_by = 'Rob Bailey'	1-14346950-1
 SELECT season FROM wikisql_data WHERE teleplay_by = 'Richard Price' AND directed_by = 'Steve Shill'	1-14346950-1
-SELECT time_et FROM wikisql_data WHERE opponent = 'Denver Broncos'	1-14433719-1
+SELECT time_et FROM wikisql_data WHERE opponent = 'denver broncos'	1-14433719-1
 SELECT unix_shell FROM wikisql_data WHERE powershell_cmdlet = 'select-string'	1-14465871-1
 SELECT cmd_exe_command_com FROM wikisql_data WHERE unix_shell = 'echo'	1-14465871-1
-SELECT SELECT description FROM wikisql_data WHERE powershell_alias = 'cpi, copy, cp'	1-14465871-1
+SELECT description FROM wikisql_data WHERE powershell_alias IN ('cpi', 'copy', 'cp')	1-14465871-1
 SELECT powershell_cmdlet FROM wikisql_data WHERE cmd_exe_command_com = 'type'	1-14465871-1
-SELECT SELECT COUNT(powershell_cmdlet) FROM wikisql_data WHERE unix_shell = 'env, export, set, setenv'	1-14465871-1
+SELECT COUNT(powershell_cmdlet) FROM wikisql_data WHERE unix_shell IN ('env', 'export', 'set', 'setenv')	1-14465871-1
 SELECT county FROM wikisql_data WHERE number_of_households = 2053	1-1447085-1
 SELECT place FROM wikisql_data WHERE rank = 71	1-1447085-1
-SELECT SELECT county FROM wikisql_data WHERE median_house_hold_income = '$98,090'	1-1447085-1
+SELECT county FROM wikisql_data WHERE median_house_hold_income = 98090	1-1447085-1
 SELECT median_house_hold_income FROM wikisql_data WHERE place = 'woodside'	1-1447085-1
 SELECT per_capita_income FROM wikisql_data WHERE county = 'Fayette County'	1-1447085-1
-SELECT SELECT rank FROM wikisql_data WHERE common = 'Galliate'	1-1449169-1
+SELECT population FROM wikisql_data WHERE common = 'galliate'	1-1449169-1
 SELECT common FROM wikisql_data WHERE area_km_2 = 38.38	1-1449169-1
 SELECT common FROM wikisql_data WHERE area_km_2 = 103.02	1-1449169-1
 SELECT MIN(altitude_mslm) FROM wikisql_data	1-1449169-1
@@ -497,7 +497,7 @@ SELECT rank FROM wikisql_data WHERE area_km_2 = 47.3	1-1449176-1
 SELECT density_inhabitants_km_2 FROM wikisql_data WHERE area_km_2 = 20.4	1-1449176-1
 SELECT count(*) FROM wikisql_data WHERE area_km_2 = 130.7	1-1449176-1
 SELECT COUNT(population) FROM wikisql_data WHERE common_of = 'settimo torinese'	1-1449176-1
-SELECT common_of FROM wikisql_data WHERE rank = '9'	1-1449176-1
+SELECT common_of FROM wikisql_data WHERE rank = 9	1-1449176-1
 SELECT density_inhabitants_km_2 FROM wikisql_data WHERE common_of = 'chieri'	1-1449176-1
 SELECT economics FROM wikisql_data WHERE education = 92.0	1-145439-1
 SELECT health FROM wikisql_data WHERE justice = 80.7	1-145439-1
@@ -518,7 +518,7 @@ SELECT burmese FROM wikisql_data WHERE cardinal_direction = 'west'	1-14850099-18
 SELECT planet FROM wikisql_data WHERE cardinal_direction = 'south'	1-14850099-18
 SELECT scored FROM wikisql_data WHERE points = 19 AND team = '3 de febrero'	1-14871601-2
 SELECT losses FROM wikisql_data WHERE scored = 25	1-14871601-2
-SELECT SELECT yacht FROM wikisql_data WHERE sail_number = 6952	1-14882588-3
+SELECT COUNT(yacht) FROM wikisql_data WHERE sail_number = "6952"	1-14882588-3
 SELECT COUNT(*) FROM wikisql_data WHERE position = 3	1-14882588-3
 SELECT state_country FROM wikisql_data WHERE corrected_time_d_hh_mm_ss = '3:13:40:05'	1-14882588-3
 SELECT skipper FROM wikisql_data WHERE corrected_time_d_hh_mm_ss = '3:15:07:27'	1-14882588-3
@@ -531,15 +531,15 @@ SELECT current_venue FROM wikisql_data WHERE tournament = 'miami masters'	1-1490
 SELECT country FROM wikisql_data WHERE location = 'rome'	1-14903081-1
 SELECT COUNT(*) FROM wikisql_data WHERE current_venue = 'Lindner Family Tennis Center'	1-14903081-1
 SELECT min(began) FROM wikisql_data WHERE country = 'italy'	1-14903081-1
-SELECT SELECT current_venue FROM wikisql_data WHERE location = 'Mason, Ohio'	1-14903081-1
+SELECT location FROM wikisql_data WHERE current_venue = 'Mason, Ohio'	1-14903081-1
 SELECT tournament FROM wikisql_data WHERE current_venue = 'Madrid Arena'	1-14903081-1
 SELECT womens_doubles FROM wikisql_data WHERE year = '2000/2001'	1-14903841-1
 SELECT womens_doubles FROM wikisql_data WHERE year = '2008/2009'	1-14903841-1
 SELECT womens_doubles FROM wikisql_data WHERE year = '2000/2001'	1-14903841-1
-SELECT SELECT series FROM wikisql_data WHERE u_s_viewers_million = '3.84'	1-14929574-3
-SELECT SELECT u_s_viewers_million FROM wikisql_data WHERE directed_by = 'David Nutter'	1-14929574-3
-SELECT SELECT MAX(series) FROM wikisql_data WHERE u_s_viewers_million = '3.35'	1-14929574-3
-SELECT SELECT series FROM wikisql_data WHERE directed_by = 'Bill Eagles'	1-14929574-3
+SELECT production_code FROM wikisql_data WHERE u_s_viewers_million = 3.84	1-14929574-3
+SELECT sum(u_s_viewers_million) FROM wikisql_data WHERE directed_by = 'David Nutter'	1-14929574-3
+SELECT production_code FROM wikisql_data WHERE u_s_viewers_million = 3.35	1-14929574-3
+SELECT production_code FROM wikisql_data WHERE directed_by = 'Bill Eagles'	1-14929574-3
 SELECT COUNT(*) FROM wikisql_data WHERE martial_art_style = 'boxing'	1-14937957-1
 SELECT COUNT(*) FROM wikisql_data WHERE episode = '1.8'	1-14937957-1
 SELECT masters FROM wikisql_data WHERE martial_art_style = 'hapkido'	1-14937957-1
@@ -566,9 +566,9 @@ SELECT mens_singles FROM wikisql_data WHERE year = 1987	1-15001681-1
 SELECT rhel_release_date FROM wikisql_data WHERE scientific_linux_release = '3.0.4'	1-1500146-1
 SELECT delay FROM wikisql_data WHERE scientific_linux_release = '5.10'	1-1500146-1
 SELECT scientific_linux_release FROM wikisql_data WHERE delay = '28d'	1-1500146-1
-SELECT SELECT rank FROM wikisql_data WHERE country_territory = 'United States'	1-150343-3
-SELECT SELECT total FROM wikisql_data WHERE country_territory = 'Venezuela'	1-150343-3
-SELECT SELECT total FROM wikisql_data WHERE country_territory = 'Iceland'	1-150343-3
+SELECT rank FROM wikisql_data WHERE country_territory = 'united states'	1-150343-3
+SELECT rank FROM wikisql_data WHERE country_territory = 'venezuela'	1-150343-3
+SELECT total FROM wikisql_data WHERE country_territory = 'iceland'	1-150343-3
 SELECT country_territory FROM wikisql_data WHERE col_5th_runner_up = 2 AND col_3rd_runner_up = 0	1-150343-3
 SELECT max(score) FROM wikisql_data	1-1506950-4
 SELECT date FROM wikisql_data WHERE rounds = '66-67-70-67'	1-1506950-4
@@ -576,7 +576,7 @@ SELECT country FROM wikisql_data WHERE tournament = 'the open championship'	1-15
 SELECT max(score) FROM wikisql_data	1-1506950-4
 SELECT player FROM wikisql_data WHERE finish = '2nd'	1-1506950-4
 SELECT year FROM wikisql_data WHERE winning_score = '3 & 2'	1-1507806-1
-SELECT COUNT(year) FROM wikisql_data WHERE winning_score = '76-73-79-72=300'	1-1507806-1
+SELECT COUNT(*) FROM wikisql_data WHERE winning_score = 300	1-1507806-1
 SELECT year FROM wikisql_data WHERE runner_up = 'william mehlhorn'	1-1507806-1
 SELECT year FROM wikisql_data WHERE runner_up = 'mike brady'	1-1507806-1
 SELECT winning_score FROM wikisql_data WHERE year = 1922	1-1507806-1
@@ -585,20 +585,20 @@ SELECT bubbles FROM wikisql_data WHERE attribute = 'onpopuphidden'	1-1507852-5
 SELECT count(bubbles) FROM wikisql_data WHERE category = 'input'	1-1507852-5
 SELECT type FROM wikisql_data WHERE description = 'fires when the overflow state changes'	1-1507852-5
 SELECT attribute FROM wikisql_data WHERE cancelable = 'yes'	1-1507852-5
-SELECT SELECT viewers_millions FROM wikisql_data WHERE title = '"Sokka''s Master"'	1-15185133-1
+SELECT COUNT(viewers_millions) FROM wikisql_data WHERE title = "Sokka's Master"	1-15185133-1
 SELECT original_air_date FROM wikisql_data WHERE production_code = '318'	1-15185133-1
 SELECT no_in_season FROM wikisql_data WHERE written_by = 'john o\'bryan' AND directed_by = 'ethan spaulding'	1-15185133-1
 SELECT no_in_series FROM wikisql_data WHERE title = 'the beach'	1-15185133-1
-SELECT COUNT(*) FROM wikisql_data WHERE segment_a = 'Wood Boring Augers' OR segment_b = 'Wood Boring Augers' OR segment_c = 'Wood Boring Augers' OR segment_d = 'Wood Boring Augers'	1-15187735-17
-SELECT SELECT segment_b FROM wikisql_data WHERE segment_a = 'Beet Sugar'	1-15187735-17
-SELECT SELECT episode FROM wikisql_data WHERE segment_a = 'Rolled Wafers'	1-15187735-17
+SELECT COUNT(*) FROM wikisql_data WHERE segment_a = 'wood boring augers' OR segment_b = 'wood boring augers' OR segment_c = 'wood boring augers' OR segment_d = 'wood boring augers'	1-15187735-17
+SELECT segment_a FROM wikisql_data WHERE segment_b = 'beet sugar'	1-15187735-17
+SELECT COUNT(*) FROM wikisql_data WHERE segment_a = 'rolled wafers'	1-15187735-17
 SELECT best_actor FROM wikisql_data WHERE best_director = 'uncle boonmee who can recall his past lives'	1-15301258-1
 SELECT best_director FROM wikisql_data WHERE best_actress = 'mother'	1-15301258-1
 SELECT year FROM wikisql_data WHERE best_director = 'sammo hung' AND best_film = 'ip man 2'	1-15301258-1
-SELECT SELECT best_supporting_actress FROM wikisql_data WHERE best_supporting_actor = 'Sun Honglei for Mongol'	1-15301258-1
+SELECT best_supporting_actress FROM wikisql_data WHERE best_director = 'sergei bodrov'	1-15301258-1
 SELECT COUNT(*) FROM wikisql_data WHERE champion = 'jiyai shin'	1-1529260-2
-SELECT SELECT country FROM wikisql_data WHERE margin_of_victory = '6 strokes'	1-1529260-2
-SELECT purse_us FROM wikisql_data WHERE margin_of_victory = '8 strokes'	1-1529260-2
+SELECT country FROM wikisql_data WHERE margin_of_victory = 6	1-1529260-2
+SELECT COUNT(purse_us) FROM wikisql_data WHERE margin_of_victory = 8	1-1529260-2
 SELECT MIN(year) FROM wikisql_data	1-1529260-2
 SELECT dates FROM wikisql_data WHERE score = '66-72-64-65=267'	1-1529260-2
 SELECT COUNT(*) FROM wikisql_data WHERE col_x = 2	1-15313204-1
@@ -607,12 +607,12 @@ SELECT min(for_col) FROM wikisql_data WHERE played = 12	1-15418319-1
 SELECT points FROM wikisql_data WHERE team = 'paulistano'	1-15418319-1
 SELECT for_col FROM wikisql_data WHERE difference = 7 ORDER BY for_col DESC LIMIT 1	1-15418319-1
 SELECT COUNT(title) FROM wikisql_data WHERE production_code = '3020'	1-15472061-1
-SELECT SELECT no_in_series FROM wikisql_data WHERE u_s_viewers_millions = '7.78'	1-15472061-1
+SELECT COUNT(no_in_series) FROM wikisql_data WHERE u_s_viewers_millions = 7.78	1-15472061-1
 SELECT COUNT(original_air_date) FROM wikisql_data WHERE no_in_season = '10/11'	1-15472061-1
-SELECT SELECT race FROM wikisql_data WHERE circuit = 'Indy F3 Challenge' AND pole_position = 'John Martin'	1-15530244-2
-SELECT SELECT MAX(race) FROM wikisql_data WHERE circuit = 'Phillip Island' AND winning_driver = 'James Winslow' AND pole_position = 'James Winslow'	1-15530244-2
+SELECT round FROM wikisql_data WHERE circuit = 'indianapolis motor speedway' AND pole_position = 'john martin'	1-15530244-2
+SELECT MAX(round) FROM wikisql_data WHERE circuit = 'phillip island' AND winning_driver = 'james winslow' AND pole_position = 'james winslow'	1-15530244-2
 SELECT MIN(tackles) FROM wikisql_data WHERE player = 'danny clark'	1-15581223-8
-SELECT MAX(tackles) FROM wikisql_data WHERE sacks = '3.5'	1-15581223-8
+SELECT player FROM wikisql_data WHERE sacks = 3.5 ORDER BY tackles DESC LIMIT 1	1-15581223-8
 SELECT player FROM wikisql_data WHERE fum_rec_td = (SELECT MIN(fum_rec_td) FROM wikisql_data)	1-15581223-8
 SELECT MIN(int_yards) FROM wikisql_data WHERE sacks = 11.5	1-15581223-8
 SELECT min(int_yards) FROM wikisql_data	1-15581223-8
@@ -640,18 +640,18 @@ SELECT col_20_questions FROM wikisql_data WHERE date = '10-07'	1-1566852-8
 SELECT wickets FROM wikisql_data WHERE overs_bowled = 15	1-15700367-2
 SELECT COUNT(*) FROM wikisql_data WHERE name = 'yuvraj singh'	1-15700367-2
 SELECT name FROM wikisql_data WHERE overs_bowled = 31.2	1-15700367-2
-SELECT runs_conceded FROM wikisql_data WHERE overs_bowled = '53'	1-15700367-2
+SELECT runs_conceded FROM wikisql_data WHERE overs_bowled = 53	1-15700367-2
 SELECT maidens FROM wikisql_data WHERE overs_bowled = 13	1-15700367-2
 SELECT date FROM wikisql_data WHERE location = 'nazareth'	1-15736385-1
 SELECT location FROM wikisql_data WHERE driver = 'rick mears'	1-15736385-1
 SELECT team FROM wikisql_data WHERE date = 'October 19'	1-15736385-1
 SELECT engine FROM wikisql_data WHERE team = 'galles racing'	1-15736385-1
 SELECT game FROM wikisql_data WHERE date = 'December 19'	1-15780049-5
-SELECT SELECT high_points FROM wikisql_data WHERE team = 'Washington'	1-15780049-5
+SELECT team FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE team = 'Washington') AND team = 'Washington'	1-15780049-5
 SELECT municipality FROM wikisql_data WHERE county = 'finnmark' AND population > 6187.0	1-157826-1
 SELECT county FROM wikisql_data WHERE city_town = 'halden'	1-157826-1
 SELECT municipality FROM wikisql_data WHERE population = 24421	1-157826-1
-SELECT SELECT population FROM wikisql_data WHERE city_town = 'Arendal'	1-157826-1
+SELECT SUM(population) FROM wikisql_data WHERE city_town = 'arendal'	1-157826-1
 SELECT city_town FROM wikisql_data WHERE municipality = 'Horten'	1-157826-1
 SELECT city_town FROM wikisql_data WHERE municipality = 'moss'	1-157826-1
 SELECT song_choice FROM wikisql_data WHERE week = 'hollywood'	1-15796054-3
@@ -664,35 +664,35 @@ SELECT season FROM wikisql_data WHERE original_air_date = 'September 17, 1955'	1
 SELECT MIN(series) FROM wikisql_data	1-15824796-4
 SELECT original_air_date FROM wikisql_data WHERE season = '9'	1-15824796-4
 SELECT directed_by FROM wikisql_data WHERE written_by = 'jackson gillis' AND original_air_date = 'may 21, 1955'	1-15824796-4
-SELECT SELECT date FROM wikisql_data WHERE location_attendance = "13,755" AND location_attendance != ""	1-15869204-4
-SELECT SELECT COUNT(television_service) FROM wikisql_data WHERE language = 'Italian' AND n > 856.0	1-15887683-15
+SELECT date FROM wikisql_data WHERE location_attendance = 13755	1-15869204-4
+SELECT COUNT(*) FROM wikisql_data WHERE language = 'italian' AND n > 856.0	1-15887683-15
 SELECT television_service FROM wikisql_data WHERE country = 'italy' AND language = 'english'	1-15887683-15
 SELECT television_service FROM wikisql_data WHERE country = 'united kingdom' AND n > 854.0	1-15887683-15
-SELECT SELECT dar FROM wikisql_data WHERE country = 'Germany'	1-15887683-15
+SELECT COUNT(*) FROM wikisql_data WHERE country = 'germany'	1-15887683-15
 SELECT COUNT(*) FROM wikisql_data WHERE who_knows_the_most_about_the_guest_host_panelists = 'matt di angelo and antony cotton'	1-1590967-6
 SELECT musical_guest_song_performed FROM wikisql_data WHERE guest_host = 'elle macpherson'	1-1590967-6
 SELECT COUNT(*) FROM wikisql_data WHERE coat_of_cash_wearing_celebrity = 'matt di angelo'	1-1590967-6
 SELECT COUNT(*) FROM wikisql_data WHERE coat_of_cash_wearing_celebrity = 'matt di angelo'	1-1590967-6
 SELECT MIN(episode_number) FROM wikisql_data WHERE who_knows_the_most_about_the_guest_host_panelists = 'reggie yates' OR who_knows_the_most_about_the_guest_host_panelists = 'kelly osbourne'	1-1590967-6
-SELECT SUM(opponents) FROM wikisql_data WHERE oilers_points = "21"	1-15986020-3
+SELECT SUM(opponents) FROM wikisql_data WHERE oilers_points = 21	1-15986020-3
 SELECT second_place FROM wikisql_data WHERE winner = 'rafał mroczek & aneta piotrowska'	1-15988037-4
 SELECT province FROM wikisql_data WHERE hanja = '朔州'	1-160510-1
-SELECT modern_equivalent FROM wikisql_data WHERE former_kingdom = 'Silla' AND hanja = '尙州'	1-160510-1
+SELECT modern_equivalent FROM wikisql_data WHERE former_kingdom = 'silla' AND hanja = '尙州'	1-160510-1
 SELECT capital FROM wikisql_data WHERE hanja = '尙州'	1-160510-1
 SELECT hangul FROM wikisql_data WHERE hanja = '良州'	1-160510-1
 SELECT hanja FROM wikisql_data WHERE province = 'sangju'	1-160510-1
 SELECT modern_equivalent FROM wikisql_data WHERE province = 'hanju'	1-160510-1
-SELECT SELECT col_2012_passengers_in_millions FROM wikisql_data WHERE city_1 = 'Seoul'	1-16066063-1
-SELECT city_1 FROM wikisql_data WHERE col_2011_passengers_in_millions = '6.6' AND distance = '1075km'	1-16066063-1
-SELECT SELECT col_2012_passengers_in_millions FROM wikisql_data WHERE distance = '1075km'	1-16066063-1
-SELECT SELECT col_2011_passengers_in_millions FROM wikisql_data WHERE col_2012_passengers_in_millions = '6.640'	1-16066063-1
+SELECT SUM(col_2012_passengers_in_millions) FROM wikisql_data WHERE city_1 = 'Seoul' OR city_2 = 'Seoul'	1-16066063-1
+SELECT city_1 FROM wikisql_data WHERE col_2011_passengers_in_millions > 6.6 AND distance = 1075	1-16066063-1
+SELECT COUNT(col_2012_passengers_in_millions) FROM wikisql_data WHERE distance = 1075	1-16066063-1
+SELECT COUNT(col_2011_passengers_in_millions) FROM wikisql_data WHERE col_2012_passengers_in_millions = 6.640	1-16066063-1
 SELECT city_1 FROM wikisql_data WHERE city_2 = 'okinawa'	1-16066063-1
-SELECT SELECT city_1 FROM wikisql_data WHERE col_2011_passengers_in_millions = '7.6+'	1-16066063-1
+SELECT city_1 FROM wikisql_data WHERE col_2011_passengers_in_millions > 7.6	1-16066063-1
 SELECT report FROM wikisql_data WHERE pole_position = 'will power' AND fastest_lap = 'will power'	1-16099880-5
 SELECT pole_position FROM wikisql_data WHERE rd = 'Chicagoland'	1-16099880-5
-SELECT pole_position FROM wikisql_data WHERE race = 'Chicagoland'	1-16099880-5
+SELECT pole_position FROM wikisql_data WHERE rd = 'Chicagoland'	1-16099880-5
 SELECT COUNT(*) FROM wikisql_data WHERE percent = 0.667	1-16225511-2
-SELECT SELECT wins FROM wikisql_data WHERE school = 'Baylor'	1-16225511-2
+SELECT wins FROM wikisql_data WHERE school = 'baylor'	1-16225511-2
 SELECT max(wins) FROM wikisql_data WHERE school = 'texas'	1-16225511-2
 SELECT sanction FROM wikisql_data WHERE location = 'fayette county speedway'	1-16275828-4
 SELECT sanction FROM wikisql_data WHERE location = 'lincoln, illinois'	1-16275828-4
@@ -708,17 +708,17 @@ SELECT school FROM wikisql_data WHERE conference = 'patriot'	1-16295365-1
 SELECT record FROM wikisql_data WHERE school = 'umbc'	1-16295365-1
 SELECT conference FROM wikisql_data WHERE school = 'belmont'	1-16295365-1
 SELECT status FROM wikisql_data WHERE name = 'K-223'	1-1634376-1
-SELECT SELECT third_place FROM wikisql_data WHERE season = 'Four'	1-16331144-1
-SELECT SELECT runner_up FROM wikisql_data WHERE season = 'Five'	1-16331144-1
+SELECT third_place FROM wikisql_data WHERE season = '4'	1-16331144-1
+SELECT runner_up FROM wikisql_data WHERE season = '5'	1-16331144-1
 SELECT season FROM wikisql_data WHERE winner = 'ida corr'	1-16331144-1
-SELECT SELECT winning_mentor FROM wikisql_data WHERE season = 'Two'	1-16331144-1
+SELECT winning_mentor FROM wikisql_data WHERE season = '2'	1-16331144-1
 SELECT runner_up FROM wikisql_data WHERE third_place = 'Mohamed Ali'	1-16331144-1
 SELECT affiliation FROM wikisql_data WHERE location = 'erie, pennsylvania'	1-16381914-1
 SELECT enrollment FROM wikisql_data WHERE founded = 1846	1-16381914-1
-SELECT SELECT affiliation FROM wikisql_data WHERE location = 'Canton, New York'	1-16381914-1
+SELECT institution FROM wikisql_data WHERE location = 'Canton, New York'	1-16381914-1
 SELECT ground FROM wikisql_data WHERE home_team = 'essendon' OR away_team = 'essendon'	1-16388047-1
 SELECT COUNT(DISTINCT ground) FROM wikisql_data WHERE home_team = 'essendon' OR away_team = 'essendon'	1-16388047-1
-SELECT SELECT time FROM wikisql_data WHERE date = 'Saturday 4 March 1995'	1-16388047-1
+SELECT time FROM wikisql_data WHERE date = '4 march 1995'	1-16388047-1
 SELECT crowd FROM wikisql_data WHERE home_team_score = '13.10 (88)'	1-16388478-3
 SELECT date FROM wikisql_data WHERE away_team = 'fremantle'	1-16388478-3
 SELECT away_team_score FROM wikisql_data WHERE home_team = 'port adelaide'	1-16388478-3
@@ -739,47 +739,47 @@ SELECT location FROM wikisql_data WHERE big_ten_team = 'illinois'	1-1672976-7
 SELECT max(lead_margin) FROM wikisql_data WHERE dates_administered = 'august 5, 2008'	1-16751596-5
 SELECT dates_administered FROM wikisql_data WHERE republican_jeff_beatty = 34	1-16751596-5
 SELECT dates_administered FROM wikisql_data WHERE democrat_john_kerry = 63 AND poll_source = 'rasmussen reports'	1-16751596-5
-SELECT SELECT democrat_john_kerry FROM wikisql_data WHERE dates_administered = 'April 22, 2008'	1-16751596-5
+SELECT AVG(democrat_john_kerry) FROM wikisql_data WHERE dates_administered = 'april 22, 2008'	1-16751596-5
 SELECT diameter_km FROM wikisql_data WHERE year_named = 1997	1-16799784-3
-SELECT SELECT diameter_km FROM wikisql_data WHERE latitude = '67.5N'	1-16799784-3
+SELECT diameter_km FROM wikisql_data WHERE latitude = 67.5	1-16799784-3
 SELECT latitude FROM wikisql_data WHERE name = 'vaidilute rupes'	1-16799784-3
 SELECT name_origin FROM wikisql_data WHERE latitude = 71.1e	1-16799784-3
 SELECT COUNT(*) FROM wikisql_data WHERE longitude = '109.9e'	1-16799784-3
-SELECT SELECT latitude FROM wikisql_data WHERE longitude = '321.9E'	1-16799784-3
-SELECT SELECT year_named FROM wikisql_data WHERE latitude = '33.3S'	1-16799784-8
+SELECT latitude FROM wikisql_data WHERE longitude = 321.9	1-16799784-3
+SELECT year_named FROM wikisql_data WHERE latitude = 33.3	1-16799784-8
 SELECT diameter_km FROM wikisql_data WHERE name = 'colette patera'	1-16799784-8
 SELECT longitude FROM wikisql_data WHERE name = 'razia patera'	1-16799784-8
 SELECT name_origin FROM wikisql_data WHERE name = 'keller patera'	1-16799784-8
 SELECT diameter_km FROM wikisql_data WHERE longitude = '40.2E'	1-16799784-8
 SELECT name_origin FROM wikisql_data WHERE diameter_km = 2155.0	1-16799784-7
 SELECT diameter_km FROM wikisql_data WHERE latitude = '23.0s'	1-16799784-7
-SELECT SELECT latitude FROM wikisql_data WHERE longitude = '80.0E'	1-16799784-7
-SELECT SELECT diameter_km FROM wikisql_data WHERE latitude = '40.5S'	1-16799784-7
+SELECT latitude FROM wikisql_data WHERE longitude = 80.0	1-16799784-7
+SELECT diameter_km FROM wikisql_data WHERE latitude = 40.5	1-16799784-7
 SELECT diameter_km FROM wikisql_data WHERE longitude = 170.1e	1-16799784-7
 SELECT market_value_billion FROM wikisql_data WHERE sales_billion = 172.7	1-1682026-6
 SELECT profits_billion FROM wikisql_data WHERE company = 'Berkshire Hathaway'	1-1682026-6
 SELECT industry FROM wikisql_data WHERE market_value_billion = 80.3	1-1682026-6
-SELECT SELECT rank FROM wikisql_data WHERE assets_billion = '1,715.8'	1-1682026-6
+SELECT min(rank) FROM wikisql_data WHERE assets_billion = 1715.8	1-1682026-6
 SELECT profits_billion FROM wikisql_data WHERE market_value_billion = 204.9	1-1682026-6
 SELECT mls_reg_season FROM wikisql_data WHERE u_s_open_cup = 'quarterfinals' AND concacaf_champions_cup_champions_league = 'did not qualify'	1-16857-2
 SELECT mls_cup_playoffs FROM wikisql_data WHERE concacaf_champions_cup_champions_league = 'did not qualify' AND u_s_open_cup = 'round of 16'	1-16857-2
 SELECT MIN(season) FROM wikisql_data	1-16857-2
-SELECT hardcover FROM wikisql_data WHERE title = 'Dead as a Doornail'	1-16907214-1
-SELECT COUNT(publisher) FROM wikisql_data WHERE hardcover = 'ISBN 1-937007-88-X'	1-16907214-1
-SELECT SELECT title FROM wikisql_data WHERE paperback = 'ISBN 0-441-01400-3'	1-16907214-1
-SELECT SELECT publisher FROM wikisql_data WHERE hardcover = 'ISBN 1-937007-44-8'	1-16907214-1
+SELECT col_x FROM wikisql_data WHERE title = 'Dead as a Doornail'	1-16907214-1
+SELECT COUNT(DISTINCT publisher) FROM wikisql_data	1-16907214-1
+SELECT col_x FROM wikisql_data WHERE col_x = '0-441-01400-3'	1-16907214-1
+SELECT publisher FROM wikisql_data WHERE col_x = '1-937007-44-8'	1-16907214-1
 SELECT MIN(w) FROM wikisql_data	1-16922657-2
 SELECT COUNT(ends_won) FROM wikisql_data WHERE country = 'Scotland'	1-16922657-2
 SELECT min(ends_lost) FROM wikisql_data WHERE country = 'norway'	1-16922657-2
 SELECT country FROM wikisql_data WHERE skip = 'andrea schöpp'	1-16922657-2
-SELECT SELECT poles FROM wikisql_data WHERE position = '25th'	1-1708050-1
-SELECT SELECT starts FROM wikisql_data WHERE position = '16th'	1-1708050-1
-SELECT SELECT location_attendance FROM wikisql_data WHERE date = 'June 7'	1-17103645-9
+SELECT poles FROM wikisql_data WHERE position = 25	1-1708050-1
+SELECT starts FROM wikisql_data WHERE position = 16	1-1708050-1
+SELECT COUNT(location_attendance) FROM wikisql_data WHERE date = "June 7"	1-17103645-9
 SELECT high_assists FROM wikisql_data WHERE score = '79-88'	1-17103645-9
 SELECT sixth FROM wikisql_data WHERE eighth = 'Marcos Hernandez'	1-17111812-1
 SELECT fourth FROM wikisql_data WHERE sixth = 'Air Traffic'	1-17111812-1
 SELECT tenth FROM wikisql_data WHERE ninth = 'Kubb'	1-17111812-1
-SELECT SELECT seventh FROM wikisql_data WHERE sixth = 'Interpol'	1-17111812-1
+SELECT seventh FROM wikisql_data WHERE sixth = 'Interpol'	1-17111812-1
 SELECT COUNT(*) FROM wikisql_data WHERE fourth = 'plan b'	1-17111812-1
 SELECT winner FROM wikisql_data WHERE fifth = 'dizzee rascal'	1-17111812-1
 SELECT location_attendance FROM wikisql_data WHERE game = 60	1-17121262-9
@@ -788,12 +788,12 @@ SELECT high_rebounds FROM wikisql_data WHERE date = 'january 6'	1-17140608-7
 SELECT COUNT(*) FROM wikisql_data WHERE col_1st_leg = '1-3'	1-17142454-4
 SELECT COUNT(*) FROM wikisql_data WHERE record = '9-2'	1-17186229-4
 SELECT date FROM wikisql_data WHERE score_time = 'w 74-63'	1-17186229-4
-SELECT SELECT episode FROM wikisql_data WHERE broadcast_date = '11July1964'	1-1723080-1
-SELECT SELECT viewers_in_millions FROM wikisql_data WHERE broadcast_date = '1august1964'	1-1723080-1
+SELECT episode FROM wikisql_data WHERE broadcast_date = '11 july 1964'	1-1723080-1
+SELECT COUNT(viewers_in_millions) FROM wikisql_data WHERE broadcast_date = "1 august 1964"	1-1723080-1
 SELECT run_time FROM wikisql_data WHERE viewers_in_millions = 7.4	1-1723080-1
 SELECT equation FROM wikisql_data WHERE col_3rd_throw = 7	1-17265535-6
 SELECT col_2nd_throw FROM wikisql_data WHERE equation = '(10 times 8) + 4'	1-17265535-6
-SELECT SELECT result FROM wikisql_data WHERE col_3rd_throw != '8'	1-17265535-6
+SELECT result FROM wikisql_data WHERE col_3rd_throw != 8	1-17265535-6
 SELECT col_3rd_throw FROM wikisql_data WHERE equation = 'all equal'	1-17265535-6
 SELECT col_2nd_throw FROM wikisql_data WHERE equation = '(10 times 1) + 3'	1-17265535-6
 SELECT COUNT(grid) FROM wikisql_data WHERE grid = 30	1-17271495-1
@@ -803,42 +803,42 @@ SELECT team FROM wikisql_data WHERE driver = 'scott dixon'	1-17271495-1
 SELECT team FROM wikisql_data WHERE driver = 'darren manning'	1-17271495-1
 SELECT record FROM wikisql_data WHERE score = 'l 93–104 (ot)'	1-17288825-8
 SELECT date FROM wikisql_data WHERE team = 'rockets' AND game = 'memphis'	1-17288825-9
-SELECT SELECT high_points FROM wikisql_data WHERE game = '72'	1-17288825-9
-SELECT SELECT date FROM wikisql_data WHERE high_assists = 'Tracy McGrady (8)'	1-17288825-6
-SELECT SELECT high_rebounds FROM wikisql_data WHERE team = '@ New Orleans'	1-17288825-6
-SELECT SELECT date FROM wikisql_data WHERE high_assists = 'Aaron Brooks (6)'	1-17288825-6
+SELECT high_points FROM wikisql_data WHERE game = 72 ORDER BY high_points DESC LIMIT 1	1-17288825-9
+SELECT date FROM wikisql_data WHERE high_assists = 8	1-17288825-6
+SELECT team FROM wikisql_data WHERE high_rebounds = (SELECT MAX(high_rebounds) FROM wikisql_data WHERE team = 'new orleans') AND team = 'new orleans'	1-17288825-6
+SELECT date FROM wikisql_data WHERE high_assists = 6	1-17288825-6
 SELECT record FROM wikisql_data WHERE date = 'November 1'	1-17288869-5
-SELECT SELECT record FROM wikisql_data WHERE date = 'November 7'	1-17288869-5
+SELECT record FROM wikisql_data WHERE date = 'November 7'	1-17288869-5
 SELECT grid FROM wikisql_data WHERE points = 14	1-17304504-1
 SELECT COUNT(car_no) FROM wikisql_data WHERE team = 'panther racing' AND grid = 9	1-17304308-1
 SELECT MIN(grid) FROM wikisql_data WHERE points = 17	1-17304308-1
-SELECT SELECT COUNT(fin_pos) FROM wikisql_data WHERE points = '12' AND time_retired = 'Accident'	1-17304308-1
+SELECT COUNT(fin_pos) FROM wikisql_data WHERE points = 12	1-17304308-1
 SELECT COUNT(driver) FROM wikisql_data WHERE fin_pos = 19	1-17304308-1
 SELECT COUNT(*) FROM wikisql_data WHERE date = 'february 4' AND high_assists IS NOT NULL	1-17311759-7
-SELECT SELECT high_assists FROM wikisql_data WHERE date = 'February 4'	1-17311759-7
+SELECT team FROM wikisql_data WHERE high_assists IS NOT NULL AND date = 'february 4'	1-17311759-7
 SELECT score FROM wikisql_data WHERE game = 81	1-17311797-10
 SELECT high_points FROM wikisql_data WHERE game = 79	1-17311797-10
 SELECT team FROM wikisql_data WHERE date = 'march 9'	1-17311783-9
 SELECT high_points FROM wikisql_data WHERE team = 'cleveland'	1-17311783-9
 SELECT date FROM wikisql_data WHERE team = 'miami' OR high_points = (SELECT high_points FROM wikisql_data WHERE team = 'miami')	1-17323042-8
-SELECT COUNT(score) FROM wikisql_data WHERE location_attendance = '13,266'	1-17323529-5
+SELECT SUM(score) FROM wikisql_data WHERE location_attendance = 13266	1-17323529-5
 SELECT high_points FROM wikisql_data WHERE date = 'november 24'	1-17323529-5
 SELECT high_assists FROM wikisql_data WHERE score = 'l 98–103 (ot)'	1-17323529-5
 SELECT score FROM wikisql_data WHERE date = 'April 1'	1-17340355-10
-SELECT SELECT high_assists FROM wikisql_data WHERE high_rebounds = 'Matt Barnes (11)'	1-17340355-10
-SELECT SELECT COUNT(DISTINCT team) FROM wikisql_data WHERE high_points = 'Steve Nash (24)'	1-17340355-10
+SELECT high_assists FROM wikisql_data WHERE high_rebounds = 11	1-17340355-10
+SELECT COUNT(DISTINCT team) FROM wikisql_data WHERE high_points = 24	1-17340355-10
 SELECT record FROM wikisql_data WHERE date = 'March 15'	1-17340355-9
 SELECT written_by FROM wikisql_data WHERE directed_by = 'arthur albert'	1-17356042-1
 SELECT title FROM wikisql_data WHERE written_by = 'R. Scott Gemmill'	1-17356042-1
 SELECT directed_by FROM wikisql_data WHERE series = 236	1-17356042-1
-SELECT SELECT won FROM wikisql_data WHERE goals_for = '60'	1-17358515-1
+SELECT COUNT(won) FROM wikisql_data WHERE goals_for = 60	1-17358515-1
 SELECT COUNT(points_2) FROM wikisql_data WHERE team = 'Goole Town'	1-17358515-1
 SELECT lost FROM wikisql_data WHERE goal_average_1 = 1.21	1-17366952-1
 SELECT team FROM wikisql_data WHERE goal_average_1 = 1.34	1-17366952-1
 SELECT max(position) FROM wikisql_data WHERE team = 'bangor city'	1-17366952-1
 SELECT COUNT(played) FROM wikisql_data WHERE team = 'Lancaster City'	1-17366952-1
 SELECT athlete FROM wikisql_data WHERE event = 'flyweight'	1-1745820-5
-SELECT SELECT round_of_16 FROM wikisql_data WHERE round_of_32 = 'Bye'	1-1745820-5
+SELECT round_of_16 FROM wikisql_data WHERE round_of_32 = 'bye'	1-1745820-5
 SELECT part_4 FROM wikisql_data WHERE part_1 = 'lesan'	1-1745843-8
 SELECT verb_meaning FROM wikisql_data WHERE part_3 = 'sufun'	1-1745843-8
 SELECT class FROM wikisql_data WHERE part_4 = "giheizan"	1-1745843-8
@@ -848,7 +848,7 @@ SELECT verb_meaning FROM wikisql_data WHERE part_2 = 'bant'	1-1745843-8
 SELECT swimsuit FROM wikisql_data WHERE average = 8.848	1-17521433-1
 SELECT country FROM wikisql_data WHERE swimsuit = 8.788	1-17521433-1
 SELECT swimsuit FROM wikisql_data WHERE country = 'illinois'	1-17521433-1
-SELECT SELECT average FROM wikisql_data WHERE evening_gown = '9.100'	1-17521433-1
+SELECT average FROM wikisql_data WHERE evening_gown = 9.100	1-17521433-1
 SELECT swimsuit FROM wikisql_data WHERE average = 8.848	1-17521433-1
 SELECT swimsuit FROM wikisql_data WHERE state = 'oregon'	1-17516967-1
 SELECT preliminary FROM wikisql_data WHERE state = 'north carolina'	1-17516967-1
@@ -872,14 +872,14 @@ SELECT resale FROM wikisql_data WHERE provider = 'NetCologne'	1-1773908-3
 SELECT COUNT(*) FROM wikisql_data WHERE week = 13	1-17782308-1
 SELECT game_site FROM wikisql_data WHERE date = 'October 16, 1966'	1-17782308-1
 SELECT date FROM wikisql_data WHERE opponent = 'Miami Dolphins'	1-17782308-1
-SELECT COUNT(DISTINCT date_released) FROM wikisql_data WHERE season = 'The Complete 4th Series'	1-17798548-4
-SELECT SELECT of_discs FROM wikisql_data WHERE season = 'The Complete 4th Series'	1-17798548-4
-SELECT SELECT date_released FROM wikisql_data WHERE season = 'The Complete 2nd Series: Volume One'	1-17798548-4
+SELECT COUNT(date_released) FROM wikisql_data WHERE season = '4' AND of_episodes = of_discs	1-17798548-4
+SELECT COUNT(of_discs) FROM wikisql_data WHERE season = "4th series"	1-17798548-4
+SELECT date_released FROM wikisql_data WHERE season = 2 AND of_discs = 1	1-17798548-4
 SELECT original_u_s_air_date FROM wikisql_data WHERE viewers_millions = 4.4	1-17901155-4
-SELECT SELECT viewers_millions FROM wikisql_data WHERE no_in_season = '6' OR no_in_series = '6'	1-17901155-4
+SELECT COUNT(viewers_millions) FROM wikisql_data WHERE no_in_series = "6"	1-17901155-4
 SELECT directed_by FROM wikisql_data WHERE title = 'twister: part 1'	1-17901155-4
-SELECT SELECT no_in_season FROM wikisql_data WHERE title = '"My Oh Maya"'	1-17901155-4
-SELECT SELECT MAX(wickets) FROM wikisql_data WHERE best = '4/22'	1-17900317-5
+SELECT no_in_series FROM wikisql_data WHERE title = 'my oh maya'	1-17901155-4
+SELECT player FROM wikisql_data WHERE best = '4/22' ORDER BY wickets DESC LIMIT 1	1-17900317-5
 SELECT min(matches) FROM wikisql_data WHERE runs = 276	1-17900317-5
 SELECT matches FROM wikisql_data WHERE wickets = 17	1-17900317-5
 SELECT col_4_inns FROM wikisql_data ORDER BY col_4_inns DESC LIMIT 1	1-17900317-5
@@ -888,34 +888,34 @@ SELECT week FROM wikisql_data WHERE opponent = 'New York Jets'	1-17927935-1
 SELECT district FROM wikisql_data WHERE first_elected = 1986	1-1805191-14
 SELECT candidates FROM wikisql_data WHERE party = 'republican' AND first_elected = '1998'	1-1805191-14
 SELECT COUNT(*) FROM wikisql_data WHERE incumbent = 'mike mcintyre'	1-1805191-34
-SELECT SELECT party FROM wikisql_data WHERE first_elected = '1998'	1-1805191-34
+SELECT party FROM wikisql_data WHERE first_elected = 1998 ORDER BY first_elected LIMIT 1	1-1805191-34
 SELECT COUNT(*) FROM wikisql_data WHERE candidates = 'Robin Hayes'	1-1805191-34
 SELECT district FROM wikisql_data WHERE party = 'democratic' AND first_elected = '1998'	1-1805191-50
 SELECT COUNT(ast FROM wikisql_data WHERE avg_col = 23.7	1-18064020-21
 SELECT COUNT(*) FROM wikisql_data WHERE name = 'jake flaherty'	1-18064020-21
-SELECT SELECT SUM(brup) FROM wikisql_data	1-18064020-21
+SELECT SUM(brup) FROM wikisql_data	1-18064020-21
 SELECT MAX(td) FROM wikisql_data	1-18064020-21
-SELECT tfl_yds FROM wikisql_data WHERE tfl_yds = '2.5-4'	1-18064020-21
+SELECT COUNT(tfl_yds) FROM wikisql_data WHERE tfl_yds BETWEEN 2.5 AND 4	1-18064020-21
 SELECT min(tonkolili) FROM wikisql_data	1-18103265-1
 SELECT main_services FROM wikisql_data WHERE total_passengers_millions_2011_12 = 14.849	1-18118221-1
 SELECT min(rank) FROM wikisql_data WHERE railway_station = 'Gatwick Airport'	1-18118221-1
 SELECT location FROM wikisql_data WHERE total_passengers_millions_2011_12 = 103.534	1-18118221-1
-SELECT SELECT annual_interchanges_millions_2011_12 FROM wikisql_data WHERE annual_entry_exit_millions_2011_12 = '36.609'	1-18118221-1
+SELECT COUNT(annual_interchanges_millions_2011_12) FROM wikisql_data WHERE annual_entry_exit_millions_2011_12 = 36.609	1-18118221-1
 SELECT winning_team FROM wikisql_data WHERE circuit = 'zolder'	1-18095719-2
 SELECT winning_team FROM wikisql_data WHERE circuit = 'zolder'	1-18095719-2
 SELECT round FROM wikisql_data WHERE circuit = 'avus'	1-18095719-2
 SELECT pole_position FROM wikisql_data WHERE round = 7	1-18095719-2
 SELECT modern_german_standard_wording FROM wikisql_data WHERE english_bcp = 'for thine is the kingdom, the power'	1-181240-1
 SELECT modern_german_standard_wording FROM wikisql_data WHERE writing_system_2_german_based = "wie mir die vergewwe wu uns schuldich sinn."	1-181240-1
-SELECT SELECT of_new_stations FROM wikisql_data WHERE date_opened = 'June 24, 2000'	1-1817879-2
+SELECT COUNT(*) FROM wikisql_data WHERE date_opened = 'June 24, 2000'	1-1817879-2
 SELECT length_miles FROM wikisql_data WHERE endpoints = 'pico to 7th st/metro center'	1-1817879-2
-SELECT SELECT line_s FROM wikisql_data WHERE segment_description = 'Red Line MOS-2 West'	1-1817879-2
+SELECT COUNT(*) FROM wikisql_data WHERE segment_description = 'red line mos-2 west'	1-1817879-2
 SELECT length_miles FROM wikisql_data WHERE endpoints = 'westlake/macarthur park to wilshire/western'	1-1817879-2
 SELECT date_opened FROM wikisql_data WHERE segment_description = 'red line mos-2 north'	1-1817879-2
 SELECT COUNT(*) FROM wikisql_data WHERE length_miles = 6.0	1-1817879-2
-SELECT SELECT destroyed FROM wikisql_data WHERE col_1990 = 14 AND survived = 6	1-1817852-1
+SELECT COUNT(destroyed) FROM wikisql_data WHERE col_1990 = 14 AND survived = 6	1-1817852-1
 SELECT COUNT(col_1990) FROM wikisql_data WHERE to_iran = 4 AND survived < 12.0	1-1817852-1
-SELECT SELECT destroyed FROM wikisql_data WHERE aircraft = "ussr mig-25 rb"	1-1817852-1
+SELECT COUNT(destroyed) FROM wikisql_data WHERE aircraft = 'ussr mig-25 rb'	1-1817852-1
 SELECT score FROM wikisql_data WHERE opponent_team = 'Belgium'	1-18183850-12
 SELECT COUNT(*) FROM wikisql_data WHERE opponent = 'Aleksandra Wozniak'	1-18183850-12
 SELECT score FROM wikisql_data WHERE opponent = 'Dominika Cibulková'	1-18183850-12
@@ -925,8 +925,8 @@ SELECT opponent FROM wikisql_data WHERE attendance = 60425	1-18207285-2
 SELECT count(DISTINCT raiders_first_downs) FROM wikisql_data WHERE game = 9	1-18207285-2
 SELECT record FROM wikisql_data WHERE opponent = 42	1-18207285-2
 SELECT result FROM wikisql_data WHERE attendance = 31095	1-18207285-2
-SELECT COUNT(opponent) FROM wikisql_data WHERE result = "win"	1-18207285-2
-SELECT SELECT award_winning_film FROM wikisql_data WHERE number_of_screening = '50 Films 50 Televised'	1-18220102-1
+SELECT COUNT(DISTINCT opponent) FROM wikisql_data WHERE result = 'win' AND game = 1	1-18207285-2
+SELECT COUNT(number_of_screening) FROM wikisql_data WHERE number_of_screening = 50 AND award_winning_film IS NOT NULL	1-18220102-1
 SELECT COUNT(*) FROM wikisql_data WHERE opening_film = 'encounters at the end of the world' AND award_winning_film IS NOT NULL	1-18220102-1
 SELECT COUNT(*) FROM wikisql_data WHERE opening_film = 'the journey of vaan nguyen'	1-18220102-1
 SELECT opening_film FROM wikisql_data WHERE date_opening = 'august 23'	1-18220102-1
@@ -944,7 +944,7 @@ SELECT no_overall FROM wikisql_data WHERE title = 'episode 1'	1-18335117-3
 SELECT original_air_date FROM wikisql_data WHERE no_overall = 15	1-18335117-3
 SELECT director FROM wikisql_data WHERE no_in_series = 1	1-18335117-3
 SELECT original_air_date FROM wikisql_data WHERE production_code = 102	1-18335117-2
-SELECT SELECT original_air_date FROM wikisql_data WHERE production_code = 107	1-18335117-2
+SELECT min(original_air_date) FROM wikisql_data WHERE production_code = 107	1-18335117-2
 SELECT max(production_code) FROM wikisql_data WHERE writer = 'Tim Loane'	1-18335117-2
 SELECT COUNT(*) FROM wikisql_data WHERE most_wins_by = 'franco marvulli (4)'	1-1840433-2
 SELECT COUNT(*) FROM wikisql_data WHERE written_by = 'John Banas' AND directed_by = 'Pino Amenta'	1-18428016-1
@@ -958,7 +958,7 @@ SELECT COUNT(table_points) FROM wikisql_data WHERE difference = '+194'	1-1850506
 SELECT COUNT(*) FROM wikisql_data WHERE difference = 175	1-18505065-1
 SELECT theme_song_s FROM wikisql_data WHERE romaji_title = 'magarikado no kanojo'	1-18540104-1
 SELECT starring_actors FROM wikisql_data WHERE time_frame = 'thursdays 22:00~22:54 2005-04-xx to 2005-06-xx'	1-18540104-1
-SELECT SELECT romaji_title FROM wikisql_data WHERE average_ratings = '22.4%'	1-18540104-1
+SELECT japanese_title FROM wikisql_data WHERE average_ratings = 22.4	1-18540104-1
 SELECT MAX(episodes) FROM wikisql_data	1-18540104-1
 SELECT japanese_title FROM wikisql_data WHERE average_ratings = 11.6	1-18540104-1
 SELECT starring_actors FROM wikisql_data WHERE time_frame = 'tuesday 22:00~22:54 8 april 2008 to 17 june 2008'	1-18539834-2
@@ -966,9 +966,9 @@ SELECT japanese_title FROM wikisql_data WHERE tv_station = 'tv asahi'	1-18539834
 SELECT COUNT(*) FROM wikisql_data WHERE average_ratings = '8.9%'	1-18539834-2
 SELECT romaji_title FROM wikisql_data WHERE theme_song_s = 'ya-kyim "super☆looper"'	1-18539834-2
 SELECT average_ratings FROM wikisql_data WHERE tv_station = 'tv asahi'	1-18539834-2
-SELECT SELECT top_speed FROM wikisql_data WHERE production = '2002-2005' AND transmission = '4-speed automatic'	1-1857216-1
-SELECT SELECT top_speed FROM wikisql_data WHERE transmission = '5-speed manual' AND production = '2006-2009'	1-1857216-1
-SELECT SELECT acceleration_0_100km_h_0_62mph FROM wikisql_data WHERE production = '2002-2006'	1-1857216-1
+SELECT top_speed FROM wikisql_data WHERE transmission = '4-speed automatic' AND production BETWEEN '2002-01-01' AND '2005-12-31'	1-1857216-1
+SELECT top_speed FROM wikisql_data WHERE transmission = '5-speed manual' AND production >= 2006 AND production <= 2009	1-1857216-1
+SELECT acceleration_0_100km_h_0_62mph FROM wikisql_data WHERE production BETWEEN 2002 AND 2006	1-1857216-1
 SELECT township FROM wikisql_data WHERE geo_id = 3807116660	1-18600760-3
 SELECT county FROM wikisql_data WHERE longitude = -102.302775	1-18600760-3
 SELECT land_sqmi FROM wikisql_data WHERE latitude = 48.763937	1-18600760-3
@@ -1000,7 +1000,7 @@ SELECT area_km² FROM wikisql_data WHERE province = 'monseñor nouel'	1-1888051-
 SELECT COUNT(capital) FROM wikisql_data WHERE area_km² = 1111.14	1-1888051-1
 SELECT area_km² FROM wikisql_data WHERE capital = 'nagua'	1-1888051-1
 SELECT period_in_office FROM wikisql_data WHERE parliament = '11th'	1-1889233-2
-SELECT SELECT parliament FROM wikisql_data WHERE name = 'Lina Loh Woon Lee'	1-1889233-2
+SELECT name FROM wikisql_data WHERE parliament = 'lina loh woon lee'	1-1889233-2
 SELECT parliament FROM wikisql_data WHERE general_election_contested = '1997'	1-1889233-2
 SELECT period_in_office FROM wikisql_data WHERE constituency_contested = 'aljunied grc'	1-1889233-2
 SELECT parliament FROM wikisql_data WHERE name = 'sylvia lim swee lian'	1-1889233-2
@@ -1008,13 +1008,13 @@ SELECT finish FROM wikisql_data WHERE eliminated = 'Jim'	1-1893276-2
 SELECT COUNT(reward) FROM wikisql_data WHERE air_date = 'October 6, 2005'	1-1893276-2
 SELECT eliminated FROM wikisql_data WHERE air_date = 'November 3, 2005'	1-1893276-2
 SELECT COUNT(air_date) FROM wikisql_data WHERE eliminated = 'Morgan'	1-1893276-2
-SELECT SELECT unit FROM wikisql_data WHERE mission_target = 'Same target	1-18933037-3
+SELECT unit FROM wikisql_data WHERE mission_target = 'linebacker ii'	1-18933037-3
 SELECT mission_target FROM wikisql_data WHERE cause_of_loss = 'hit by sam at 38,500 feet just after bomb release'	1-18933037-3
 SELECT b_52_model FROM wikisql_data WHERE unit = '7th bw attached to 43rd sw'	1-18933037-3
 SELECT b_52_model FROM wikisql_data WHERE unit = '441st bs, 7th bw'	1-18933037-3
 SELECT cause_of_loss FROM wikisql_data WHERE bomb_capacity = '27 gp h-e'	1-18933037-3
-SELECT SELECT MIN(clubs_involved) FROM wikisql_data WHERE leagues_entering_this_round = 'None' AND round = 'Semi finals'	1-19089486-1
-SELECT SELECT new_entries_this_round FROM wikisql_data WHERE round = 'Third round'	1-19089486-1
+SELECT min(clubs_involved) FROM wikisql_data WHERE round = 'semi finals'	1-19089486-1
+SELECT new_entries_this_round FROM wikisql_data WHERE round = 3	1-19089486-1
 SELECT leagues_entering_this_round FROM wikisql_data WHERE round = 4	1-19089486-1
 SELECT min(clubs_remaining) FROM wikisql_data	1-19089486-1
 SELECT performed_by FROM wikisql_data WHERE episode_title = 'conjunction junction' AND music_by = 'bob dorough'	1-191105-2
@@ -1028,29 +1028,29 @@ SELECT market_value_billion FROM wikisql_data WHERE company = 'rhb capital'	1-19
 SELECT profits_billion FROM wikisql_data WHERE market_value_billion = 11.8	1-19112-3
 SELECT industry FROM wikisql_data WHERE revenue_billion = 2.1	1-19112-3
 SELECT COUNT(DISTINCT industry) FROM wikisql_data WHERE company = 'maxis'	1-19112-3
-SELECT COUNT(game) FROM wikisql_data WHERE date LIKE "February 26%" AND high_rebounds IS NOT NULL	1-19169116-6
-SELECT institute FROM wikisql_data WHERE democratic_renewal = "18.0% – 22.0%" AND date_released = "October 6, 1985"	1-1919538-1
+SELECT COUNT(*) FROM wikisql_data WHERE date LIKE '%.02.26' AND high_rebounds IS NOT NULL	1-19169116-6
+SELECT institute FROM wikisql_data WHERE date_released = 'october 6, 1985' AND democratic_renewal >= 18.0 AND democratic_renewal <= 22.0	1-1919538-1
 SELECT COUNT(of_seats_to_be_won FROM wikisql_data WHERE of_popular_vote = "6.88%"	1-19283982-4
-SELECT SELECT of_total_votes FROM wikisql_data WHERE of_seats_won = 30	1-19283982-4
-SELECT SELECT of_candidates FROM wikisql_data WHERE of_seats_won = 43	1-19283982-4
+SELECT COUNT(of_total_votes) FROM wikisql_data WHERE of_seats_won = 30	1-19283982-4
+SELECT COUNT(of_candidates) FROM wikisql_data WHERE of_seats_won = 43	1-19283982-4
 SELECT COUNT(*) FROM wikisql_data WHERE of_popular_vote = '11.05%'	1-19283982-4
 SELECT location FROM wikisql_data WHERE district = '12th'	1-19283806-4
 SELECT COUNT(*) FROM wikisql_data WHERE cook_pvi = 'D+16' AND col_2012_election_results IS NOT NULL	1-19283806-4
 SELECT cook_pvi FROM wikisql_data WHERE representative = 'Mike Thompson'	1-19283806-4
-SELECT SELECT COUNT(location) FROM wikisql_data WHERE median_household_income_2011 = '$71,479'	1-19283806-4
+SELECT COUNT(*) FROM wikisql_data WHERE median_household_income_2011 = 71479	1-19283806-4
 SELECT col_2012_election_results FROM wikisql_data WHERE representative = 'Barbara Lee'	1-19283806-4
 SELECT max(no_in_season) FROM wikisql_data WHERE production_code = '816'	1-19422702-1
-SELECT SELECT COUNT(us_airdate) FROM wikisql_data WHERE no_in_season = 4	1-19422702-1
+SELECT COUNT(us_airdate) FROM wikisql_data WHERE production_code LIKE '4%'	1-19422702-1
 SELECT COUNT(DISTINCT c_high) FROM wikisql_data WHERE category = 'good'	1-1942366-9
 SELECT c_high FROM wikisql_data WHERE c_low = 250.5	1-1942366-9
 SELECT i_high FROM wikisql_data WHERE c_low = 250.5	1-1942366-9
 SELECT c_low FROM wikisql_data WHERE c_high = 12.0	1-1942366-9
-SELECT COUNT(DISTINCT category) FROM wikisql_data WHERE c_low = '35.5'	1-1942366-9
-SELECT SELECT members FROM wikisql_data WHERE sold_albums_and_singles = 65	1-19439814-1
+SELECT COUNT(DISTINCT category) FROM wikisql_data WHERE c_low = 35.5	1-1942366-9
+SELECT COUNT(members) FROM wikisql_data WHERE sold_albums_and_singles = 65	1-19439814-1
 SELECT girl_group FROM wikisql_data WHERE studio_albums = 29	1-19439814-1
 SELECT ålesund FROM wikisql_data WHERE bergen = 88	1-19439864-2
-SELECT SELECT elverum FROM wikisql_data WHERE song = 'Et sted i Scandinavia'	1-19439864-2
-SELECT SELECT total FROM wikisql_data WHERE song = 'Radio Luxembourg'	1-19439864-2
+SELECT COUNT(*) FROM wikisql_data WHERE elverum > 0	1-19439864-2
+SELECT total FROM wikisql_data	1-19439864-2
 SELECT stavanger FROM wikisql_data WHERE oslo = 48	1-19439864-2
 SELECT MIN(total) FROM wikisql_data	1-19439864-2
 SELECT tromsø FROM wikisql_data WHERE total = 740	1-19439864-2
@@ -1060,9 +1060,9 @@ SELECT group_12 FROM wikisql_data WHERE group_10 = 'persikutim east kutai'	1-195
 SELECT group_7 FROM wikisql_data WHERE group_11 = 'persikos sorong city'	1-19523142-5
 SELECT COUNT(*) FROM wikisql_data WHERE group_7 = 'Nusa Ina'	1-19523142-5
 SELECT group_12 FROM wikisql_data WHERE group_9 = 'psid jombang'	1-19523142-5
-SELECT MAX(number_one_s) FROM wikisql_data	1-19542477-9
-SELECT SELECT song_s_weeks FROM wikisql_data WHERE artist_s = 'One Direction'	1-19542477-9
-SELECT SELECT song_s_weeks FROM wikisql_data WHERE artist_s = 'Rihanna' AND issue_years = '2012'	1-19542477-9
+SELECT max(song_s_weeks) FROM wikisql_data	1-19542477-9
+SELECT song_s_weeks, number_one_s FROM wikisql_data WHERE artist_s = 'one direction'	1-19542477-9
+SELECT song_s_weeks, number_one_s FROM wikisql_data WHERE artist_s = 'rihanna' AND issue_years = 2012	1-19542477-9
 SELECT nhl_team FROM wikisql_data WHERE college_junior_club_team = 'calgary centennials (wchl)'	1-1965650-11
 SELECT player FROM wikisql_data WHERE college_junior_club_team = 'university of michigan'	1-1965650-11
 SELECT COUNT(*) FROM wikisql_data WHERE pick = 166	1-1965650-11
@@ -1087,12 +1087,12 @@ SELECT COUNT(*) FROM wikisql_data WHERE also_currently_known_as = 'hp open'	1-19
 SELECT COUNT(*) FROM wikisql_data WHERE country = 'thailand'	1-19765685-2
 SELECT opponent FROM wikisql_data WHERE date = 'june 12'	1-19789597-5
 SELECT COUNT(date) FROM wikisql_data WHERE score = 'l 63-77'	1-19789597-5
-SELECT SELECT MAX(col_x) FROM wikisql_data WHERE viewers_millions = '6.95'	1-19834691-4
-SELECT SELECT SUM(viewers_millions) FROM wikisql_data WHERE audience_share_in_timeslot = '10.2%'	1-19834691-4
+SELECT MAX(viewers_millions) FROM wikisql_data WHERE viewers_millions = 6.95	1-19834691-4
+SELECT SUM(viewers_millions) FROM wikisql_data WHERE audience_share_in_timeslot = '10.2%'	1-19834691-4
 SELECT timeslot FROM wikisql_data WHERE viewers_millions = 6.51	1-19834691-4
 SELECT uk_air_date FROM wikisql_data WHERE audience_share_in_timeslot = 7.3	1-19834691-4
 SELECT COUNT(*) FROM wikisql_data WHERE col_x = '1'	1-19834691-4
-SELECT SELECT city_town FROM wikisql_data WHERE principal = 'Mark Fletcher'	1-1984697-53
+SELECT school FROM wikisql_data WHERE principal = 'Mark Fletcher'	1-1984697-53
 SELECT COUNT(website) FROM wikisql_data WHERE size = 1939	1-1984697-53
 SELECT principal FROM wikisql_data WHERE school = 'edgewood high school'	1-1984697-53
 SELECT city_town FROM wikisql_data WHERE school = 'bloomington high school north'	1-1984697-53
@@ -1106,17 +1106,17 @@ SELECT torque FROM wikisql_data WHERE year = 1996	1-20007413-6
 SELECT compression_ratio FROM wikisql_data WHERE rpo = 'L35' AND applications = 5	1-20007413-6
 SELECT torque FROM wikisql_data WHERE applications = 346	1-20007413-6
 SELECT team FROM wikisql_data WHERE motorcycle = 'honda'	1-20016339-1
-SELECT SELECT poles FROM wikisql_data WHERE motorcycle = 'Kalex'	1-20016339-1
-SELECT fastest_laps FROM wikisql_data WHERE team = 'I.C. Team'	1-20016339-1
+SELECT COUNT(poles) FROM wikisql_data WHERE motorcycle = 'kalex'	1-20016339-1
+SELECT sum(fastest_laps) FROM wikisql_data WHERE team = 'I.C. Team'	1-20016339-1
 SELECT class FROM wikisql_data WHERE team = 'italtrans racing team' AND pts = 0	1-20016339-1
 SELECT conventional FROM wikisql_data WHERE uyghur_yenɡi_yezik = 'تاغارما'	1-2008069-2
 SELECT uyghur_k_ona_yezik FROM wikisql_data WHERE chinese = '瓦恰'	1-2008069-2
 SELECT conventional FROM wikisql_data WHERE chinese = 'defter'	1-2008069-2
 SELECT pinyin FROM wikisql_data WHERE uyghur_yenɡi_yezik = 'تىزناپ'	1-2008069-2
 SELECT pinyin FROM wikisql_data WHERE chinese = 'mazar'	1-2008069-2
-SELECT SELECT pinyin FROM wikisql_data WHERE uyghur_yenɡi_yezik = 'kɵkyar k̡irƣiz yezisi'	1-2008069-2
+SELECT pinyin FROM wikisql_data WHERE uyghur_k_ona_yezik = 'kɵkyar k̡irƣiz yezisi'	1-2008069-2
 SELECT team_s FROM wikisql_data WHERE top_10 = 18	1-2012187-3
-SELECT SELECT wins FROM wikisql_data WHERE position = 4	1-2012187-3
+SELECT SUM(wins) FROM wikisql_data WHERE position = 4	1-2012187-3
 SELECT date FROM wikisql_data WHERE attendance = 22000	1-2015453-1
 SELECT remarks FROM wikisql_data WHERE date = '8 october 2008'	1-2015453-1
 SELECT res FROM wikisql_data WHERE team_1 = 'payam' OR team_2 = 'payam'	1-2015453-1
@@ -1136,18 +1136,18 @@ SELECT builder FROM wikisql_data WHERE wd_no = 22	1-20236726-2
 SELECT lms_no FROM wikisql_data WHERE serial_no = 372	1-20236726-2
 SELECT builder FROM wikisql_data WHERE serial_no = 377	1-20236726-2
 SELECT television_order FROM wikisql_data WHERE title = 'deep cover for batman!'	1-20360535-2
-SELECT SELECT directed_by FROM wikisql_data WHERE television_order = 'S01E13'	1-20360535-2
-SELECT television_order FROM wikisql_data WHERE directed_by = 'Ben Jones' AND written_by = 'J. M. DeMatteis' AND original_air_date = 'February 6, 2009'	1-20360535-2
-SELECT SELECT written_by FROM wikisql_data WHERE television_order = 'S01E06'	1-20360535-2
+SELECT directed_by FROM wikisql_data WHERE television_order = 13 AND production_code LIKE 's01%'	1-20360535-2
+SELECT television_order FROM wikisql_data WHERE directed_by = 'ben jones' AND written_by = 'j. m. dematteis' AND original_air_date = 'february 6, 2009'	1-20360535-2
+SELECT written_by FROM wikisql_data WHERE television_order = 6 AND production_code LIKE 's01%'	1-20360535-2
 SELECT original_air_date FROM wikisql_data WHERE directed_by = 'Ben Jones' AND written_by = 'Steven Melching'	1-20360535-4
 SELECT original_air_date FROM wikisql_data WHERE title = 'Crisis: 22,300 Miles Above Earth!'	1-20360535-4
 SELECT COUNT(*) FROM wikisql_data WHERE guest_4 = 'des kelly'	1-20466963-9
 SELECT guest_3 FROM wikisql_data WHERE guest_1 = 'Jim White'	1-20466963-9
-SELECT SELECT points FROM wikisql_data WHERE poles > '1.0'	1-20500097-1
+SELECT SUM(points) FROM wikisql_data WHERE poles > 1.0	1-20500097-1
 SELECT team FROM wikisql_data WHERE series = 'gp3'	1-20500097-1
-SELECT first_place FROM wikisql_data WHERE no_of_weeks = "6"	1-2054561-2
+SELECT first_place FROM wikisql_data WHERE no_of_weeks = 6	1-2054561-2
 SELECT epa_rated_highway_fuel_economy FROM wikisql_data WHERE type_of_powertrain = 'electric' AND vehicle = 'suv'	1-20549371-3
-SELECT SELECT vehicle FROM wikisql_data WHERE epa_rated_highway_fuel_economy = '109 mpg-e'	1-20549371-3
+SELECT vehicle FROM wikisql_data WHERE epa_rated_highway_fuel_economy = 109	1-20549371-3
 SELECT shareholder FROM wikisql_data WHERE percent_of_votes = 2.55	1-206419-3
 SELECT shareholder FROM wikisql_data WHERE percent_of_capital = 3.63	1-206419-3
 SELECT s_b_share FROM wikisql_data WHERE percent_of_votes = 2.55	1-206419-3
@@ -1160,14 +1160,14 @@ SELECT name FROM wikisql_data WHERE owner = 'David Johnson'	1-20668268-1
 SELECT others FROM wikisql_data WHERE mccain = 52.9 AND obama_2 < 45205.0	1-20693870-1
 SELECT COUNT(*) FROM wikisql_data WHERE obama = 29.9	1-20693870-1
 SELECT COUNT(*) FROM wikisql_data WHERE obama = 27.2	1-20693870-1
-SELECT SELECT mccain_2 FROM wikisql_data WHERE obama_2 = '895'	1-20693870-1
-SELECT others_2 FROM wikisql_data WHERE county = 'Columbia'	1-20693870-1
+SELECT COUNT(mccain) FROM wikisql_data WHERE obama = 895	1-20693870-1
+SELECT COUNT(others) FROM wikisql_data WHERE county = "Columbia"	1-20693870-1
 SELECT obama FROM wikisql_data WHERE county = 'Gem County'	1-20684390-1
-SELECT SELECT MAX(mccain_2) FROM wikisql_data	1-20684390-1
-SELECT SUM(mccain_2) FROM wikisql_data WHERE obama = '17.34'	1-20684390-1
+SELECT MAX(mccain) FROM wikisql_data	1-20684390-1
+SELECT SUM(mccain) FROM wikisql_data WHERE obama_2 = 17.34	1-20684390-1
 SELECT mccain_2 FROM wikisql_data WHERE county = 'jerome'	1-20684390-1
-SELECT third_place_s FROM wikisql_data WHERE total_placing_s = '8'	1-20823568-2
-SELECT SELECT second_place_s FROM wikisql_data WHERE sporting_profession = 'snooker'	1-20823568-2
+SELECT SUM(third_place_s) FROM wikisql_data WHERE total_placing_s = 8	1-20823568-2
+SELECT COUNT(second_place_s) FROM wikisql_data WHERE sporting_profession = 'snooker'	1-20823568-2
 SELECT game FROM wikisql_data WHERE opponents = 'purdue'	1-20850527-1
 SELECT COUNT(*) FROM wikisql_data WHERE record = '3-0'	1-20850527-1
 SELECT MIN(wildcats_points) FROM wikisql_data WHERE record = '5-1'	1-20850527-1
@@ -1191,7 +1191,7 @@ SELECT tournament_venue_city FROM wikisql_data WHERE conference = 'ivy league'	1
 SELECT COUNT(conference_player_of_the_year) FROM wikisql_data WHERE conference = 'Mountain West'	1-21091982-3
 SELECT tournament_venue_city FROM wikisql_data WHERE conference_tournament = '2000 MWC Men\'s Basketball Tournament'	1-21091982-3
 SELECT pf FROM wikisql_data WHERE w = 'rebecca jean macphee'	1-21093403-1
-SELECT SELECT SUM(blank_ends) FROM wikisql_data WHERE locale = 'Prince Edward Island'	1-21093403-1
+SELECT SUM(blank_ends) FROM wikisql_data WHERE locale = 'Prince Edward Island'	1-21093403-1
 SELECT locale FROM wikisql_data WHERE shot_pct = 78	1-21093403-1
 SELECT position FROM wikisql_data WHERE name = 'van den brink, bas'	1-21220720-1
 SELECT max(finals_apps) FROM wikisql_data	1-21220720-1
@@ -1200,8 +1200,8 @@ SELECT no_in_series FROM wikisql_data WHERE written_by = 'Rob Wright & Debra J. 
 SELECT title FROM wikisql_data WHERE u_s_viewers_millions = 3.3	1-21313327-1
 SELECT directed_by FROM wikisql_data WHERE title = 'Someone to Witch Over Me'	1-21313327-1
 SELECT written_by FROM wikisql_data WHERE no_in_season = 3	1-21313327-1
-SELECT 1	1-21313327-1
-SELECT 1	1-21350772-2
+SELECT SUM(u_s_viewers_millions) FROM wikisql_data WHERE written_by = 'Brad Kern'	1-21313327-1
+SELECT col_100_yr FROM wikisql_data WHERE chemical_formula = 'CO2'	1-21350772-2
 SELECT col_20_yr FROM wikisql_data WHERE gas_name = 'Nitrous Oxide'	1-21350772-2
 SELECT lifetime_years FROM wikisql_data WHERE chemical_formula = 'ch 4'	1-21350772-2
 SELECT col_500_yr FROM wikisql_data WHERE col_20_yr = 289	1-21350772-2
@@ -1214,7 +1214,7 @@ SELECT traditional FROM wikisql_data WHERE density = 820	1-2135222-2
 SELECT pinyin FROM wikisql_data WHERE simplified = '虞城县'	1-2135222-2
 SELECT COUNT(*) FROM wikisql_data WHERE population = 703379	1-2135222-2
 SELECT episode_summary FROM wikisql_data WHERE coach = 'torae carr'	1-2140071-12
-SELECT 1	1-2140071-12
+SELECT coach FROM wikisql_data WHERE episode_summary LIKE '%emily is made into a more outgoing person%'	1-2140071-12
 SELECT episode_summary FROM wikisql_data WHERE coach = 'travis brown'	1-2140071-12
 SELECT min(episode) FROM wikisql_data WHERE coach = 'donnie klang'	1-2140071-12
 SELECT episode FROM wikisql_data WHERE coach = 'travis brown'	1-2140071-12
@@ -1228,7 +1228,7 @@ SELECT coach FROM wikisql_data WHERE premier_date > '2008-02-16' AND episode > 2
 SELECT MIN(season) FROM wikisql_data WHERE coach = 'cici kelley'	1-2140071-8
 SELECT COUNT(DISTINCT season) FROM wikisql_data WHERE coach = 'rob masek'	1-2140071-8
 SELECT stadium FROM wikisql_data WHERE type_of_record = 'regular season'	1-21436373-4
-SELECT 1	1-214479-8
+SELECT y_2008 FROM wikisql_data WHERE y_2011 = 3	1-214479-8
 SELECT y_2011 FROM wikisql_data WHERE expression = 'month = floor ((d + e + 114) / 31)'	1-214479-8
 SELECT y_2011 FROM wikisql_data WHERE y_2010 = '22 march 2010'	1-214479-8
 SELECT y_2011 FROM wikisql_data WHERE y_2009 = '6 april 2009'	1-214479-8
@@ -1236,13 +1236,13 @@ SELECT y_2008 FROM wikisql_data WHERE expression = 'easter day (julian calendar)
 SELECT y_2009 FROM wikisql_data WHERE expression = 'month = floor ((d + e + 114) / 31)'	1-214479-8
 SELECT max(rr1_pts) FROM wikisql_data WHERE ranking = 7	1-21471897-2
 SELECT races FROM wikisql_data WHERE team_name = 'prada challenge'	1-21471897-2
-SELECT 1	1-21471897-2
+SELECT min(total_pts) FROM wikisql_data WHERE team_name = 'dennis conner'	1-21471897-2
 SELECT ranking FROM wikisql_data WHERE rr2_pts = 8	1-21471897-2
-SELECT 1	1-21471897-2
+SELECT SUM(rr2_pts) FROM wikisql_data WHERE won = 11	1-21471897-2
 SELECT r1b1a2_r_m269 FROM wikisql_data WHERE r1b1c_r_v88 = '77.8%'	1-21481509-4
 SELECT language FROM wikisql_data WHERE country = 'niger' AND r1b1c_r_v88 = 0.0	1-21481509-4
 SELECT r1b1c_r_v88 FROM wikisql_data WHERE total = 4.5	1-21481509-4
-SELECT 1	1-21481509-4
+SELECT SUM(n) FROM wikisql_data WHERE r1b1a2_r_m269 = 0.6	1-21481509-4
 SELECT COUNT(n) FROM wikisql_data WHERE language = 'berbers' AND region = 'siwa'	1-21481509-4
 SELECT max(n) FROM wikisql_data WHERE r1b1c4_r_v69 = 55.6	1-21481509-4
 SELECT seat_of_rcm FROM wikisql_data WHERE density_pop_per_km2 = 9.7	1-214920-1
@@ -1259,13 +1259,13 @@ SELECT COUNT(*) FROM wikisql_data WHERE outcome = 'Winner' AND partner = 'John L
 SELECT opponents FROM wikisql_data WHERE outcome = 'winner' AND surface = 'grass'	1-2151643-3
 SELECT COUNT(original_air_date) FROM wikisql_data WHERE production_code = '6'	1-21550897-1
 SELECT production_code FROM wikisql_data WHERE u_s_viewers_million = 9.18	1-21550897-1
-SELECT 1	1-21550897-1
-SELECT SELECT title FROM wikisql_data WHERE u_s_viewers_million = '10.14'	1-21550897-1
+SELECT production_code FROM wikisql_data WHERE directed_by = 'Craig Ross, Jr.'	1-21550897-1
+SELECT title FROM wikisql_data WHERE u_s_viewers_million = 10.14	1-21550897-1
 SELECT written_by FROM wikisql_data WHERE production_code = '519'	1-21550897-1
 SELECT successor FROM wikisql_data WHERE reason_for_change = 'died May 12, 1964'	1-2159506-4
 SELECT district FROM wikisql_data WHERE reason_for_change = 'died august 9, 1964'	1-2159506-4
 SELECT min(division) FROM wikisql_data	1-21602734-1
-SELECT 1	1-21602734-1
+SELECT reg_season FROM wikisql_data WHERE year = 2009 AND playoffs = 'no'	1-21602734-1
 SELECT league FROM wikisql_data WHERE year = 2010	1-21602734-1
 SELECT MAX(count_division) FROM (SELECT COUNT(division) AS count_division FROM wikisql_data GROUP BY division)	1-21602734-1
 SELECT league FROM wikisql_data WHERE year = 2008	1-21602734-1
@@ -1279,7 +1279,7 @@ SELECT chapter FROM wikisql_data WHERE institution = 'illinois wesleyan'	1-21821
 SELECT inactive FROM wikisql_data WHERE institution = 'University of Texas, El Paso'	1-21821014-1
 SELECT installation_date FROM wikisql_data WHERE chapter = 'Delta'	1-21821014-1
 SELECT lowest FROM wikisql_data WHERE stadium = 'pohang steelyard'	1-21824695-8
-SELECT 1	1-21824695-8
+SELECT COUNT(*) FROM wikisql_data WHERE highest = 32250	1-21824695-8
 SELECT team FROM wikisql_data WHERE match_played = 104	1-21824695-8
 SELECT highest FROM wikisql_data WHERE team = 'pohang steelers'	1-21824695-8
 SELECT team FROM wikisql_data WHERE average = 7757	1-21824695-8
@@ -1291,29 +1291,29 @@ SELECT classification_judges FROM wikisql_data WHERE detailed_grades = '9, 9, 8,
 SELECT poles FROM wikisql_data WHERE starts = '#08 Miller'	1-2190919-1
 SELECT MAX(year) FROM wikisql_data WHERE avg_start = 8.5	1-2190919-1
 SELECT team_s FROM wikisql_data WHERE avg_finish = 23.3	1-2190919-1
-SELECT 1	1-2190919-1
+SELECT team_s FROM wikisql_data WHERE position = 92	1-2190919-1
 SELECT COUNT(*) FROM wikisql_data WHERE avg_finish = 23.3 AND top_10 = 1	1-2190919-1
 SELECT COUNT(*) FROM wikisql_data WHERE versus = 'India'	1-21907770-4
 SELECT date FROM wikisql_data WHERE versus = 'South Africa'	1-21907770-4
 SELECT championship_titles_finals FROM wikisql_data WHERE year = 1981	1-2201541-3
 SELECT COUNT(DISTINCT outcome) FROM wikisql_data WHERE partner = 'Paul McNamee'	1-2201541-3
-SELECT 1	1-2201541-3
+SELECT COUNT(DISTINCT partner) FROM wikisql_data WHERE championship_titles_finals = 1	1-2201541-3
 SELECT directed_by FROM wikisql_data WHERE title = 'Freaky Friday'	1-2221374-3
 SELECT original_air_date FROM wikisql_data WHERE directed_by = 'James Widdoes' AND production_code = '320'	1-2221374-3
 SELECT COUNT(production_code) FROM wikisql_data WHERE title = 'the sub'	1-2221374-3
 SELECT production_code FROM wikisql_data WHERE no_in_season = 3	1-2221374-3
 SELECT orchestra FROM wikisql_data WHERE year_of_recording = 1951	1-222198-1
 SELECT orchestra FROM wikisql_data WHERE year_of_recording = 1934	1-222198-1
-SELECT former_codes FROM wikisql_data WHERE new_country_names_and_codes = 'Panama ( PA , PAN , 591 )'	1-222666-1
+SELECT former_codes FROM wikisql_data WHERE new_country_names_and_codes = 'pa , pan , 591'	1-222666-1
 SELECT COUNT(period_of_validity) FROM wikisql_data WHERE new_country_names_and_codes = 'upper volta'	1-222666-1
 SELECT seat_no_4 FROM wikisql_data WHERE election = 'January 25, 1967'	1-2231241-1
 SELECT seat_no_1 FROM wikisql_data WHERE mayor = 'john j. seguier'	1-2231241-1
 SELECT seat_no_6 FROM wikisql_data WHERE seat_no_1 = 'jacques lachapelle' AND seat_no_5 = 'donald s. dutton'	1-2231241-1
 SELECT election FROM wikisql_data WHERE seat_no_1 = 'jacques lachapelle' AND seat_no_5 = 'g. sanscartier'	1-2231241-1
-SELECT 1	1-2233872-1
+SELECT COUNT(season) FROM wikisql_data WHERE result = 'round 1' AND gp = 64	1-2233872-1
 SELECT season FROM wikisql_data WHERE gp = 244	1-2233872-1
 SELECT max(otl) FROM wikisql_data WHERE l = 28	1-2233872-1
-SELECT MAX(sol) FROM wikisql_data WHERE result = 'Lost in round 3'	1-2233872-1
+SELECT max(sol) FROM wikisql_data WHERE result = 'round 3' AND l > 0	1-2233872-1
 SELECT MIN(l) FROM wikisql_data WHERE ga = 272	1-2233872-1
 SELECT min(total_min_2_medals) FROM wikisql_data	1-22355-23
 SELECT winning_driver FROM wikisql_data WHERE winning_team = 'lawson team impul'	1-22379931-2
@@ -1321,8 +1321,8 @@ SELECT fastest_lap FROM wikisql_data WHERE pole_position = 'Benoît Tréluyer'	1
 SELECT min(round) FROM wikisql_data WHERE fastest_lap = 'Takashi Kogure'	1-22379931-2
 SELECT COUNT(winning_driver) FROM wikisql_data WHERE circuit = 'Suzuka Circuit' AND pole_position = 'Loïc Duval'	1-22379931-2
 SELECT match_date FROM wikisql_data WHERE winner = 'West Indies'	1-22384475-1
-SELECT SELECT COUNT(s_no) FROM wikisql_data WHERE margin = '131 runs'	1-22384475-1
-SELECT SELECT winner FROM wikisql_data WHERE margin = '131 runs'	1-22384475-1
+SELECT COUNT(*) FROM wikisql_data WHERE margin = 131	1-22384475-1
+SELECT winner FROM wikisql_data WHERE margin = 131	1-22384475-1
 SELECT margin FROM wikisql_data WHERE match_date = '19 Jan 2002'	1-22384475-1
 SELECT location_of_venue FROM wikisql_data WHERE venue = 'Bellerive Country Club'	1-224616-1
 SELECT winners_score FROM wikisql_data WHERE year = 1982	1-224616-1
@@ -1346,7 +1346,7 @@ SELECT successor FROM wikisql_data WHERE district = 'florida territory at-large'
 SELECT vacator FROM wikisql_data WHERE reason_for_change = 'died' AND date_successor_seated = 'january 12, 1826'	1-225102-4
 SELECT reason_for_change FROM wikisql_data WHERE district = 'pennsylvania 13th'	1-225102-4
 SELECT vacator FROM wikisql_data WHERE reason_for_change = 'died' AND date_successor_seated = 'august 13, 1826'	1-225102-4
-SELECT SELECT successor FROM wikisql_data WHERE date_of_successors_formal_installation = "January 26, 1837"	1-225200-3
+SELECT successor FROM wikisql_data WHERE date_of_successors_formal_installation = 'january 26, 1837'	1-225200-3
 SELECT successor FROM wikisql_data WHERE district = 'north carolina 13th'	1-225204-4
 SELECT date_successor_seated FROM wikisql_data WHERE district = 'Pennsylvania 17th'	1-225204-4
 SELECT written_by FROM wikisql_data WHERE production_code = 170	1-22580855-1
@@ -1359,24 +1359,24 @@ SELECT MIN(year) FROM wikisql_data WHERE mens_singles = 'Raju Rai'	1-22587192-1
 SELECT COUNT(*) FROM wikisql_data WHERE opponent_in_the_final = 'Johan Kriek'	1-22597626-5
 SELECT COUNT(miles_km FROM wikisql_data WHERE race_time = "2:47:11"	1-22648285-1
 SELECT date FROM wikisql_data WHERE year = 1968	1-22648285-1
-SELECT 1	1-22648285-1
+SELECT year FROM wikisql_data WHERE laps = 301	1-22648285-1
 SELECT COUNT(*) FROM wikisql_data WHERE driver = 'cale yarborough' AND average_speed_mph = 88.924	1-22648285-1
 SELECT pos FROM wikisql_data WHERE club = 'west bromwich albion' ORDER BY pos LIMIT 1	1-226619-12
 SELECT points FROM wikisql_data WHERE respect_toward_opponents = 212	1-226619-12
 SELECT pos FROM wikisql_data WHERE club = 'west ham united'	1-226619-12
-SELECT SELECT MAX(red_yellow_cards) FROM wikisql_data WHERE positive_play = 255	1-226619-12
-SELECT 1	1-22705586-1
+SELECT club FROM wikisql_data WHERE positive_play = 255 ORDER BY red_yellow_cards DESC LIMIT 1	1-226619-12
+SELECT date_of_birth FROM wikisql_data WHERE date_of_birth = '27/07/86'	1-22705586-1
 SELECT min(number) FROM wikisql_data	1-22705586-1
 SELECT nationality FROM wikisql_data WHERE name = 'francesco guglielmi'	1-22705586-1
 SELECT height_m FROM wikisql_data WHERE date_of_birth = '17/08/75'	1-22705586-1
-SELECT 1	1-22683369-8
-SELECT 1	1-22683369-8
-SELECT 1	1-22683369-8
+SELECT COUNT(challenge_cup FROM wikisql_data WHERE player = "7"	1-22683369-8
+SELECT league FROM wikisql_data WHERE player = 'kris doolan'	1-22683369-8
+SELECT p FROM wikisql_data WHERE player = 'bryan hodge'	1-22683369-8
 SELECT MIN(league_cup) FROM wikisql_data	1-22683369-8
 SELECT date FROM wikisql_data WHERE cowboys_points = 13 AND date LIKE '1966%'	1-22801165-1
 SELECT record FROM wikisql_data WHERE date = 'Nov. 5, 1966'	1-22801165-1
 SELECT regular_season_winner FROM wikisql_data WHERE tournament_winner = 'Maryland'	1-22779004-1
-SELECT SELECT tournament_winner FROM wikisql_data WHERE regular_season_winner = 'Idaho State'	1-22779004-1
+SELECT tournament_winner FROM wikisql_data WHERE regular_season_winner = 'Idaho State'	1-22779004-1
 SELECT regular_season_winner FROM wikisql_data WHERE conference = 'missouri valley conference'	1-22779004-1
 SELECT conference FROM wikisql_data WHERE regular_season_winner = 'Arizona State'	1-22779004-1
 SELECT tournament_winner FROM wikisql_data WHERE conference = 'Atlantic Coast Conference'	1-22779004-1
@@ -1384,27 +1384,27 @@ SELECT county FROM wikisql_data WHERE unemployment_rate = 3.6	1-22815568-2
 SELECT status FROM wikisql_data WHERE poverty_rate = 17.3	1-22815568-2
 SELECT market_income_per_capita FROM wikisql_data WHERE poverty_rate = 9.4	1-22815568-2
 SELECT COUNT(status) FROM wikisql_data WHERE population = 90565	1-22815568-2
-SELECT 1	1-22815568-2
-SELECT 1	1-22815568-2
+SELECT status FROM wikisql_data WHERE market_income_per_capita = 24326	1-22815568-2
+SELECT unemployment_rate FROM wikisql_data WHERE market_income_per_capita = 20958	1-22815568-2
 SELECT written_by FROM wikisql_data WHERE production_code = '1ARK07'	1-22835602-1
 SELECT COUNT(DISTINCT directed_by) FROM wikisql_data WHERE production_code = '1ARK08'	1-22835602-1
-SELECT 1	1-22835602-1
+SELECT COUNT(viewers_in_millions) FROM wikisql_data WHERE title = "Father's Day"	1-22835602-1
 SELECT directed_by FROM wikisql_data WHERE viewers_in_millions = 1.945	1-22835602-1
 SELECT original_air_date FROM wikisql_data WHERE production_code = '1ARK79'	1-22835602-1
 SELECT COUNT(round) FROM wikisql_data WHERE edition = '2006 davis cup europe/africa group i'	1-22853654-10
-SELECT 1	1-22879262-13
+SELECT location_attendance FROM wikisql_data WHERE date = 'May 3'	1-22879262-13
 SELECT team FROM wikisql_data WHERE date = 'february 27'	1-22879323-8
-SELECT 1	1-22879323-8
-SELECT 1	1-22879323-8
+SELECT score FROM wikisql_data WHERE high_rebounds = 8	1-22879323-8
+SELECT team FROM wikisql_data WHERE date = 'February 9' AND high_assists = (SELECT MAX(high_assists) FROM wikisql_data WHERE date = 'February 9')	1-22879323-8
 SELECT record FROM wikisql_data WHERE team = 'Memphis'	1-22879323-8
-SELECT 1	1-22879323-8
-SELECT 1	1-22883210-11
+SELECT max(game) FROM wikisql_data WHERE high_rebounds = 8	1-22879323-8
+SELECT high_assists FROM wikisql_data WHERE series = '0-1' ORDER BY high_assists DESC LIMIT 1	1-22883210-11
 SELECT high_points FROM wikisql_data WHERE game = 5	1-22883210-11
 SELECT team FROM wikisql_data WHERE series = '1-1'	1-22883210-11
-SELECT 1	1-22883210-11
+SELECT date FROM wikisql_data WHERE high_points = 29	1-22883210-11
 SELECT audition_city FROM wikisql_data WHERE audition_venue = 'hyatt regency chicago'	1-22897967-1
 SELECT callback_date FROM wikisql_data WHERE audition_venue = 'amway arena'	1-22897967-1
-SELECT 1	1-22897967-1
+SELECT guest_judge FROM wikisql_data WHERE first_audition_date = 'july 9, 2009'	1-22897967-1
 SELECT COUNT(*) FROM wikisql_data WHERE audition_venue = 'rosen shingle creek resort'	1-22897967-1
 SELECT golden_tickets FROM wikisql_data WHERE audition_venue = 'invesco field'	1-22897967-1
 SELECT k_r_narayanan_values FROM wikisql_data WHERE states = 'pondicherry'	1-22897453-1
@@ -1413,14 +1413,14 @@ SELECT k_r_narayanan_votes FROM wikisql_data WHERE value_of_each_vote = 208	1-22
 SELECT COUNT(t_n_seshan_values) FROM wikisql_data WHERE k_r_narayanan_values = 478608	1-22897453-1
 SELECT production_code FROM wikisql_data WHERE no_in_season = 21	1-22948559-1
 SELECT production_code FROM wikisql_data WHERE written_by = 'paul lieberstein'	1-22948559-1
-SELECT 1	1-22993636-5
+SELECT SUM(blocks) FROM wikisql_data WHERE rebounds = 198	1-22993636-5
 SELECT minutes FROM wikisql_data WHERE player = 'jordan coleman'	1-22993636-5
-SELECT 1	1-22993636-5
+SELECT minutes FROM wikisql_data WHERE player = 'chanel chisholm'	1-22993636-5
 SELECT MIN(three_pointers) FROM wikisql_data WHERE steals = 52	1-22993636-5
 SELECT MIN(games_played) FROM wikisql_data WHERE steals = 50	1-22993636-5
-SELECT 1	1-2305948-1
+SELECT country FROM wikisql_data WHERE name = 'rock'	1-2305948-1
 SELECT COUNT(*) FROM wikisql_data WHERE federation = 'roh' OR federation = 'wwe'	1-2305948-1
-SELECT 1	1-2305948-1
+SELECT other_placings FROM wikisql_data WHERE name = 'eddie guerrero'	1-2305948-1
 SELECT COUNT(*) FROM wikisql_data WHERE country = 'England'	1-2305948-1
 SELECT original_air_date FROM wikisql_data WHERE title = 'don\'t look a smith horse in the mouth'	1-23235679-1
 SELECT written_by FROM wikisql_data WHERE no_in_series = 88	1-23235679-1
@@ -1436,37 +1436,37 @@ SELECT score_in_the_final FROM wikisql_data WHERE opponent_in_the_final = 'john 
 SELECT surface FROM wikisql_data WHERE score_in_the_final = '6–4, 6–7 (1–7) , 6–7 (4–7) , 4–6'	1-23235767-1
 SELECT score FROM wikisql_data WHERE game = 6	1-23248910-11
 SELECT high_rebounds FROM wikisql_data WHERE game = '2'	1-23248910-11
-SELECT 1	1-23274514-8
+SELECT date FROM wikisql_data WHERE location_attendance = 18624 AND location_attendance IS NOT NULL	1-23274514-8
 SELECT date FROM wikisql_data WHERE record = '14-27'	1-23274514-6
 SELECT COUNT(*) FROM wikisql_data WHERE game = 35 AND high_points IS NOT NULL	1-23274514-6
 SELECT high_points FROM wikisql_data WHERE date = 'January 2'	1-23274514-6
-SELECT 1	1-23281862-6
-SELECT 1	1-23281862-6
-SELECT 1	1-23281862-6
-SELECT 1	1-23284271-8
+SELECT high_rebounds FROM wikisql_data WHERE high_points = 23	1-23281862-6
+SELECT score FROM wikisql_data WHERE high_rebounds = 8	1-23281862-6
+SELECT location_attendance FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE high_points = 25)	1-23281862-6
+SELECT team FROM wikisql_data WHERE record = '32-19' ORDER BY high_assists DESC LIMIT 1	1-23284271-8
 SELECT date FROM wikisql_data WHERE team = 'mavericks' AND record = '32-19'	1-23284271-8
 SELECT location_attendance, COUNT(*) FROM wikisql_data WHERE record = '45-22'	1-23284271-9
-SELECT 1	1-23284271-9
+SELECT COUNT(*) FROM wikisql_data WHERE record = '46-22' AND team = 'Mavericks'	1-23284271-9
 SELECT date FROM wikisql_data WHERE score = 'w 109–95 (ot)'	1-23285761-8
 SELECT high_points FROM wikisql_data WHERE location_attendance = '19155' AND team = 'pepsi center'	1-23285761-8
 SELECT team FROM wikisql_data WHERE record = '5-8'	1-23285805-4
 SELECT max(game) FROM wikisql_data WHERE record = '5-5'	1-23285805-4
 SELECT score FROM wikisql_data WHERE record = '6-8'	1-23285805-4
 SELECT date FROM wikisql_data WHERE game = 3	1-23286112-6
-SELECT 1	1-23286112-6
-SELECT SELECT record FROM wikisql_data WHERE high_rebounds = 'Jeff Green (14)'	1-23286112-6
+SELECT location_attendance FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE high_points = 25)	1-23286112-6
+SELECT record FROM wikisql_data WHERE high_rebounds = 14	1-23286112-6
 SELECT team FROM wikisql_data WHERE date = 'january 4'	1-23286112-8
 SELECT location_attendance FROM wikisql_data WHERE date = 'january 18'	1-23286112-8
 SELECT min(game) FROM wikisql_data WHERE date = 'January 29'	1-23286112-8
-SELECT SELECT location_attendance FROM wikisql_data WHERE high_assists = 'Russell Westbrook (5)' AND high_rebounds = 'Nenad Krstic (8)'	1-23286112-7
-SELECT 1	1-23286112-7
-SELECT SELECT high_points FROM wikisql_data WHERE location_attendance = 'Verizon Center 17,152'	1-23286112-7
+SELECT location_attendance FROM wikisql_data WHERE high_assists = 5 AND high_rebounds = 8	1-23286112-7
+SELECT high_points FROM wikisql_data WHERE location_attendance = '15,095'	1-23286112-7
+SELECT high_points FROM wikisql_data WHERE location_attendance = 17152	1-23286112-7
 SELECT score FROM wikisql_data WHERE date = 'december 7'	1-23286112-7
-SELECT SELECT game FROM wikisql_data WHERE high_rebounds = 'Carlos Boozer (8)'	1-23286223-5
+SELECT COUNT(*) FROM wikisql_data WHERE high_rebounds = 8	1-23286223-5
 SELECT date FROM wikisql_data WHERE high_assists = 'Deron Williams (13)'	1-23286223-5
 SELECT COUNT(DISTINCT high_rebounds) FROM wikisql_data WHERE game = 26	1-23286223-5
 SELECT COUNT(DISTINCT high_assists) FROM wikisql_data WHERE date = 'March 4'	1-23286223-8
-SELECT SELECT record FROM wikisql_data WHERE high_assists = 'Deron Williams (6)'	1-23286223-8
+SELECT record FROM wikisql_data WHERE high_assists = 6	1-23286223-8
 SELECT location_attendance FROM wikisql_data WHERE date = 'March 24'	1-23286223-8
 SELECT COUNT(*) FROM wikisql_data WHERE record = '39-22' AND high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE record = '39-22')	1-23286223-8
 SELECT first_broadcast FROM wikisql_data WHERE jasons_team = 'Rhod Gilbert and Shappi Khorsandi'	1-23292220-8
@@ -1478,11 +1478,11 @@ SELECT COUNT(DISTINCT opponent) FROM wikisql_data WHERE location = 'syracuse, ny
 SELECT record FROM wikisql_data WHERE opponent = 'central connecticut'	1-23346303-3
 SELECT horizontal_order FROM wikisql_data WHERE channels = 'wxyzrstuvpq'	1-233830-1
 SELECT channels FROM wikisql_data WHERE height_order = 1 AND soundfield_type = 'mixed-order'	1-233830-1
-SELECT SELECT number_of_channels FROM wikisql_data WHERE channels = 'WXYZUV'	1-233830-1
-SELECT SELECT original_air_date FROM wikisql_data WHERE title = 'Truth Be Told'	1-23399481-4
+SELECT COUNT(number_of_channels) FROM wikisql_data WHERE channels = 'wxyzuv'	1-233830-1
+SELECT original_air_date FROM wikisql_data WHERE title = 'Truth Be Told' ORDER BY original_air_date LIMIT 1	1-23399481-4
 SELECT title FROM wikisql_data WHERE u_s_viewers_in_millions = 1.10	1-23399481-4
 SELECT title FROM wikisql_data WHERE u_s_viewers_in_millions = 1.22	1-23399481-4
-SELECT 1	1-23399481-4
+SELECT COUNT(u_s_viewers_in_millions) FROM wikisql_data WHERE written_by = 'Andrea Conway Kagey'	1-23399481-4
 SELECT title FROM wikisql_data WHERE written_by = 'Michael Gans & Richard Register'	1-23399481-4
 SELECT total_score FROM wikisql_data WHERE average_ranking = 7	1-23465011-5
 SELECT couple FROM wikisql_data WHERE total_score = 295	1-23465011-5
@@ -1493,7 +1493,7 @@ SELECT score FROM wikisql_data WHERE date = 'february 9'	1-23486853-7
 SELECT score FROM wikisql_data WHERE date = 'February 11'	1-23486853-7
 SELECT COUNT(directed_by) FROM wikisql_data WHERE u_s_viewers_in_millions = 2.80	1-23499946-1
 SELECT title FROM wikisql_data WHERE u_s_viewers_in_millions = 2.50	1-23499946-1
-SELECT SELECT u_s_viewers_in_millions FROM wikisql_data WHERE title = '"Dare Devil"'	1-23499946-1
+SELECT SUM(u_s_viewers_in_millions) FROM wikisql_data WHERE title = 'dare devil'	1-23499946-1
 SELECT original_air_date FROM wikisql_data WHERE title = 'poison ivy'	1-23499946-1
 SELECT min(new_points) FROM wikisql_data WHERE points_defending = 1200	1-23501776-16
 SELECT COUNT(points_defending) FROM wikisql_data WHERE seed = 1075	1-23501776-16
@@ -1506,26 +1506,26 @@ SELECT country FROM wikisql_data WHERE serial_numbers = '713096-713119'	1-235195
 SELECT serial_numbers FROM wikisql_data WHERE order_number = '713726-713735'	1-2351952-1
 SELECT COUNT(DISTINCT railroad) FROM wikisql_data WHERE numbers = '864-873'	1-2351952-1
 SELECT victim_s FROM wikisql_data WHERE executed_person = 'linroy bottoson'	1-23546266-1
-SELECT 1	1-23662272-4
+SELECT COUNT(couple) FROM wikisql_data WHERE number_of_dances = 6	1-23662272-4
 SELECT couple FROM wikisql_data WHERE total_points_earned = 161	1-23662272-4
-SELECT 1	1-23662272-4
-SELECT 1	1-23662272-4
+SELECT SUM(total_points_earned) FROM wikisql_data WHERE average = 21.3	1-23662272-4
+SELECT sum(number_of_dances) FROM wikisql_data WHERE average = 22.3	1-23662272-4
 SELECT player FROM wikisql_data WHERE height_m = 1.85	1-23670057-6
-SELECT height_m FROM wikisql_data WHERE player = 'Demond Greene'	1-23670057-6
-SELECT height_m FROM wikisql_data WHERE year_born = 1989 AND height_m = '2.11'	1-23670057-6
+SELECT height_m FROM wikisql_data WHERE player = 'demond greene'	1-23670057-6
+SELECT height_m FROM wikisql_data WHERE year_born = 1989 AND height_m = 2.11	1-23670057-6
 SELECT height_m FROM wikisql_data WHERE year_born = 1981	1-23670057-6
-SELECT 1	1-23670057-6
+SELECT height_m FROM wikisql_data WHERE player = 'steffen hamann'	1-23670057-6
 SELECT original_air_date FROM wikisql_data WHERE title = 'Do you believe in magic'	1-23799653-1
 SELECT written_by FROM wikisql_data WHERE directed_by = 'Karen Gaviola'	1-23799653-1
 SELECT original_air_date FROM wikisql_data WHERE u_s_viewers_millions = 10.50	1-23799653-1
 SELECT title FROM wikisql_data WHERE u_s_viewers_millions = 9.63 AND directed_by = 'Laura Innes'	1-23799653-1
-SELECT SELECT points_per_game FROM wikisql_data WHERE tournament = '2005 EuroBasket'	1-2387461-1
+SELECT COUNT(points_per_game) FROM wikisql_data WHERE tournament = "2005 eurobasket"	1-2387461-1
 SELECT assists_per_game FROM wikisql_data WHERE points_per_game = 7.7	1-2387461-1
-SELECT 1	1-2387461-1
-SELECT 1	1-2387461-1
-SELECT 1	1-2387461-1
 SELECT COUNT(*) FROM wikisql_data WHERE points_per_game = 4.7	1-2387461-1
-SELECT 1	1-2387790-2
+SELECT COUNT(assists_per_game) FROM wikisql_data WHERE rebounds_per_game = 4.2	1-2387461-1
+SELECT COUNT(assists_per_game) FROM wikisql_data WHERE tournament = "2010 fiba world championship"	1-2387461-1
+SELECT COUNT(*) FROM wikisql_data WHERE points_per_game = 4.7	1-2387461-1
+SELECT avg_finish FROM wikisql_data WHERE position = 3	1-2387790-2
 SELECT position FROM wikisql_data WHERE year = 1987	1-2387790-2
 SELECT team_s FROM wikisql_data WHERE avg_finish = 8.3	1-2387790-2
 SELECT COUNT(*) FROM wikisql_data WHERE avg_finish = 11.7	1-2387790-2
@@ -1533,7 +1533,7 @@ SELECT MIN(week) FROM wikisql_data	1-23916462-3
 SELECT COUNT(attendance) FROM wikisql_data WHERE date = 'September 5'	1-23916462-3
 SELECT COUNT(date) FROM wikisql_data WHERE week = 4	1-23916462-3
 SELECT COUNT(*) FROM wikisql_data WHERE date = 'August 26'	1-23916462-3
-SELECT 1	1-23938357-5
+SELECT SUM(col_07_08_gp_jgp_2nd) FROM wikisql_data WHERE name = 'mao asada'	1-23938357-5
 SELECT MAX(ws_points) FROM wikisql_data WHERE col_08_09_gp_jgp_2nd = 213	1-23938357-5
 SELECT owner_s_2009 FROM wikisql_data WHERE location = 'south side indianapolis'	1-23958917-1
 SELECT stacks FROM wikisql_data WHERE in_service_dates = '1 1969 2 1995'	1-23958917-1
@@ -1541,20 +1541,20 @@ SELECT count(*) FROM wikisql_data WHERE stacks = '1 & 2 235 mw 3 & 4 88.2 mw'	1-
 SELECT count(in_service_dates) FROM wikisql_data WHERE owner_s_2009 = 'Hoosier Energy' AND location = 'Petersburg'	1-23958917-1
 SELECT frequency FROM wikisql_data WHERE model_list = 'L34xx'	1-24018112-1
 SELECT brand_name FROM wikisql_data WHERE model_list = 'G6xxx'	1-24018112-1
-SELECT 1	1-24018112-1
+SELECT max(max_memory_speed) FROM wikisql_data WHERE frequency BETWEEN 2.93 AND 3.2	1-24018112-1
 SELECT brand_name FROM wikisql_data WHERE model_list = 'I7-8xx'	1-24018112-1
-SELECT 1	1-24018112-1
+SELECT COUNT(cores_threads) FROM wikisql_data WHERE frequency BETWEEN '2.66ghz' AND '2.8ghz' AND max_memory_speed = 'ddr3-1333'	1-24018112-1
 SELECT frequency FROM wikisql_data WHERE brand_name = 'pentium'	1-24018112-1
-SELECT 1	1-2401326-1
+SELECT COUNT(DISTINCT bush) FROM wikisql_data WHERE bush_2 = 69.7	1-2401326-1
 SELECT kerry FROM wikisql_data WHERE county = 'oneida'	1-2401326-1
 SELECT bush FROM wikisql_data WHERE county = 'bonneville'	1-2401326-1
 SELECT others FROM wikisql_data WHERE others = 462	1-2401326-1
 SELECT bush FROM wikisql_data WHERE kerry = 37.6	1-2401326-1
-SELECT 1	1-2401326-1
+SELECT COUNT(kerry) FROM wikisql_data WHERE others = 8	1-2401326-1
 SELECT col_11_may_2008 FROM wikisql_data WHERE col_3_34_14 = '3:38:45'	1-24059973-3
-SELECT 1	1-24059973-3
+SELECT denis_nizhegorodov_rus FROM wikisql_data WHERE world_record = col_3_34_14	1-24059973-3
 SELECT cheboksary_russia FROM wikisql_data WHERE col_3_34_14 = '3:41:20'	1-24059973-3
-SELECT 1	1-24172157-3
+SELECT COUNT(*) FROM wikisql_data WHERE team = 'fulham' AND date_of_appointment > (SELECT date_of_vacancy FROM wikisql_data WHERE outgoing_manager = 'roy hodgson')	1-24172157-3
 SELECT table_col FROM wikisql_data WHERE team = 'blackburn rovers'	1-24172157-3
 SELECT date_of_appointment FROM wikisql_data WHERE incoming_manager = 'Roy Hodgson' AND team = 'Liverpool'	1-24172157-3
 SELECT team FROM wikisql_data WHERE incoming_manager = 'Kenny Dalglish'	1-24172157-3
@@ -1571,26 +1571,26 @@ SELECT location FROM wikisql_data WHERE founded = 1957	1-24195232-1
 SELECT affiliation FROM wikisql_data WHERE institution = 'ohio christian university'	1-24195232-1
 SELECT institution FROM wikisql_data WHERE location = 'circleville, ohio'	1-24195232-1
 SELECT location FROM wikisql_data WHERE team_name = 'eagles'	1-24195232-1
-SELECT 1	1-24222929-3
+SELECT original_airdate FROM wikisql_data WHERE live_sd_total_viewers = 5.09	1-24222929-3
 SELECT SUM(live_sd_total_viewers) FROM wikisql_data WHERE share = 8	1-24222929-3
 SELECT original_airdate FROM wikisql_data WHERE episode_number_production_number = '4 1-04'	1-24222929-3
 SELECT col_18_49_rating_live_sd_live_7, live_7_day_dvr_total_viewers FROM wikisql_data WHERE original_airdate = 'October 14, 2009'	1-24222929-3
-SELECT 1	1-24222929-3
+SELECT original_airdate FROM wikisql_data WHERE live_sd_total_viewers = 3.69	1-24222929-3
 SELECT leading_actor FROM wikisql_data WHERE supporting_actor = 'Cecil Kellaway'	1-24225238-1
 SELECT supporting_actress FROM wikisql_data WHERE film = 'For Whom the Bell Tolls'	1-24225238-1
 SELECT supporting_actress FROM wikisql_data WHERE leading_actress = 'Diane Keaton'	1-24225238-1
-SELECT 1	1-24225238-1
+SELECT leading_actress FROM wikisql_data WHERE leading_actor = 'Warren Beatty' AND year = 1968	1-24225238-1
 SELECT film FROM wikisql_data WHERE supporting_actor = 'charles bickford'	1-24225238-1
 SELECT supporting_actress FROM wikisql_data WHERE year = 1943	1-24225238-1
 SELECT COUNT(sydney) FROM wikisql_data WHERE week = "3"	1-24291077-4
-SELECT 1	1-24291077-4
-SELECT 1	1-24291077-4
+SELECT COUNT(sydney) FROM wikisql_data WHERE melbourne = 334000	1-24291077-4
+SELECT COUNT(adelaide) FROM wikisql_data WHERE week = "5"	1-24291077-4
 SELECT max(brisbane) FROM wikisql_data	1-24291077-4
 SELECT brisbane FROM wikisql_data WHERE melbourne = 276000	1-24291077-8
 SELECT total FROM wikisql_data WHERE week = 3	1-24291077-8
 SELECT brisbane FROM wikisql_data WHERE adelaide = 94000	1-24291077-8
-SELECT 1	1-24319661-3
-SELECT 1	1-24319661-3
+SELECT COUNT(*) FROM wikisql_data WHERE directed_by = 'Kevin Bray'	1-24319661-3
+SELECT u_s_viewers_million FROM wikisql_data WHERE title = 'Company Man'	1-24319661-3
 SELECT COUNT(*) FROM wikisql_data WHERE u_s_viewers_million = 3.81	1-24319661-3
 SELECT directed_by FROM wikisql_data WHERE title = 'Point Blank'	1-24319661-3
 SELECT max(folded) FROM wikisql_data WHERE stadium = 'Fraser Field'	1-24334261-1
@@ -1607,10 +1607,10 @@ SELECT COUNT(*) FROM wikisql_data WHERE unlocks = 'n/a'	1-24463470-1
 SELECT min(unlock_order) FROM wikisql_data WHERE circuit = 'athens'	1-24463470-1
 SELECT setting FROM wikisql_data WHERE difficulty = 'hard'	1-24463470-1
 SELECT conditions FROM wikisql_data WHERE circuit = 'athens'	1-24463470-1
-SELECT 1	1-24491017-1
-SELECT SELECT f_laps FROM wikisql_data WHERE position = '8th'	1-24491017-1
+SELECT team FROM wikisql_data WHERE position = 11	1-24491017-1
+SELECT COUNT(f_laps) FROM wikisql_data WHERE position = "8th"	1-24491017-1
 SELECT team FROM wikisql_data WHERE f_laps = 10	1-24491017-1
-SELECT SELECT podiums FROM wikisql_data WHERE series = 'British F3 National Class'	1-24491017-1
+SELECT sum(podiums) FROM wikisql_data WHERE series = 'british f3 national class'	1-24491017-1
 SELECT last_title FROM wikisql_data WHERE home_city = 'cuenca'	1-2454589-1
 SELECT first_season_in_the_serie_a FROM wikisql_data WHERE first_season_in_current_spell = 2006	1-2454589-1
 SELECT last_title FROM wikisql_data WHERE first_season_in_current_spell = '2012'	1-2454589-1
@@ -1619,14 +1619,14 @@ SELECT MAX(first_season_in_the_serie_a) FROM wikisql_data WHERE club = '7 de oct
 SELECT COUNT(*) FROM wikisql_data WHERE goals < 7	1-24565004-15
 SELECT name FROM wikisql_data WHERE goals = 4	1-24565004-15
 SELECT COUNT(*) FROM wikisql_data WHERE nationality = 'Brazil'	1-24565004-15
-SELECT 1	1-24565004-15
+SELECT count(DISTINCT period) FROM wikisql_data WHERE position = 'attaquant'	1-24565004-15
 SELECT season FROM wikisql_data WHERE mls_regular_season = '6th, east (9-11-10)'	1-245695-2
 SELECT mls_cup_playoffs FROM wikisql_data WHERE concacaf_champions_cup_concacaf_champions_league = 'quarter-finals (09-10)'	1-245695-2
-SELECT SELECT COUNT(mls_cup_playoffs) FROM wikisql_data WHERE mls_regular_season = '1st, East* (13-7-10)'	1-245695-2
+SELECT COUNT(*) FROM wikisql_data WHERE mls_regular_season = '1st, east (13-7-10)'	1-245695-2
 SELECT lamar_hunt_u_s_open_cup FROM wikisql_data WHERE concacaf_champions_cup_concacaf_champions_league = 'did not qualify' AND mls_regular_season = '4th, central (11-16-5)'	1-245695-2
 SELECT COUNT(*) FROM wikisql_data WHERE mls_regular_season = '5th, east (10-12-8)'	1-245695-2
 SELECT mls_cup_playoffs FROM wikisql_data WHERE mls_regular_season = '4th, central (11-16-5)'	1-245695-2
-SELECT MIN(series) FROM wikisql_data WHERE season = '2.08'	1-24639086-3
+SELECT min(viewers_in_millions) FROM wikisql_data WHERE season = '2.08'	1-24639086-3
 SELECT viewers_in_millions FROM wikisql_data WHERE series = 14	1-24639086-3
 SELECT original_air_date FROM wikisql_data WHERE viewers_in_millions = 2.48	1-24639086-3
 SELECT written_by FROM wikisql_data WHERE season = 2.08	1-24639086-3
@@ -1634,7 +1634,7 @@ SELECT max(money_list_rank) FROM wikisql_data WHERE player = 'matt hansen'	1-247
 SELECT MIN(money_list_rank) FROM wikisql_data WHERE best_finish = 'T9'	1-24747844-2
 SELECT MIN(starts) FROM wikisql_data WHERE best_finish = 'T18'	1-24747844-2
 SELECT MIN(cuts_made) FROM wikisql_data WHERE player = 'hunter mahan'	1-24747844-2
-SELECT SELECT notability_profession FROM wikisql_data WHERE season = "15" AND finish = "7th"	1-24775967-1
+SELECT notability_profession FROM wikisql_data WHERE season = 15 AND finish = 7	1-24775967-1
 SELECT score FROM wikisql_data WHERE outcome = 'winner'	1-24901152-2
 SELECT surface FROM wikisql_data WHERE championship = 'us open (2)'	1-24901152-2
 SELECT MIN(year) FROM wikisql_data WHERE championship = 'Australian Open'	1-24901152-2
@@ -1645,10 +1645,10 @@ SELECT MIN(poles) FROM wikisql_data	1-24937583-1
 SELECT MIN(wins) FROM wikisql_data	1-24937583-1
 SELECT COUNT(DISTINCT fab_nm) FROM wikisql_data WHERE model_number = 'Whistler LP'	1-25005714-3
 SELECT config_core_1 FROM wikisql_data WHERE code_name = 'Redwood' AND core_clock_mhz = 500	1-25005714-3
-SELECT bus_type FROM wikisql_data	1-25005714-3
+SELECT bus_type FROM wikisql_data WHERE texture_gt_s > 0	1-25005714-3
 SELECT COUNT(bus_width_bit) FROM wikisql_data WHERE bandwidth_gb_s = 25.6 AND model_number = 'Granville Pro'	1-25005714-3
 SELECT code_name FROM wikisql_data WHERE model = 'Radeon HD 6650M'	1-25005714-3
-SELECT SELECT name FROM wikisql_data WHERE change = '-19.3'	1-2500440-1
+SELECT name FROM wikisql_data WHERE change = -19.3	1-2500440-1
 SELECT population_density_per_km_2 FROM wikisql_data WHERE name = 'Smoky Lake County'	1-2500440-1
 SELECT population_density_per_km_2 FROM wikisql_data WHERE name = 'Smoky Lake County'	1-2500440-1
 SELECT population_density_per_km_2 FROM wikisql_data WHERE name = 'Fishing Lake'	1-2500440-1
@@ -1657,19 +1657,19 @@ SELECT COUNT(*) FROM wikisql_data WHERE high_school_principal = 'lynn muscarella
 SELECT superintendent FROM wikisql_data WHERE middle_school_principal = 'alan degroote' AND gorham_principal = 'paul lahue' AND year = '2006-2007'	1-25037577-1
 SELECT gorham_principal FROM wikisql_data WHERE year = '2010-2011'	1-25037577-1
 SELECT COUNT(*) FROM wikisql_data WHERE year = '2000-2001' AND middlesex_principal IS NOT NULL	1-25037577-1
-SELECT 1	1-25037577-1
-SELECT 1	1-25037577-1
+SELECT COUNT(*) FROM wikisql_data WHERE year = '2000-2001'	1-25037577-1
+SELECT middle_school_principal FROM wikisql_data WHERE year = 2011	1-25037577-1
 SELECT youth_classification FROM wikisql_data WHERE sprint_classification = 'Mark Cavendish' AND most_courageous = 'Maarten Tjallingii'	1-25055040-22
 SELECT mountains_classification FROM wikisql_data WHERE most_courageous = 'Maarten Tjallingii'	1-25055040-22
 SELECT team_classification FROM wikisql_data WHERE general_classification = 'Brett Lancaster'	1-25055040-22
 SELECT sprint_classification FROM wikisql_data WHERE youth_classification = 'peter sagan' AND most_courageous = 'thomas rabou'	1-25055040-22
 SELECT mountains_classification FROM wikisql_data WHERE most_courageous = 'Yaroslav Popovych'	1-25055040-22
 SELECT sprint_classification FROM wikisql_data WHERE mountains_classification = 'Ryan Anderson' AND general_classification = 'Michael Rogers'	1-25055040-22
-SELECT top_10 FROM wikisql_data WHERE winnings = "1,741,176"	1-2506300-1
+SELECT top_10 FROM wikisql_data WHERE winnings = 1741176	1-2506300-1
 SELECT max(ppp_gdp_per_emissions_in_international_dollars_per_ton) FROM wikisql_data WHERE gdp_ppp_in_billions_of_current_international_dollars = 7.93	1-2508175-1
 SELECT MAX(annual_co2_emissions_in_thousands_of_metric_tons) FROM wikisql_data WHERE gdp_per_emissions_in_us_dollars_per_ton = 3903	1-2508175-1
 SELECT country FROM wikisql_data WHERE annual_co2_emissions_in_thousands_of_metric_tons = 1811	1-2508175-1
-SELECT gdp_current_in_billions_of_us_dollars FROM wikisql_data WHERE gdp_current_in_billions_of_us_dollars = '162.50'	1-2508175-1
+SELECT gdp_current_in_billions_of_us_dollars FROM wikisql_data WHERE gdp_current_in_billions_of_us_dollars = 162.50	1-2508175-1
 SELECT pick FROM wikisql_data WHERE nfl_team = 'buffalo bills'	1-2508633-5
 SELECT pick FROM wikisql_data WHERE player = 'bruce baldwin'	1-2508633-5
 SELECT max(pick) FROM wikisql_data WHERE nfl_team = 'los angeles raiders'	1-2508633-5
@@ -1682,17 +1682,17 @@ SELECT COUNT(year) FROM wikisql_data WHERE league = 'usisl pro'	1-2511876-1
 SELECT playoffs FROM wikisql_data WHERE league = 'usisl'	1-2511876-1
 SELECT position FROM wikisql_data WHERE points = 31	1-25146455-1
 SELECT series FROM wikisql_data WHERE driver = 'bobby labonte'	1-25146455-1
-SELECT 1	1-25146455-1
-SELECT 1	1-25146455-1
+SELECT position FROM wikisql_data WHERE winnings = 60000	1-25146455-1
+SELECT position FROM wikisql_data WHERE winnings = 60000	1-25146455-1
 SELECT winnings FROM wikisql_data WHERE driver = 'jeff burton'	1-25146455-1
 SELECT winnings FROM wikisql_data WHERE driver = 'kenny brack'	1-25146455-1
 SELECT special_edition FROM wikisql_data WHERE english_version = 'james baskett'	1-25173505-13
 SELECT special_edition FROM wikisql_data WHERE english_version = 'nick stewart'	1-25173505-13
 SELECT english_version FROM wikisql_data WHERE buena_vista_edition = 'daisuke gouri'	1-25173505-13
 SELECT character FROM wikisql_data WHERE special_edition = 'koichi sakaguchi'	1-25173505-13
-SELECT SELECT buena_vista_edition FROM wikisql_data WHERE special_edition = 'Koichi Sakaguchi'	1-25173505-13
-SELECT 1	1-25214321-1
-SELECT 1	1-25214321-1
+SELECT character FROM wikisql_data WHERE buena_vista_edition = 'koichi sakaguchi' AND special_edition = 'koichi sakaguchi'	1-25173505-13
+SELECT COUNT(*) FROM wikisql_data WHERE runner_up = 'Monique Evans'	1-25214321-1
+SELECT COUNT(*) FROM wikisql_data WHERE runner_up = 'sérgio abreu'	1-25214321-1
 SELECT season FROM wikisql_data WHERE winner = 'dado dolabella'	1-25214321-1
 SELECT winner FROM wikisql_data WHERE third_place = 'mateus rocha'	1-25214321-1
 SELECT season FROM wikisql_data WHERE third_place = 'raquel pacheco'	1-25214321-1
@@ -1703,14 +1703,14 @@ SELECT power_kw FROM wikisql_data WHERE coverage = 'Phoenix'	1-2523809-1
 SELECT branding FROM wikisql_data WHERE callsign = 'krca-tv'	1-2523809-1
 SELECT power_kw FROM wikisql_data WHERE channel = 'tv-29'	1-2523809-1
 SELECT coverage FROM wikisql_data WHERE callsign = 'kpnz-tv'	1-2523809-1
-SELECT MAX(renewable_electricity_gw_h) FROM wikisql_data WHERE state = 'Delaware'	1-25244412-1
+SELECT max(renewable_electricity_gw_h) FROM wikisql_data WHERE state = 'Delaware'	1-25244412-1
 SELECT state FROM wikisql_data WHERE renewable_w_o_hydro = 5179	1-25244412-1
 SELECT min(renewable_electricity_w_o_hydro_gw_h) FROM wikisql_data WHERE renewable_electricity_gw_h = 5760	1-25244412-1
 SELECT renewable_electricity_w_o_hydro_gw_h FROM wikisql_data WHERE renewable = 83.4	1-25244412-1
 SELECT state FROM wikisql_data WHERE renewable_electricity_gw_h = 9667	1-25244412-1
-SELECT SELECT renewable_w_o_hydro FROM wikisql_data WHERE state = 'South Dakota'	1-25244412-1
+SELECT renewable_w_o_hydro * 100 / total_electricity_gw_h FROM wikisql_data WHERE state = 'South Dakota'	1-25244412-1
 SELECT august_21_22 FROM wikisql_data WHERE november_3 = 'november 3, 1994'	1-25252080-3
-SELECT 1	1-25252080-3
+SELECT COUNT(*) FROM wikisql_data WHERE november_3 = 153 AND march_27_29 IS NOT NULL	1-25252080-3
 SELECT january_15_16 FROM wikisql_data WHERE november_3 = 133	1-25252080-3
 SELECT november_3 FROM wikisql_data WHERE june_10_11 = 'june 10, 1964'	1-25252080-3
 SELECT november_3 FROM wikisql_data WHERE march_27_29 = 149	1-25252080-3
@@ -1724,35 +1724,35 @@ SELECT COUNT(*) FROM wikisql_data WHERE co_stars = 'parveen babi'	1-2528382-5
 SELECT movie_album FROM wikisql_data WHERE co_stars = 'bela bose'	1-2528382-5
 SELECT lyricist FROM wikisql_data WHERE co_stars = 'jeevankala'	1-2528382-5
 SELECT original_air_date FROM wikisql_data WHERE title = 'you gonna do that the rest of your life?'	1-25356350-2
-SELECT 1	1-25356350-2
+SELECT COUNT(series) FROM wikisql_data WHERE title = "you gonna do that the rest of your life?"	1-25356350-2
 SELECT original_air_date FROM wikisql_data WHERE title = 'Powerless'	1-25356350-2
 SELECT COUNT(*) FROM wikisql_data WHERE written_by = 'Lew Schneider'	1-25356350-2
 SELECT title FROM wikisql_data WHERE written_by = 'Jack Orman'	1-25356350-2
-SELECT 1	1-25356350-2
+SELECT COUNT(viewers_in_millions) FROM wikisql_data WHERE title = "Episode 1"	1-25356350-2
 SELECT COUNT(DISTINCT games_played) FROM wikisql_data WHERE name = 'lauren mcgee'	1-25401874-1
 SELECT COUNT(number) FROM wikisql_data WHERE assists = 10	1-25401874-1
 SELECT COUNT(name) FROM wikisql_data WHERE points = 50	1-25401874-1
 SELECT type FROM wikisql_data WHERE location = 'swarthmore, pennsylvania'	1-254776-1
 SELECT founded FROM wikisql_data WHERE institution = 'dickinson college'	1-254776-1
-SELECT 1	1-25548630-1
+SELECT SUM(f_l) FROM wikisql_data WHERE series = 'formula three euroseries'	1-25548630-1
 SELECT max(poles) FROM wikisql_data	1-25548630-1
 SELECT MIN(podiums) FROM wikisql_data	1-25548630-1
-SELECT 1	1-25548630-1
+SELECT points FROM wikisql_data WHERE team = 'marussia manor racing'	1-25548630-1
 SELECT area_km² FROM wikisql_data WHERE income_class_2007 = '2nd'	1-255812-1
 SELECT income_class_2007 FROM wikisql_data WHERE mayor = 'ma. ester a. hamor'	1-255812-1
-SELECT 1	1-255812-1
+SELECT SUM(population_2010) FROM wikisql_data WHERE area_km² = 134.51	1-255812-1
 SELECT city_municipality FROM wikisql_data WHERE mayor = 'helen c. de castro'	1-255812-1
 SELECT yacht FROM wikisql_data WHERE corrected_time_d_hh_mm_ss = '4:14:11:23'	1-25595107-2
-SELECT 1	1-25595107-2
-SELECT 1	1-25595107-2
+SELECT COUNT(sail_number) FROM wikisql_data WHERE loa_metres = 13.68	1-25595107-2
+SELECT position FROM wikisql_data WHERE yacht_type = 'nsw open 66'	1-25595107-2
 SELECT loa_metres FROM wikisql_data WHERE corrected_time_d_hh_mm_ss = '4:15:35:26'	1-25595107-2
 SELECT max(no_in_season) FROM wikisql_data WHERE directed_by = 'leslie hill'	1-25604014-9
 SELECT directed_by FROM wikisql_data WHERE production_code = '1L10'	1-25604014-9
 SELECT production_code FROM wikisql_data WHERE written_by = 'theresa rebeck'	1-25604014-9
 SELECT original_air_date FROM wikisql_data WHERE production_code = '1L16'	1-25604014-9
 SELECT largest_ethnic_group_2002 FROM wikisql_data WHERE type = 'town'	1-2562572-11
-SELECT 1	1-2562572-11
-SELECT cyrillic_name_other_names FROM wikisql_data WHERE settlement = 'Plavna'	1-2562572-11
+SELECT cyrillic_name_other_names FROM wikisql_data WHERE cyrillic_name_other_names = 'плавна'	1-2562572-11
+SELECT cyrillic_name_other_names FROM wikisql_data WHERE cyrillic_name_other_names LIKE '%плавна%'	1-2562572-11
 SELECT MIN(population_2011) FROM wikisql_data	1-2562572-11
 SELECT type FROM wikisql_data WHERE settlement = 'rabe'	1-2562572-30
 SELECT largest_ethnic_group_2002 FROM wikisql_data WHERE cyrillic_name_other_names = 'банатско аранђелово'	1-2562572-30
@@ -1760,26 +1760,26 @@ SELECT COUNT(DISTINCT dominant_religion_2002) FROM wikisql_data WHERE cyrillic_n
 SELECT settlement FROM wikisql_data WHERE cyrillic_name_other_names = 'сигет'	1-2562572-30
 SELECT cyrillic_name_other_names FROM wikisql_data WHERE settlement = 'rabe'	1-2562572-30
 SELECT dominant_religion_2002 FROM wikisql_data WHERE settlement = 'gornji tavankut'	1-2562572-26
-SELECT 1	1-2562572-26
+SELECT population_2011 FROM wikisql_data WHERE cyrillic_name_other_names = 'стари жедник'	1-2562572-26
 SELECT cyrillic_name_other_names FROM wikisql_data WHERE population_2011 = 6591	1-2562572-26
 SELECT type FROM wikisql_data WHERE population_2011 = 1441	1-2562572-26
 SELECT COUNT(*) FROM wikisql_data WHERE cyrillic_name_other_names = 'ђурђин'	1-2562572-26
-SELECT SELECT settlement FROM wikisql_data WHERE population_2011 = '777'	1-2562572-39
+SELECT settlement FROM wikisql_data WHERE population_2011 = 777	1-2562572-39
 SELECT largest_ethnic_group_2002 FROM wikisql_data WHERE cyrillic_name_other_names = 'конак'	1-2562572-39
 SELECT population_2011 FROM wikisql_data WHERE settlement = 'јарковац'	1-2562572-39
 SELECT type FROM wikisql_data WHERE cyrillic_name_other_names = 'бока'	1-2562572-39
 SELECT dominant_religion_2002 FROM wikisql_data WHERE population_2011 = 2107	1-2562572-39
 SELECT cyrillic_name_other_names FROM wikisql_data WHERE settlement = 'deliblato'	1-2562572-41
-SELECT 1	1-256286-20
-SELECT 1	1-256286-20
-SELECT 1	1-256286-20
+SELECT meas_num FROM wikisql_data WHERE yes_votes / (yes_votes + no_votes) = 0.4176	1-256286-20
+SELECT COUNT(yes_votes) FROM wikisql_data WHERE yes = "43.18%"	1-256286-20
+SELECT COUNT(no_votes) FROM wikisql_data WHERE yes_votes = 45.60	1-256286-20
 SELECT meas_num FROM wikisql_data WHERE type = 'init'	1-256286-18
 SELECT points FROM wikisql_data WHERE player = 'donald boor'	1-25646820-2
 SELECT MIN(touchdowns) FROM wikisql_data WHERE player = 'joe rogers'	1-25646820-2
-SELECT 1	1-25662434-1
+SELECT us_airdate FROM wikisql_data WHERE title = 'love lockdown part one'	1-25662434-1
 SELECT COUNT(*) FROM wikisql_data WHERE production_code = '1040'	1-25662434-1
 SELECT directed_by FROM wikisql_data WHERE production_code = 'ca311'	1-25740548-4
-SELECT production_code FROM wikisql_data WHERE title = 'Sound and Vision'	1-25740548-4
+SELECT COUNT(season) FROM wikisql_data WHERE title = "sound and vision"	1-25740548-4
 SELECT title FROM wikisql_data WHERE u_s_viewers_million = 2.75	1-25740548-4
 SELECT directed_by FROM wikisql_data WHERE production_code = 'ca303'	1-25740548-4
 SELECT original_air_date FROM wikisql_data WHERE title = 'd.a.w.'	1-25750635-2
@@ -1795,11 +1795,11 @@ SELECT points FROM wikisql_data WHERE car_no = 4	1-25794532-1
 SELECT position FROM wikisql_data WHERE team = 'eifelland racing'	1-25794532-1
 SELECT series FROM wikisql_data WHERE car_no = 68	1-25794532-1
 SELECT COUNT(*) FROM wikisql_data WHERE weight_kg = 57.5	1-2581397-3
-SELECT 1	1-2581397-3
-SELECT SELECT distance FROM wikisql_data WHERE weight_kg = '56.5'	1-2581397-3
+SELECT weight_kg FROM wikisql_data WHERE weight_kg = 56	1-2581397-3
+SELECT weight_kg FROM wikisql_data WHERE weight_kg = 56.5	1-2581397-3
 SELECT loss_gain FROM wikisql_data WHERE votes_cast = 166	1-25818630-2
 SELECT candidate FROM wikisql_data WHERE loss_gain = '2.9%'	1-25818630-2
-SELECT SELECT votes_cast FROM wikisql_data WHERE constituency = 'Midlothian'	1-25818630-2
+SELECT SUM(votes_cast) FROM wikisql_data WHERE constituency = 'midlothian'	1-25818630-2
 SELECT candidate FROM wikisql_data WHERE result = '0.4%'	1-25818630-2
 SELECT loss_gain FROM wikisql_data WHERE affiliation = 'solidarity'	1-25818630-2
 SELECT affiliation FROM wikisql_data WHERE candidate = 'Daren Ireland'	1-25818630-1
@@ -1814,7 +1814,7 @@ SELECT COUNT(*) FROM wikisql_data WHERE episode = '53'	1-26032940-2
 SELECT main_cast FROM wikisql_data WHERE airdate = '3/23/1963'	1-26032940-2
 SELECT movie_title_and_year FROM wikisql_data WHERE main_cast = 'dana wynter , mel ferrer , theodore bikel'	1-26032940-2
 SELECT branding FROM wikisql_data WHERE callsign = 'DWCI-TV'	1-2610582-2
-SELECT 1	1-2610582-2
+SELECT COUNT(*) FROM wikisql_data WHERE power_kw_erp = 29.94	1-2610582-2
 SELECT branding FROM wikisql_data WHERE callsign = 'DWEC-TV'	1-2610582-2
 SELECT power_kw_erp FROM wikisql_data WHERE location_transmitter_site = 'San Fernando, Pampanga'	1-2610582-2
 SELECT station_type FROM wikisql_data WHERE branding = 'ABS-CBN TV-32 Tagaytay'	1-2610582-2
@@ -1825,15 +1825,15 @@ SELECT COUNT(*) FROM wikisql_data WHERE fastest_lap = 'fabio carbone'	1-26137666
 SELECT COUNT(pole_position) FROM wikisql_data WHERE round = 20	1-26137666-3
 SELECT ahli FROM wikisql_data WHERE ramtha = '0-4'	1-26173063-2
 SELECT faisaly FROM wikisql_data WHERE wehdat = 'xxx'	1-26173063-2
-SELECT 1	1-26173063-2
+SELECT orthodoxy FROM wikisql_data WHERE col_x = 'wehdat'	1-26173063-2
 SELECT col_x FROM wikisql_data WHERE faisaly = '0-0'	1-26173063-2
 SELECT ramtha FROM wikisql_data WHERE jeel = '1-0' AND hussein = '1-0'	1-26173063-2
 SELECT title FROM wikisql_data WHERE directed_by = 'ed sherin'	1-2618142-1
-SELECT no_in_series FROM wikisql_data WHERE no_in_season = '1'	1-2618142-1
+SELECT no_in_series FROM wikisql_data WHERE no_in_season = 1	1-2618142-1
 SELECT written_by FROM wikisql_data WHERE original_air_date = 'January 13, 1999'	1-2618152-1
 SELECT production_code FROM wikisql_data WHERE original_air_date = 'January 6, 1999'	1-2618152-1
 SELECT title FROM wikisql_data WHERE original_air_date = 'October 21, 1998'	1-2618152-1
-SELECT SELECT no_in_season FROM wikisql_data WHERE written_by = 'Matt Witten , Richard Sweren'	1-2618152-1
+SELECT COUNT(no_in_season) FROM wikisql_data WHERE written_by = "Matt Witten , Richard Sweren"	1-2618152-1
 SELECT original_air_date FROM wikisql_data WHERE title = 'Bait'	1-2618152-1
 SELECT directed_by FROM wikisql_data WHERE production_code = 'E0208'	1-2618152-1
 SELECT institution FROM wikisql_data WHERE type = 'private/united church of christ'	1-261895-1
@@ -1841,13 +1841,13 @@ SELECT institution FROM wikisql_data WHERE joined = 1953	1-261895-1
 SELECT type FROM wikisql_data WHERE institution = 'calvin college'	1-261895-1
 SELECT COUNT(*) FROM wikisql_data WHERE founded = 1833	1-261895-1
 SELECT COUNT(*) FROM wikisql_data WHERE location = 'britons'	1-261895-1
-SELECT 1	1-261895-1
-SELECT 1	1-261951-1
+SELECT type FROM wikisql_data WHERE nickname = 'Belles' ORDER BY COUNT(*) DESC LIMIT 1	1-261895-1
+SELECT pop_density_per_km² FROM wikisql_data WHERE municipality = 'lubang'	1-261951-1
 SELECT MIN(population_2010) FROM wikisql_data	1-261951-1
 SELECT pop_density_per_km² FROM wikisql_data WHERE municipality = 'calintaan'	1-261951-1
 SELECT pop_density_per_km² FROM wikisql_data WHERE municipality = 'abra de ilog'	1-261951-1
 SELECT enrollment FROM wikisql_data WHERE institution = 'ashland university'	1-261946-3
-SELECT 1	1-261946-3
+SELECT founded FROM wikisql_data WHERE enrollment = (SELECT MAX(enrollment) FROM wikisql_data)	1-261946-3
 SELECT left_col FROM wikisql_data WHERE enrollment = 'Gambier'	1-261946-3
 SELECT type FROM wikisql_data WHERE institution = 'Kent State University'	1-261946-3
 SELECT score_in_the_final FROM wikisql_data WHERE championship = 'miami'	1-26202788-7
@@ -1882,25 +1882,25 @@ SELECT surface FROM wikisql_data WHERE partner = 'John Alexander'	1-26309085-1
 SELECT score_in_final FROM wikisql_data WHERE year = 1986	1-26309085-1
 SELECT nickname FROM wikisql_data WHERE school = 'University of Alabama'	1-26355116-1
 SELECT max(enrollment) FROM wikisql_data	1-26355116-1
-SELECT SELECT public FROM wikisql_data WHERE result = 'Eliminated'	1-26375386-23
+SELECT SUM(public) FROM wikisql_data WHERE result = 'Eliminated'	1-26375386-23
 SELECT result FROM wikisql_data WHERE total = 12	1-26375386-23
-SELECT 1	1-26375386-23
-SELECT 1	1-26375386-23
+SELECT max(rank) FROM wikisql_data WHERE vote_percentage = 5.6	1-26375386-23
+SELECT COUNT(*) FROM wikisql_data WHERE result = 'eliminated'	1-26375386-23
 SELECT COUNT(public) FROM wikisql_data WHERE vote_percentage = "22.9%"	1-26375386-23
-SELECT 1	1-26375386-23
+SELECT total FROM wikisql_data WHERE vote_percentage = 44.8	1-26375386-23
 SELECT year_operational FROM wikisql_data WHERE name = 'fayette' AND turbines = 46	1-26387382-1
 SELECT name FROM wikisql_data WHERE capacity_mw = 70 AND status = 'operational'	1-26387382-1
-SELECT 1	1-26387382-1
-SELECT 1	1-26387382-1
+SELECT location_county FROM wikisql_data WHERE name = 'centre'	1-26387382-1
+SELECT capacity_mw FROM wikisql_data WHERE turbines BETWEEN 50 AND 60	1-26387382-1
 SELECT turbines FROM wikisql_data WHERE capacity_mw = 30 AND location_county = 'somerset'	1-26387382-1
 SELECT entered_a FROM wikisql_data WHERE peak_reached_a = 1992 AND peak = 6	1-26400041-2
-SELECT 1	1-26400041-2
-SELECT SELECT peak_reached_a FROM wikisql_data WHERE weeks_in_top_10 = 4 AND entered_a = '7 Cannot handle non-empty timestamp argument! 1992'	1-26400041-2
+SELECT COUNT(weeks_in_top_10) FROM wikisql_data WHERE peak = 9	1-26400041-2
+SELECT peak_reached_a FROM wikisql_data WHERE weeks_in_top_10 = 4 AND entered_a = '1992'	1-26400041-2
 SELECT COUNT(*) FROM wikisql_data WHERE runner_up = 'red star'	1-26455614-1
 SELECT min(entries) FROM wikisql_data WHERE runner_up = 'paris saint-germain' OR winner = 'paris saint-germain'	1-26455614-1
 SELECT relationship_to_monarch FROM wikisql_data WHERE heir = 'minyekyawswa'	1-26460435-4
 SELECT COUNT(*) FROM wikisql_data WHERE relationship_to_monarch = 'son' AND heir = 'kale kyetaungnyo'	1-26460435-4
-SELECT 1	1-26519486-1
+SELECT member_countries FROM wikisql_data WHERE languages = 'finnish, swedish'	1-26519486-1
 SELECT area_km² FROM wikisql_data WHERE languages = 'german'	1-26519486-1
 SELECT population FROM wikisql_data WHERE languages = 11	1-26519486-1
 SELECT production_code FROM wikisql_data WHERE patient_portrayer = 'Kathy Lamkin'	1-26561508-1
@@ -1911,11 +1911,11 @@ SELECT directed_by FROM wikisql_data WHERE production_code = '177605'	1-26561506
 SELECT COUNT(*) FROM wikisql_data WHERE no_col = '4'	1-26561506-1
 SELECT no_col FROM wikisql_data WHERE title = 'naomi gaines'	1-26561506-1
 SELECT written_by FROM wikisql_data WHERE no_col = 28	1-26561506-1
-SELECT 1	1-26561506-1
+SELECT max(no_col) FROM wikisql_data WHERE patient_portrayer = 'doug savant'	1-26561506-1
 SELECT no_in_season FROM wikisql_data WHERE title = 'haunted'	1-26565936-2
 SELECT no_in_series FROM wikisql_data WHERE written_by = 'bo crese'	1-26565936-2
 SELECT written_by FROM wikisql_data WHERE no_in_series = 109	1-26565936-2
-SELECT 1	1-26565936-2
+SELECT title FROM wikisql_data WHERE directed_by = 'nelson mccormick' ORDER BY no_in_season LIMIT 1	1-26565936-2
 SELECT original_air_date FROM wikisql_data WHERE u_s_viewers_millions = 13.92	1-26565936-2
 SELECT first_broadcast_denmark_dr1 FROM wikisql_data WHERE official_barb_ratings = 999000	1-26591309-3
 SELECT official_barb_ratings FROM wikisql_data WHERE episode = 6	1-26591309-3
@@ -1924,17 +1924,17 @@ SELECT original_danish_air_date FROM wikisql_data WHERE episode = 'Episode 17'	1
 SELECT uk_ratings_bbc_four FROM wikisql_data WHERE episode = 'Episode 17'	1-26591309-1
 SELECT COUNT(*) FROM wikisql_data WHERE name = 'mt. olympus'	1-2665085-1
 SELECT speed_mph FROM wikisql_data WHERE height_ft = 163	1-2665085-1
-SELECT 1	1-2665085-1
+SELECT length_ft FROM wikisql_data WHERE speed_mph IS NULL	1-2665085-1
 SELECT length_ft FROM wikisql_data WHERE park = 'kemah boardwalk'	1-2665085-1
 SELECT park FROM wikisql_data WHERE name = 'boardwalk bullet'	1-2665085-1
 SELECT COUNT(DISTINCT park) FROM wikisql_data WHERE name = 'Zippin Pippin'	1-2665085-1
 SELECT year FROM wikisql_data WHERE host_country = 'montenegro'	1-26669939-1
-SELECT 1	1-26669939-1
+SELECT COUNT(no_of_athletes) FROM wikisql_data WHERE host_city = "Nice"	1-26669939-1
 SELECT host_country FROM wikisql_data WHERE host_city = 'bar'	1-26669939-1
-SELECT 1	1-26669939-1
+SELECT COUNT(no_of_athletes) FROM wikisql_data WHERE edition = "7th"	1-26669939-1
 SELECT MAX(year) FROM wikisql_data	1-26669939-1
-SELECT 1	1-26669939-1
-SELECT 1	1-2668243-18
+SELECT host_city FROM wikisql_data WHERE edition = 8 AND host_country = 'Croatia'	1-26669939-1
+SELECT result FROM wikisql_data WHERE first_elected = '1798-1825'	1-2668243-18
 SELECT COUNT(DISTINCT party) FROM wikisql_data WHERE incumbent = 'willis alston'	1-2668243-18
 SELECT result FROM wikisql_data WHERE candidates = 'augustine h. shepperd (j) 100%'	1-2668243-18
 SELECT result FROM wikisql_data WHERE incumbent = 'willis alston'	1-2668243-18
@@ -1964,30 +1964,30 @@ SELECT result FROM wikisql_data WHERE district = 'Maryland 7'	1-2668416-7
 SELECT candidates FROM wikisql_data WHERE district = 'maryland 1'	1-2668416-7
 SELECT candidates FROM wikisql_data WHERE first_elected = '1791'	1-2668420-12
 SELECT tv_season FROM wikisql_data WHERE episodes = 23	1-2669287-1
-SELECT 1	1-2669287-1
+SELECT COUNT(*) FROM wikisql_data WHERE rank = 50	1-2669287-1
 SELECT season_finale FROM wikisql_data WHERE viewers_in_millions = 10.02	1-2669287-1
 SELECT nationality FROM wikisql_data WHERE player = 'randy heath'	1-2679061-2
 SELECT nhl_team FROM wikisql_data WHERE college_junior_club_team = 'toronto marlboros (ohl)' AND position = 'centre'	1-2679061-2
 SELECT pick FROM wikisql_data WHERE nhl_team = 'montreal canadiens' AND college_junior_club_team = 'trois-rivières draveurs (qmjhl)'	1-2679061-2
 SELECT COUNT(*) FROM wikisql_data WHERE nhl_team = 'winnipeg jets'	1-2679061-2
 SELECT position FROM wikisql_data WHERE nhl_team = 'toronto maple leafs'	1-2679061-2
-SELECT 1	1-26826304-1
+SELECT SUM(u_s_viewers_millions) FROM wikisql_data WHERE written_by = 'Gordon C. Lonsdale'	1-26826304-1
 SELECT original_air_date FROM wikisql_data WHERE production_code = '5AKY13'	1-26826304-1
 SELECT written_by FROM wikisql_data WHERE production_code = '5AKY04'	1-26826304-1
 SELECT position FROM wikisql_data WHERE player = 'Todd Wise'	1-26847237-2
-SELECT SELECT games FROM wikisql_data WHERE height = '1.92m'	1-26847237-2
+SELECT COUNT(*) FROM wikisql_data WHERE height = 1.92	1-26847237-2
 SELECT d_o_b FROM wikisql_data WHERE club = 'Inglewood'	1-26847237-2
-SELECT SELECT player FROM wikisql_data WHERE weight = '76kg'	1-26847237-2
-SELECT 1	1-26860595-2
+SELECT player FROM wikisql_data WHERE weight = 76	1-26847237-2
+SELECT directx FROM wikisql_data WHERE core_mhz = 700	1-26860595-2
 SELECT max(fab_nm) FROM wikisql_data	1-26860595-2
 SELECT config_core_1 FROM wikisql_data WHERE processing_power_gflops = 432	1-26860595-2
 SELECT COUNT(texture_gt_s) FROM wikisql_data WHERE tdp_watts_gpu_only = 18	1-26860595-2
 SELECT prize_money FROM wikisql_data WHERE name = 'Nina Carberry'	1-26903214-1
 SELECT col_2nd_leg_score FROM wikisql_data WHERE contest_and_round = 'Champions League Round of 16' AND opponent = 'Manchester United' AND team = 'Marseille'	1-26910311-8
-SELECT SELECT col_1st_leg_score FROM wikisql_data WHERE opponent = 'Steaua Bucureşti'	1-26910311-8
-SELECT 1	1-26910311-8
+SELECT team, col_1st_leg_score FROM wikisql_data WHERE opponent = 'Steaua Bucureşti' AND team = 'Liverpool' OR team = 'Steaua Bucureşti' AND opponent = 'Liverpool'	1-26910311-8
+SELECT team, col_1st_leg_score FROM wikisql_data WHERE opponent = 'trabzonspor' AND team = 'liverpool' OR team = 'trabzonspor' AND opponent = 'liverpool'	1-26910311-8
 SELECT u_s_viewers_millions FROM wikisql_data WHERE directed_by = 'Christine Moore'	1-26914076-2
-SELECT SELECT no_col FROM wikisql_data WHERE directed_by = 'Simon Cellan Jones'	1-26914076-2
+SELECT COUNT(*) FROM wikisql_data WHERE directed_by = 'Simon Cellan Jones'	1-26914076-2
 SELECT teleplay_by FROM wikisql_data WHERE story_by = 'david simon & eric overmyer' AND directed_by = 'tom piazza'	1-26914076-2
 SELECT max(no_col) FROM wikisql_data	1-26914076-2
 SELECT geez FROM wikisql_data WHERE proto_semitic = '*bayt-'	1-26919-7
@@ -1998,14 +1998,14 @@ SELECT proto_semitic FROM wikisql_data WHERE english = 'house'	1-26919-7
 SELECT proto_semitic FROM wikisql_data WHERE arabic = 'salām-'	1-26919-7
 SELECT COUNT(*) FROM wikisql_data WHERE location = 'homestead, florida'	1-2696531-2
 SELECT MIN(season) FROM wikisql_data WHERE podiums = 9	1-26998693-1
-SELECT SELECT f_laps FROM wikisql_data WHERE poles > 1 AND season = 2008	1-26998693-1
+SELECT sum(f_laps) FROM wikisql_data WHERE season = '2008' AND poles > 1.0	1-26998693-1
 SELECT races FROM wikisql_data WHERE f_laps = 0 AND poles = 1	1-26998693-1
 SELECT replaced_by FROM wikisql_data WHERE outgoing_manager = 'Hüsnü Özkara'	1-27091128-3
 SELECT date_of_vacancy FROM wikisql_data WHERE team = 'kartalspor'	1-27091128-3
 SELECT replaced_by FROM wikisql_data WHERE team = 'akhisar b.g.s.'	1-27091128-3
 SELECT team FROM wikisql_data WHERE replaced_by = 'serhat güller'	1-27091128-3
-SELECT 1	1-27155243-3
-SELECT SELECT COUNT(DISTINCT episode) FROM wikisql_data WHERE directed_by = 'Sheri Elwood'	1-27155243-3
+SELECT COUNT(DISTINCT episode) FROM wikisql_data WHERE written_by = 'Sheri Elwood' AND directed_by = 'Jim Allodi'	1-27155243-3
+SELECT COUNT(DISTINCT episode) FROM wikisql_data WHERE directed_by = 'Sheri Elwood'	1-27155243-3
 SELECT original_airdate FROM wikisql_data WHERE writer = 'robin mukherjee' AND director = 'margy kinmonth'	1-27208814-1
 SELECT min(series_no) FROM wikisql_data WHERE episode = 78	1-27208814-1
 SELECT col_50s FROM wikisql_data WHERE highest_score = 88	1-27268238-4
@@ -2019,12 +2019,12 @@ SELECT salary_range FROM wikisql_data WHERE indians = 8.2	1-27257896-2
 SELECT salary_range FROM wikisql_data WHERE working_force_of_hk = 10.4	1-27257896-2
 SELECT working_force_of_hk FROM wikisql_data WHERE nepalese = 37.1	1-27257896-2
 SELECT indians FROM wikisql_data WHERE salary_range = '4,000-9,000'	1-27257896-2
-SELECT SELECT points FROM wikisql_data WHERE won = '15'	1-27293285-6
-SELECT SELECT drawn FROM wikisql_data WHERE won = '10'	1-27293285-6
-SELECT SELECT points_for FROM wikisql_data WHERE won = '22'	1-27293285-6
+SELECT SUM(points) FROM wikisql_data WHERE won = 15	1-27293285-6
+SELECT SUM(drawn) FROM wikisql_data WHERE won = 10	1-27293285-6
+SELECT COUNT(*) FROM wikisql_data WHERE won = 22	1-27293285-6
 SELECT club FROM wikisql_data WHERE lost = 7	1-27293285-6
-SELECT SELECT won FROM wikisql_data WHERE tries_for = '61'	1-27293285-6
-SELECT SELECT tries_for FROM wikisql_data WHERE points_for = '396'	1-27293285-6
+SELECT COUNT(*) FROM wikisql_data WHERE tries_for = 61	1-27293285-6
+SELECT COUNT(tries_for) FROM wikisql_data WHERE points_for = 396	1-27293285-6
 SELECT format FROM wikisql_data WHERE title = 'super callanetics'	1-27303975-2
 SELECT format FROM wikisql_data WHERE title = 'quick callanetics: hips and behind'	1-27303975-2
 SELECT catalog_number FROM wikisql_data WHERE release_date = '1988-10-06'	1-27303975-2
@@ -2040,8 +2040,8 @@ SELECT total_itv1_viewers_millions FROM wikisql_data WHERE share = 28.9	1-273191
 SELECT team_nickname FROM wikisql_data WHERE location = 'adrian, michigan'	1-27361255-1
 SELECT COUNT(DISTINCT primary_conference) FROM wikisql_data WHERE location = 'allendale, michigan'	1-27361255-1
 SELECT location FROM wikisql_data WHERE institution = 'robert morris university-illinois'	1-27361255-1
-SELECT 1	1-27361255-1
-SELECT 1	1-273617-6
+SELECT enrollment FROM wikisql_data WHERE team_nickname = 'Redhawks'	1-27361255-1
+SELECT AVG(col_2001) FROM wikisql_data WHERE status = 'widowed or surviving partner'	1-273617-6
 SELECT COUNT(*) FROM wikisql_data WHERE col_2011 = '7.9%'	1-273617-6
 SELECT MIN(col_2011_number_000) FROM wikisql_data	1-273617-6
 SELECT col_2011_number_000 FROM wikisql_data WHERE status = 'separated'	1-273617-6
@@ -2058,7 +2058,7 @@ SELECT date_of_appointment FROM wikisql_data WHERE outgoing_manager = 'luis cés
 SELECT manner_of_departure FROM wikisql_data WHERE date_of_appointment = '21 september 2010'	1-27495117-3
 SELECT position_in_table FROM wikisql_data WHERE date_of_appointment = '17 january 2011'	1-27495117-3
 SELECT COUNT(*) FROM wikisql_data WHERE outgoing_manager = 'antonio gómez'	1-27495117-3
-SELECT SELECT score FROM wikisql_data WHERE opponent = 'Florida Panthers'	1-27501030-3
+SELECT score FROM wikisql_data WHERE opponent = 'florida panthers'	1-27501030-3
 SELECT ab_ripper_x FROM wikisql_data WHERE length = '92:24'	1-27512025-1
 SELECT COUNT(*) FROM wikisql_data WHERE type = 'cardio'	1-27512025-1
 SELECT ab_ripper_x FROM wikisql_data WHERE exercise = 'x stretch'	1-27512025-1
@@ -2068,10 +2068,10 @@ SELECT score FROM wikisql_data WHERE game = 29	1-27537870-5
 SELECT opponent FROM wikisql_data WHERE record = '10-13-3'	1-27537870-5
 SELECT december FROM wikisql_data WHERE record = '14-17-4'	1-27537870-5
 SELECT min(december) FROM wikisql_data WHERE location_attendance = 'hsbc arena/18,017'	1-27537870-5
-SELECT 1	1-27537870-5
+SELECT COUNT(*) FROM wikisql_data WHERE game BETWEEN 2 AND 6	1-27537870-5
 SELECT MAX(november) FROM wikisql_data WHERE game = 20	1-27539535-4
 SELECT MIN(game) FROM wikisql_data WHERE score = '1-0'	1-27539535-4
-SELECT 1	1-27539535-4
+SELECT game FROM wikisql_data WHERE november = 'november 21'	1-27539535-4
 SELECT MAX(points) FROM wikisql_data	1-27539535-4
 SELECT record FROM wikisql_data WHERE game = 13	1-27539535-4
 SELECT MIN(points) FROM wikisql_data	1-27539535-4
@@ -2094,7 +2094,7 @@ SELECT institution FROM wikisql_data WHERE endowment = 25.9	1-27599216-6
 SELECT latency_microseconds FROM wikisql_data WHERE product_name = 'ramsan-810'	1-27615520-1
 SELECT form_factor FROM wikisql_data WHERE max_usable_capacity_gb = 10	1-27615520-1
 SELECT COUNT(*) FROM wikisql_data WHERE product_name = 'ramsan-720' AND storage_medium = 'hard drive'	1-27615520-1
-SELECT form_factor FROM wikisql_data WHERE product_name = 'RamSan-630'	1-27615520-1
+SELECT max(max_usable_capacity_gb) - min(max_usable_capacity_gb) FROM wikisql_data WHERE product_name = 'ramsan-630'	1-27615520-1
 SELECT speed_iops FROM wikisql_data WHERE product_name = 'emlc flash'	1-27615520-1
 SELECT score FROM wikisql_data WHERE record = '3–12'	1-27698941-6
 SELECT game FROM wikisql_data WHERE score = 'l 90–106 (ot)'	1-27698941-6
@@ -2104,7 +2104,7 @@ SELECT location_attendance, game FROM wikisql_data WHERE date = 'April 3'	1-2770
 SELECT COUNT(high_rebounds) FROM wikisql_data WHERE game = "35"	1-27704187-8
 SELECT long_ranged_weapons FROM wikisql_data WHERE close_ranged_weapons = 'knife (stone), knife (iron)'	1-27704991-1
 SELECT armor FROM wikisql_data WHERE special_weapon = 'Grenado'	1-27704991-1
-SELECT close_ranged_weapons FROM wikisql_data WHERE armor = 'Bronze cuirass , Linothorax'	1-27704991-1
+SELECT close_ranged_weapons FROM wikisql_data WHERE armor = 'bronze cuirass, linothorax'	1-27704991-1
 SELECT close_ranged_weapons FROM wikisql_data WHERE special_weapon = 'glass egg'	1-27704991-1
 SELECT high_rebounds FROM wikisql_data WHERE date = 'December 12'	1-27712702-8
 SELECT record FROM wikisql_data WHERE date = 'December 27'	1-27712702-8
@@ -2116,15 +2116,15 @@ SELECT original_air_date FROM wikisql_data WHERE u_s_viewers_million = 5.39	1-27
 SELECT title FROM wikisql_data WHERE production_code = '8'	1-27720737-1
 SELECT max(series) FROM wikisql_data WHERE directed_by = 'Ken Whittingham'	1-27720737-1
 SELECT COUNT(*) FROM wikisql_data WHERE production_code = '120'	1-27720737-1
-SELECT high_rebounds FROM wikisql_data WHERE date = 'October 16'	1-27722408-2
+SELECT high_rebounds, high_points FROM wikisql_data WHERE date = 'October 16' ORDER BY high_rebounds DESC LIMIT 1	1-27722408-2
 SELECT high_assists, team FROM wikisql_data WHERE date = 'October 7' ORDER BY high_assists DESC LIMIT 1	1-27722408-2
 SELECT team FROM wikisql_data WHERE game = 4 AND team != 'Hornets'	1-27723228-3
 SELECT high_assists FROM wikisql_data WHERE score = 'l 103–104 (ot)'	1-27723526-12
 SELECT high_points FROM wikisql_data WHERE date = 'March 30'	1-27723526-12
-SELECT score FROM wikisql_data WHERE high_assists = 'José Juan Barea (8)'	1-27723526-12
+SELECT score FROM wikisql_data WHERE high_assists = 8	1-27723526-12
 SELECT game FROM wikisql_data WHERE date = 'April 3'	1-27723526-13
 SELECT record FROM wikisql_data WHERE game = 'Phoenix'	1-27723526-13
-SELECT COUNT(*) FROM wikisql_data WHERE high_rebounds = 'Robin Lopez (10)'	1-27733258-2
+SELECT COUNT(*) FROM wikisql_data WHERE high_rebounds = 10	1-27733258-2
 SELECT high_rebounds FROM wikisql_data WHERE date = 'October 14' ORDER BY high_rebounds DESC LIMIT 2	1-27733258-2
 SELECT team FROM wikisql_data WHERE date = 'january 17'	1-27733909-7
 SELECT team FROM wikisql_data WHERE score = '102–122 (OT)'	1-27733909-7
@@ -2133,10 +2133,10 @@ SELECT mixed_doubles FROM wikisql_data WHERE tour = 'korea super series'	1-27753
 SELECT womens_doubles FROM wikisql_data WHERE mixed_doubles = 'sudket prapakamol saralee thungthongkam'	1-27753492-2
 SELECT womens_doubles FROM wikisql_data WHERE mixed_doubles = 'zhang nan zhao yunlei' AND tour = 'all england super series'	1-27753492-2
 SELECT womens_doubles FROM wikisql_data WHERE tour = 'french super series'	1-27753492-2
-SELECT score FROM wikisql_data WHERE high_points = 'Michael Beasley (26)'	1-27756314-11
-SELECT high_rebounds FROM wikisql_data WHERE date = 'April 6'	1-27756314-11
+SELECT score FROM wikisql_data WHERE high_points = 26	1-27756314-11
+SELECT team FROM wikisql_data WHERE date = 'April 6' ORDER BY high_rebounds DESC LIMIT 1	1-27756314-11
 SELECT COUNT(DISTINCT high_rebounds) FROM wikisql_data WHERE game = 76	1-27756314-11
-SELECT COUNT(game) FROM wikisql_data WHERE high_assists = 'Luke Ridnour (5)'	1-27756314-11
+SELECT COUNT(*) FROM wikisql_data WHERE high_assists = 5	1-27756314-11
 SELECT high_points FROM wikisql_data WHERE team = 'charlotte'	1-27756314-8
 SELECT max(game) FROM wikisql_data WHERE team = '@ l.a. clippers'	1-27756314-8
 SELECT date FROM wikisql_data WHERE team = 'orlando'	1-27756314-8
@@ -2155,12 +2155,12 @@ SELECT date FROM wikisql_data WHERE score = 'w 104-98'	1-27882867-9
 SELECT high_assists FROM wikisql_data WHERE game = 'Indiana'	1-27882867-9
 SELECT location_attendance FROM wikisql_data WHERE high_points = 29	1-27882867-9
 SELECT location_attendance FROM wikisql_data WHERE high_rebounds = 10	1-27902171-7
-SELECT date FROM wikisql_data WHERE location_attendance = 'Delta Center 19,911'	1-27902171-7
+SELECT date FROM wikisql_data WHERE location_attendance = 19911	1-27902171-7
 SELECT game FROM wikisql_data WHERE score = 'w 95-85'	1-27902171-7
 SELECT high_points FROM wikisql_data WHERE score = 'w 112-110'	1-27902171-7
 SELECT date FROM wikisql_data WHERE location_attendance = 12126	1-27902171-7
 SELECT COUNT(production_code) FROM wikisql_data WHERE no_in_season = 8	1-27988382-1
-SELECT SUM(rank_timeslot) FROM wikisql_data WHERE airdate = "March 30, 2011"	1-27987623-4
+SELECT sum(rank_timeslot) FROM wikisql_data WHERE airdate = 'March 30, 2011'	1-27987623-4
 SELECT previous_club FROM wikisql_data WHERE name = 'ben williams'	1-27998152-1
 SELECT fee FROM wikisql_data WHERE previous_club = 'ankaragücü'	1-27998152-1
 SELECT COUNT(date_of_birth) FROM wikisql_data WHERE previous_club = 'chelsea'	1-27998152-1
@@ -2186,10 +2186,10 @@ SELECT no_in_series FROM wikisql_data WHERE directed_by = 'art dielhenn'	1-28181
 SELECT directed_by FROM wikisql_data WHERE title = 'it\'s your move'	1-2818164-8
 SELECT no_in_season FROM wikisql_data WHERE title = 'adventures in babysitting'	1-2818164-8
 SELECT written_by FROM wikisql_data WHERE directed_by = 'Nick Marck'	1-28195898-1
-SELECT col_x_2 FROM wikisql_data WHERE production_code = '4ABB07'	1-28195898-1
+SELECT production_code FROM wikisql_data WHERE col_x = '4' AND col_x_2 = '7'	1-28195898-1
 SELECT title FROM wikisql_data WHERE production_code = '65'	1-28195898-1
 SELECT production_code FROM wikisql_data WHERE u_s_viewers_millions = 5.5	1-28195898-1
-SELECT col_x FROM wikisql_data WHERE col_x_2 = '18'	1-28195898-1
+SELECT production_code FROM wikisql_data WHERE col_x = 'season 4' AND col_x_2 = '18'	1-28195898-1
 SELECT u21_mens FROM wikisql_data WHERE mixed_restricted = 'mike marsden' AND u21_womens = 'claire nelson'	1-28211674-3
 SELECT mixed_veteran FROM wikisql_data WHERE womens_singles = 'naomi owen' AND mens_singles = 'ricardo walther'	1-28211674-3
 SELECT mixed_restricted FROM wikisql_data WHERE mixed_veteran = 'Tomasz Rzeszotko' AND u21_womens = 'Karina Le Fevre'	1-28211674-3
@@ -2200,10 +2200,10 @@ SELECT COUNT(winner) FROM wikisql_data WHERE st_kilda_score = '14.11.95'	1-28211
 SELECT round FROM wikisql_data WHERE hawthorn_score = 17.7.109	1-28211103-1
 SELECT attendance FROM wikisql_data WHERE hawthorn_score = 18.15.123	1-28211103-1
 SELECT hawthorn_score FROM wikisql_data WHERE year = 2000	1-28211103-1
-SELECT winner FROM wikisql_data WHERE st_kilda_score = '13.10.88'	1-28211103-1
+SELECT winner FROM wikisql_data WHERE st_kilda_score = 88	1-28211103-1
 SELECT attendance FROM wikisql_data WHERE st_kilda_score = 13.10.88	1-28211103-1
 SELECT COUNT(*) FROM wikisql_data WHERE club_s = 'doncaster rovers'	1-28286776-52
-SELECT COUNT(cap_s) FROM wikisql_data WHERE club_s = 'Norwich City' OR club_s = 'Coventry City'	1-28286776-52
+SELECT COUNT(*) FROM wikisql_data WHERE club_s IN ('Norwich City', 'Coventry City')	1-28286776-52
 SELECT COUNT(*) FROM wikisql_data WHERE goal_s = 8	1-28286776-52
 SELECT COUNT(DISTINCT position) FROM wikisql_data WHERE nationality = 'Czech Republic'	1-2840500-1
 SELECT pick FROM wikisql_data WHERE player = 'ric jackman'	1-2840500-1
@@ -2217,7 +2217,7 @@ SELECT pick FROM wikisql_data WHERE player = 'matthew scorsune'	1-2840500-8
 SELECT college_junior_club_team FROM wikisql_data WHERE player = 'andrej podkonicky'	1-2840500-8
 SELECT MAX(pick) FROM wikisql_data WHERE player = 'evgeny korolev'	1-2840500-8
 SELECT coastal_carolina_head_coach FROM wikisql_data WHERE year = 2013	1-28418916-3
-SELECT COUNT(DISTINCT opponents_head_coach) FROM wikisql_data WHERE fbs_opponent = 'Kent State Golden Flashes'	1-28418916-3
+SELECT COUNT(DISTINCT coastal_carolina_head_coach) FROM wikisql_data WHERE fbs_opponent = 'kent state golden flashes'	1-28418916-3
 SELECT result FROM wikisql_data WHERE opponents_conference = 'mac (east)'	1-28418916-3
 SELECT nationality FROM wikisql_data WHERE nhl_team = 'minnesota north stars'	1-2850912-1
 SELECT pick FROM wikisql_data WHERE college_junior_club_team = 'regina pats (whl)'	1-2850912-1
@@ -2235,7 +2235,7 @@ SELECT pick FROM wikisql_data WHERE nhl_team = 'new jersey devils'	1-2850912-12
 SELECT COUNT(cuts_made) FROM wikisql_data WHERE earnings = 210408	1-28540609-2
 SELECT COUNT((cuts_made) FROM wikisql_data WHERE player = 'Gary Clark'	1-28540609-2
 SELECT player FROM wikisql_data WHERE starts = 26	1-28540609-2
-SELECT cuts_made FROM wikisql_data WHERE player = 'Bernd Wiesberger'	1-28540609-2
+SELECT COUNT(cuts_made) FROM wikisql_data WHERE player = 'Bernd Wiesberger'	1-28540609-2
 SELECT COUNT(earnings) FROM wikisql_data WHERE best_finish = 'T38'	1-28540609-2
 SELECT COUNT(*) FROM wikisql_data WHERE turnover_m = 0.42 AND dividend_per_share_p IS NOT NULL	1-2856898-1
 SELECT profit_before_tax_m FROM wikisql_data WHERE turnover_m = 431.06	1-2856898-1
@@ -2246,7 +2246,7 @@ SELECT DISTINCT description FROM wikisql_data WHERE storage_case = 'cardboard bo
 SELECT storage_case FROM wikisql_data WHERE description = 'ivory and red metal'	1-28652521-1
 SELECT for_shank_type FROM wikisql_data WHERE storage_case = 'red plastic box'	1-28652521-1
 SELECT written_by FROM wikisql_data WHERE u_s_viewers_in_millions = 7.52	1-28688313-1
-SELECT episode FROM wikisql_data WHERE col_x = '19'	1-28688313-1
+SELECT col_x FROM wikisql_data WHERE episode = '19'	1-28688313-1
 SELECT written_by FROM wikisql_data WHERE u_s_viewers_in_millions = 9.81	1-28688313-1
 SELECT COUNT(*) FROM wikisql_data WHERE track = 'let love be your energy'	1-28715942-2
 SELECT arranger_s FROM wikisql_data WHERE vocal_percussionist_s = 'tom lyle'	1-28715942-2
@@ -2261,9 +2261,9 @@ SELECT vocal_percussionist FROM wikisql_data WHERE track = 'The Coral'	1-2871594
 SELECT charity FROM wikisql_data WHERE occupation = 'actor' AND occupation = 'singer'	1-28730873-2
 SELECT title FROM wikisql_data WHERE directed_by = 'Alex Reid'	1-28760804-1
 SELECT written_by FROM wikisql_data WHERE u_s_viewers_million = 5.95	1-28760804-1
-SELECT u_s_viewers_million FROM wikisql_data WHERE production_code = '3X5710'	1-28760804-1
+SELECT COUNT(u_s_viewers_million) FROM wikisql_data WHERE production_code = '3X5710'	1-28760804-1
 SELECT COUNT(directed_by) FROM wikisql_data WHERE u_s_viewers_million = 6.79	1-28760804-1
-SELECT high_points FROM wikisql_data WHERE date = 'March 7'	1-28768469-9
+SELECT high_points FROM wikisql_data WHERE date = 'March 7' ORDER BY high_points DESC LIMIT 1	1-28768469-9
 SELECT record FROM wikisql_data WHERE team = 'Washington'	1-28768469-9
 SELECT highest_score FROM wikisql_data WHERE average = 30.00	1-28846752-12
 SELECT innings FROM wikisql_data WHERE average = 22.61	1-28846752-12
@@ -2281,8 +2281,8 @@ SELECT team FROM wikisql_data WHERE capacity_percentage = 102.3	1-28884858-2
 SELECT total_attendance FROM wikisql_data WHERE team = 'new york giants'	1-28884858-2
 SELECT capacity_percentage FROM wikisql_data WHERE total_attendance = 71080	1-28884858-2
 SELECT postal_code FROM wikisql_data WHERE administrative_capital = 'bori'	1-28891101-3
-SELECT MAX(census_2006_population) FROM wikisql_data WHERE administrative_capital = 'Eleme'	1-28891101-3
-SELECT MAX(census_2006_population) FROM wikisql_data WHERE area_km_2 = '159'	1-28891101-3
+SELECT census_2006_population FROM wikisql_data WHERE administrative_capital = 'Eleme'	1-28891101-3
+SELECT census_2006_population FROM wikisql_data WHERE area_km_2 = 159	1-28891101-3
 SELECT area_km_2 FROM wikisql_data WHERE lga_name = 'Ahoada East'	1-28891101-3
 SELECT nhl_team FROM wikisql_data WHERE pick = 'richard borgo'	1-2897457-2
 SELECT nationality FROM wikisql_data WHERE position = 'centre' AND nhl_team = 'calgary flames'	1-2897457-2
@@ -2294,10 +2294,10 @@ SELECT pick FROM wikisql_data WHERE player = 'marc deschamps'	1-2897457-5
 SELECT nationality FROM wikisql_data WHERE player = 'keith carney'	1-2897457-5
 SELECT position FROM wikisql_data WHERE pick = '#94'	1-2897457-5
 SELECT no_col FROM wikisql_data WHERE u_s_viewers_million = 1.312	1-29085880-1
-SELECT u_s_viewers_million FROM wikisql_data WHERE title = 'Fake Me Home Tonight'	1-29085880-1
+SELECT COUNT(u_s_viewers_million) FROM wikisql_data WHERE title = "Fake Me Home Tonight"	1-29085880-1
 SELECT title FROM wikisql_data WHERE directed_by = 'Rich Correll' AND written_by = 'Dennis Rinsler'	1-29102100-1
-SELECT season FROM wikisql_data WHERE prod_code = '334'	1-29102100-1
-SELECT season FROM wikisql_data WHERE title = 'Vision Impossible'	1-29102100-1
+SELECT prod_code FROM wikisql_data WHERE prod_code = '334'	1-29102100-1
+SELECT prod_code FROM wikisql_data WHERE title = 'Vision Impossible'	1-29102100-1
 SELECT prod_code FROM wikisql_data WHERE directed_by = 'Rondell Sheridan'	1-29102100-1
 SELECT COUNT(date) FROM wikisql_data WHERE opponent_in_the_final = 'rushmi chakravarthi'	1-29127804-3
 SELECT tournament FROM wikisql_data WHERE outcome = 'runner-up'	1-29127804-3
@@ -2316,15 +2316,15 @@ SELECT fri_3_june FROM wikisql_data WHERE wed_1_june = '18'' 22.66 123.182mph'	1
 SELECT rank FROM wikisql_data WHERE tues_31_may = '19'' 02.34 118.903mph'	1-29218221-2
 SELECT COUNT(*) FROM wikisql_data WHERE tues_31_may = '18'' 55.91 124.236mph'	1-29218221-2
 SELECT rider FROM wikisql_data WHERE fri_3_june = '18'' 19.68 123.516mph'	1-29218221-2
-SELECT matches_won FROM wikisql_data WHERE matches_played = 23	1-29302711-12
+SELECT COUNT(matches_won) FROM wikisql_data WHERE matches_played = 23	1-29302711-12
 SELECT COUNT(*) FROM wikisql_data WHERE points = 21	1-29302711-12
 SELECT prize_money_usd FROM wikisql_data WHERE name = 'bob lutz'	1-29302711-12
 SELECT COUNT(matches_won) FROM wikisql_data WHERE name = 'colin dibley'	1-29302711-12
 SELECT team FROM wikisql_data WHERE replaced_by = 'renato gaúcho'	1-29414946-3
 SELECT COUNT(*) FROM wikisql_data WHERE outgoing_manager = 'silas' AND manner_of_departure = 'left'	1-29414946-3
 SELECT manner_of_departure FROM wikisql_data WHERE outgoing_manager = 'geninho'	1-29414946-3
-SELECT replaced_by FROM wikisql_data WHERE team = 'Santos'	1-29414946-3
-SELECT outgoing_manager FROM wikisql_data WHERE date_of_vacancy = 'June 20'	1-29414946-3
+SELECT replaced_by FROM wikisql_data	1-29414946-3
+SELECT replaced_by FROM wikisql_data WHERE date_of_vacancy = 'June 20'	1-29414946-3
 SELECT s_color_commentator FROM wikisql_data WHERE pregame_hosts = 'jon sciambi'	1-2941848-10
 SELECT pregame_hosts FROM wikisql_data WHERE pregame_analysts = 'Dave Campbell' AND year = 2001	1-2941848-10
 SELECT COUNT(DISTINCT network) FROM wikisql_data WHERE year = 2008	1-2941848-10
@@ -2352,9 +2352,9 @@ SELECT colors FROM wikisql_data WHERE location = 'tolono, illinois'	1-29612224-1
 SELECT location FROM wikisql_data WHERE school_website = 'http://www.mfschools.org/high/'	1-29612224-1
 SELECT colors FROM wikisql_data WHERE location = 'tolono, illinois'	1-29612224-1
 SELECT fastest_lap FROM wikisql_data WHERE pole_position = 'stefan wilson'	1-29690363-3
-SELECT fastest_lap FROM wikisql_data WHERE most_laps_led = 'Josef Newgarden' AND race = 'Edmonton'	1-29690363-3
+SELECT winning_driver FROM wikisql_data WHERE most_laps_led = 'josef newgarden' AND rd = 'edmonton'	1-29690363-3
 SELECT pole_position FROM wikisql_data WHERE most_laps_led = 'esteban guerrieri' AND fastest_lap = 'josef newgarden' AND rd = '8a'	1-29690363-3
-SELECT most_laps_led FROM wikisql_data WHERE fastest_lap = 'Brandon Wagner'	1-29690363-3
+SELECT winning_driver FROM wikisql_data WHERE fastest_lap = 'brandon wagner' AND most_laps_led = (SELECT MAX(most_laps_led) FROM wikisql_data WHERE fastest_lap = 'brandon wagner')	1-29690363-3
 SELECT race FROM wikisql_data WHERE fastest_lap = 'josef newgarden' AND most_laps_led = 'josef newgarden'	1-29690363-3
 SELECT MIN(shutouts) FROM wikisql_data	1-29743928-4
 SELECT years FROM wikisql_data WHERE name = 'chase harrison category:articles with hcards'	1-29743928-4
@@ -2389,7 +2389,7 @@ SELECT COUNT(col_1st_runner_up) FROM wikisql_data WHERE country_territory = 'Jam
 SELECT us_air_date FROM wikisql_data WHERE directed_by = 'ken girotti'	1-30012404-4
 SELECT canadian_air_date FROM wikisql_data WHERE us_air_date = '24 august 2012'	1-30012404-4
 SELECT series FROM wikisql_data WHERE us_air_date = '20 July 2012'	1-30012404-4
-SELECT streak FROM wikisql_data WHERE date = "May 9"	1-30047613-13
+SELECT COUNT(streak) FROM wikisql_data WHERE date = "May 9"	1-30047613-13
 SELECT tues_23_aug FROM wikisql_data WHERE thurs_25_aug = '24'' 31.87 92.282mph'	1-30058355-3
 SELECT thurs_25_aug FROM wikisql_data WHERE rank = 3	1-30058355-3
 SELECT mon_22_aug FROM wikisql_data WHERE wed_24_aug = '22'' 50.05 99.141mph'	1-30058355-3
@@ -2397,13 +2397,13 @@ SELECT fri_26_aug FROM wikisql_data WHERE mon_22_aug = '32'' 25.72 69.809mph'	1-
 SELECT COUNT(DISTINCT nationality) FROM wikisql_data WHERE tournament = '2011 apertura'	1-30083499-1
 SELECT team FROM wikisql_data WHERE tournament = '2012 clausura'	1-30083499-1
 SELECT coefficient FROM wikisql_data WHERE player = 'agustín marchesín (1)'	1-30083499-1
-SELECT * FROM wikisql_data WHERE tournament = '2010 Clausura'	1-30083499-1
+SELECT tournament FROM wikisql_data WHERE tournament = '2010 clausura'	1-30083499-1
 SELECT nationality FROM wikisql_data WHERE tournament = '2012 clausura'	1-30083499-1
 SELECT high_points FROM wikisql_data WHERE game = '1'	1-30087032-5
-SELECT COUNT(game) FROM wikisql_data WHERE high_rebounds = 'Oliver Miller (7)'	1-30087032-5
+SELECT COUNT(DISTINCT game) FROM wikisql_data WHERE high_rebounds = 7	1-30087032-5
 SELECT high_assists FROM wikisql_data WHERE high_points = 'Charles Barkley (21)'	1-30087032-5
 SELECT COUNT(DISTINCT high_points) FROM wikisql_data WHERE date = 'May 15'	1-30087032-5
-SELECT series FROM wikisql_data WHERE high_points = 'Charles Barkley (34)'	1-30087032-5
+SELECT series FROM wikisql_data WHERE high_points = (SELECT MAX(high_points) FROM wikisql_data WHERE high_points = 34)	1-30087032-5
 SELECT barony FROM wikisql_data WHERE townland = 'mountcotton'	1-30120605-1
 SELECT area_acres FROM wikisql_data WHERE townland = 'gortnaskehy'	1-30120605-1
 SELECT civil_parish FROM wikisql_data WHERE townland = 'ballymacandrick'	1-30120605-1
@@ -2445,7 +2445,7 @@ SELECT versions FROM wikisql_data WHERE origin = 'czechoslovakia'	2-1035225-1
 SELECT aircraft FROM wikisql_data WHERE type = 'pzl-104'	2-1035225-1
 SELECT origin FROM wikisql_data WHERE aircraft = 'mi-2'	2-1035225-1
 SELECT SUM(top_25) FROM wikisql_data WHERE wins < 1 AND cuts_made = 22	2-1006287-7
-SELECT SUM(events) FROM wikisql_data WHERE tournament = "Masters Tournament" AND top_25 < 6	2-1006287-7
+SELECT SUM(events) FROM wikisql_data WHERE tournament = 'masters tournament' AND top_25 < 6	2-1006287-7
 SELECT MIN(year) FROM wikisql_data WHERE league = 'usisl pro league'	2-1035432-1
 SELECT col_2007 FROM wikisql_data WHERE col_2010 = 3.137	2-1027881-1
 SELECT col_2010 FROM wikisql_data WHERE col_2009 = 21.662	2-1027881-1
@@ -2472,10 +2472,10 @@ SELECT scoring_average FROM wikisql_data WHERE year < 1998 AND wins > 3	2-102100
 SELECT result FROM wikisql_data WHERE date = 'November 20, 1983' AND week < 15	2-10361946-2
 SELECT winner FROM wikisql_data WHERE jockey = 'gary simms'	2-10219395-1
 SELECT trainer FROM wikisql_data WHERE time = '1:10.09' AND year < 2009	2-10219395-1
-SELECT trainer FROM wikisql_data WHERE winner = 'hyroglyphic' AND year < 2010	2-10219395-1
+SELECT trainer FROM wikisql_data WHERE year < 2010	2-10219395-1
 SELECT time FROM wikisql_data WHERE winner = 'screen your friend'	2-10219395-1
 SELECT place FROM wikisql_data WHERE points > 10	2-10301911-6
-SELECT SUM(grid) FROM wikisql_data WHERE laps > 22 AND rider = 'fonsi nieto'	2-10101173-2
+SELECT SUM(grid) FROM wikisql_data WHERE rider = 'Fonsi Nieto' AND laps > 22	2-10101173-2
 SELECT SUM(laps) FROM wikisql_data WHERE grid = 10	2-10101173-2
 SELECT bike FROM wikisql_data WHERE rider = 'jiri drazdak' AND grid > 14 AND laps < 22	2-10101173-2
 SELECT winning_driver FROM wikisql_data WHERE circuit = 'pau grand prix'	2-10292065-2
@@ -2483,17 +2483,17 @@ SELECT report FROM wikisql_data WHERE date = '30 july'	2-10292065-2
 SELECT report FROM wikisql_data WHERE date = '10 april'	2-10292065-2
 SELECT winning_constructor FROM wikisql_data WHERE name = 'paris cup'	2-10292065-2
 SELECT date FROM wikisql_data WHERE class = 'non-championship f2' AND driver = 'josé froilán gonzález' AND position > 2	2-10319633-1
-SELECT team FROM wikisql_data WHERE driver = 'emmanuel de graffenried' AND position > 1 AND date = '9/1953'	2-10319633-1
+SELECT team FROM wikisql_data WHERE driver = 'emmanuel de graffenried' AND position > 1 AND date LIKE '%9/1953%'	2-10319633-1
 SELECT class FROM wikisql_data WHERE date = '8/1954'	2-10319633-1
 SELECT driver FROM wikisql_data WHERE team = 'officine alfieri maserati' AND class = 'non-championship f2' AND position = 2 AND date = '9/1952'	2-10319633-1
 SELECT attendance FROM wikisql_data WHERE result = 'w 16-13' AND week < 12	2-10361230-2
 SELECT COUNT(*) FROM wikisql_data WHERE drawn = 8 AND lost < 14	2-1008145-13
 SELECT AVG(total_apps) FROM wikisql_data WHERE fa_cup_goals > 0 AND total_goals = 0	2-10240125-2
-SELECT SUM(total_apps) FROM wikisql_data WHERE fa_cup_goals < 4 AND fa_cup_apps > 7	2-10240125-2
+SELECT sum(total_apps) FROM wikisql_data WHERE fa_cup_goals < 4 AND fa_cup_apps > 7	2-10240125-2
 SELECT COUNT(*) FROM wikisql_data WHERE fa_cup_apps > 1 AND total_apps = 37 AND league_apps < 30	2-10240125-2
 SELECT result FROM wikisql_data WHERE record = '1-0' AND week < 4	2-10360849-2
 SELECT bore_stroke FROM wikisql_data WHERE carburetor = '4-barrel' AND vin_code = 'A'	2-10166535-9
-SELECT opponent FROM wikisql_data WHERE attendance = 'unknown' AND result = '2-0 loss'	2-10017434-1
+SELECT opponent FROM wikisql_data WHERE attendance = 'unknown' AND result = '2-0'	2-10017434-1
 SELECT result FROM wikisql_data WHERE opponent = 'leeds united'	2-10017434-1
 SELECT attendance FROM wikisql_data WHERE opponent = 'middlesbrough'	2-10017434-1
 SELECT local_letter FROM wikisql_data WHERE capital = 'funadhoo'	2-10345068-1
@@ -2512,7 +2512,7 @@ SELECT block FROM wikisql_data WHERE area = 'northamptonshire'	2-10712301-4
 SELECT advertisement_date FROM wikisql_data WHERE ensemble_name = 'muxco gloucestershire' AND block = '10c'	2-10712301-4
 SELECT ensemble_name FROM wikisql_data WHERE area = 'oxfordshire'	2-10712301-4
 SELECT winning_applicant FROM wikisql_data WHERE ensemble_name = 'Muxco Lincolnshire' AND block = '10D'	2-10712301-4
-SELECT home_team FROM wikisql_data WHERE home_team_score = '12.6 (78)'	2-10776330-10
+SELECT home_team FROM wikisql_data WHERE home_team_score = 12.6	2-10776330-10
 SELECT AVG(crowd) FROM wikisql_data WHERE venue = 'glenferrie oval'	2-10776330-10
 SELECT date FROM wikisql_data WHERE home_team_score = '9.10 (64)'	2-10776330-10
 SELECT home_team_score FROM wikisql_data WHERE crowd > 24637	2-10776330-10
@@ -2524,11 +2524,11 @@ SELECT crowd FROM wikisql_data WHERE home_team = 'melbourne'	2-10701045-8
 SELECT SUM(lane) FROM wikisql_data WHERE nationality = 'sweden' AND split_50m < 26.25	2-10647310-1
 SELECT max(split_50m) FROM wikisql_data WHERE time = 53.74 AND lane < 3	2-10647310-1
 SELECT SUM(split_50m) FROM wikisql_data WHERE name = 'josefin lillhage' AND lane > 8	2-10647310-1
-SELECT venue FROM wikisql_data WHERE home_team_score = '6.10 (46)'	2-10776330-1
+SELECT venue FROM wikisql_data WHERE home_team_score = 6.10	2-10776330-1
 SELECT home_team_score FROM wikisql_data WHERE home_team = 'st kilda'	2-10776330-1
 SELECT AVG(crowd) FROM wikisql_data WHERE away_team = 'collingwood'	2-10776330-1
 SELECT name FROM wikisql_data WHERE district = 'O' AND assumed_office = '2013'	2-1071782-3
-SELECT party FROM wikisql_data WHERE district = 'a' AND assumed_office < 2013 AND next_election > 2014	2-1071782-3
+SELECT party FROM wikisql_data WHERE district = 'A' AND assumed_office < '2013-01-01' AND next_election > '2014-12-31'	2-1071782-3
 SELECT col_1944 FROM wikisql_data WHERE tournament = 'U.S. Championships'	2-1060790-3
 SELECT tournament FROM wikisql_data WHERE col_1954 = 'a' AND col_1942 = 'nh'	2-1060790-3
 SELECT AVG(years_on_learners) FROM wikisql_data WHERE driver_s_age > 24 AND licence_test_attempts < 0	2-10749367-1
@@ -2560,22 +2560,22 @@ SELECT player FROM wikisql_data WHERE from_col = '2001'	2-10560886-9
 SELECT position FROM wikisql_data WHERE school_country = 'arizona state'	2-10560886-9
 SELECT school_country FROM wikisql_data WHERE from_col = '1958'	2-10560886-9
 SELECT home_team FROM wikisql_data WHERE away_team = 'north melbourne'	2-10701045-10
-SELECT date FROM wikisql_data WHERE away_team_score = '13.8 (86)'	2-10701045-10
+SELECT date FROM wikisql_data WHERE away_team_score = 13.8	2-10701045-10
 SELECT home_team FROM wikisql_data WHERE away_team = 'north melbourne' AND crowd > 12000	2-10701045-10
 SELECT season_total_att FROM wikisql_data WHERE league_cup_average_att = 32415	2-1056336-11
-SELECT catalog FROM wikisql_data WHERE label = 'candlelight records' AND format = 'candle053tin'	2-1077708-2
+SELECT catalog FROM wikisql_data WHERE format = 'candle053tin'	2-1077708-2
 SELECT format FROM wikisql_data WHERE label = 'candlelight records'	2-1077708-2
 SELECT year FROM wikisql_data WHERE region = 'japan' AND label != ''	2-1077708-2
 SELECT name FROM wikisql_data WHERE length > 903	2-10724559-5
-SELECT sum(year) FROM wikisql_data WHERE player = "Landon Donovan"	2-10541352-1
+SELECT SUM(year) FROM wikisql_data WHERE player = 'landon donovan'	2-10541352-1
 SELECT COUNT(uninterrupted_rank) FROM wikisql_data WHERE name = 'john dingell'	2-10644188-4
 SELECT name FROM wikisql_data WHERE total_tenure_time = '36 years, 0 days' AND uninterrupted_time = '36 years, 0 days' AND total_tenure_rank = 49	2-10644188-4
 SELECT match_points FROM wikisql_data WHERE points_for = 570	2-10518887-1
 SELECT match_points FROM wikisql_data WHERE lost = 18 AND bonus_points = 11	2-10518887-1
 SELECT diff FROM wikisql_data WHERE points_for = 662	2-10518887-1
 SELECT COUNT(games FROM wikisql_data WHERE points_for = 595	2-10518887-1
-SELECT games FROM wikisql_data WHERE match_points = '34'	2-10518887-1
-SELECT bonus_points FROM wikisql_data WHERE club = 'Colomiers'	2-10518887-1
+SELECT COUNT(games) FROM wikisql_data WHERE match_points = 34	2-10518887-1
+SELECT COUNT(bonus_points) FROM wikisql_data WHERE club = 'Colomiers'	2-10518887-1
 SELECT venue FROM wikisql_data WHERE date = '12 november 2005'	2-1057369-3
 SELECT competition FROM wikisql_data WHERE date = '27 july 2004'	2-1057369-3
 SELECT venue FROM wikisql_data WHERE date = '20 november 2002'	2-1057369-3
@@ -2592,9 +2592,9 @@ SELECT constructor FROM wikisql_data WHERE driver = 'jim crawford'	2-10663439-1
 SELECT chassis FROM wikisql_data WHERE constructor = 'shadow'	2-10663439-1
 SELECT entrant FROM wikisql_data WHERE engine = 'cosworth dfv v8' AND chassis = 'dn9'	2-10663439-1
 SELECT population_1960 FROM wikisql_data WHERE population_2000 = 467052 AND population_2040 = 78812	2-1064198-2
-SELECT AVG(population_2040) FROM wikisql_data WHERE population_2000 < '108,172' AND population_1960 < '107,589'	2-1064198-2
-SELECT population_1960 FROM wikisql_data WHERE county = 'Oslo' AND population_2000 = '507,467'	2-1064198-2
-SELECT sum(week) FROM wikisql_data WHERE attendance = "61,985"	2-10650887-2
+SELECT population_2040 FROM wikisql_data WHERE population_2000 < 108172 AND population_1960 < 107589	2-1064198-2
+SELECT population_1960 FROM wikisql_data WHERE population_2000 = 507467	2-1064198-2
+SELECT SUM(week) FROM wikisql_data WHERE attendance = 61985	2-10650887-2
 SELECT away_team FROM wikisql_data WHERE home_team = 'north melbourne' AND home_team_score = '9.10 (64)'	2-10750694-10
 SELECT home_team_score FROM wikisql_data WHERE venue = 'princes park'	2-10750694-10
 SELECT away_team FROM wikisql_data WHERE home_team = 'north melbourne'	2-10750694-10
@@ -2603,14 +2603,14 @@ SELECT party FROM wikisql_data WHERE net_gain_loss = -2	2-10577-3
 SELECT seats FROM wikisql_data WHERE party = 'swedish people\'s party' AND net_gain_loss = 0	2-10577-3
 SELECT of_seats FROM wikisql_data WHERE net_gain_loss = 34	2-10577-3
 SELECT seats FROM wikisql_data WHERE of_votes = '8.1%'	2-10577-3
-SELECT home_team_score FROM wikisql_data WHERE home_team = 'footscray'	2-10775038-11
+SELECT SUM(home_team_score) FROM wikisql_data WHERE home_team = 'footscray'	2-10775038-11
 SELECT home_team_score FROM wikisql_data WHERE away_team = 'richmond'	2-10775038-11
 SELECT player FROM wikisql_data WHERE date = '04/05/1999' AND conv = 0	2-1074629-9
 SELECT date FROM wikisql_data WHERE player = 'josh taumalolo' AND venue = 'nuku\'alofa'	2-1074629-9
 SELECT home_team FROM wikisql_data WHERE venue = 'victoria park' AND away_team_score = '7.12 (54)' AND crowd > 12000	2-10640687-11
 SELECT home_team_score FROM wikisql_data WHERE away_team = 'st kilda'	2-10640687-11
 SELECT home_team_score FROM wikisql_data WHERE away_team = 'melbourne'	2-10640687-11
-SELECT away_team FROM wikisql_data WHERE home_team_score = '15.18 (108)'	2-10640687-11
+SELECT away_team FROM wikisql_data WHERE home_team_score = 15.18	2-10640687-11
 SELECT home_team FROM wikisql_data WHERE venue = 'punt road oval'	2-10640687-11
 SELECT country FROM wikisql_data WHERE youth_15_24_literacy_rate_total = 100 AND adult_women = 92	2-106539-7
 SELECT country FROM wikisql_data WHERE year_most_recent = 2005 AND adult_men = 96	2-106539-7
@@ -2619,18 +2619,18 @@ SELECT institution FROM wikisql_data WHERE type = 'public' AND nickname = 'The G
 SELECT min(founded) FROM wikisql_data WHERE type = 'private' AND nickname = 'Mountaineers'	2-10581768-2
 SELECT institution FROM wikisql_data WHERE enrollment < 1000	2-10581768-2
 SELECT SUM(crowd) FROM wikisql_data WHERE away_team_score = 7.13 AND away_team = 'richmond'	2-10747009-3
-SELECT away_team FROM wikisql_data WHERE away_team_score = '4.12 (36)'	2-10747009-3
+SELECT away_team FROM wikisql_data WHERE away_team_score = 4.12	2-10747009-3
 SELECT date FROM wikisql_data WHERE away_team = 'essendon'	2-10747009-3
 SELECT home_team FROM wikisql_data WHERE away_team = 'geelong' AND away_team_score = 55	2-10747009-3
-SELECT away_team FROM wikisql_data WHERE away_team_score = '7.13 (55)' AND home_team = 'north melbourne'	2-10747009-3
+SELECT away_team FROM wikisql_data WHERE away_team_score = 55 AND home_team = 'north melbourne'	2-10747009-3
 SELECT venue FROM wikisql_data WHERE home_team_score = 13.15	2-10747009-3
 SELECT team FROM wikisql_data WHERE game < 18 ORDER BY goal_gain LIMIT 1	2-10661133-1
 SELECT nationality FROM wikisql_data WHERE from_col = '1976'	2-10560886-20
 SELECT nationality FROM wikisql_data WHERE from_col = 'Baylor'	2-10560886-20
-SELECT MAX(crowd) FROM wikisql_data WHERE away_team_score = '17.8 (110)'	2-10701045-5
+SELECT max(crowd) FROM wikisql_data WHERE away_team_score = 17.8	2-10701045-5
 SELECT away_team FROM wikisql_data WHERE venue = 'punt road oval'	2-10701045-5
 SELECT away_team_score FROM wikisql_data WHERE home_team = 'fitzroy'	2-10701045-5
-SELECT venue FROM wikisql_data WHERE away_team_score = '14.9 (93)'	2-10701045-5
+SELECT venue FROM wikisql_data WHERE away_team_score = 14.9	2-10701045-5
 SELECT date FROM wikisql_data WHERE away_team = 'south melbourne'	2-10701045-5
 SELECT away_team_score FROM wikisql_data WHERE home_team = 'richmond' AND crowd > 12500	2-10701045-5
 SELECT glendale FROM wikisql_data WHERE pasadena = '14%'	2-107642-1
@@ -2638,32 +2638,32 @@ SELECT tujunga FROM wikisql_data WHERE pasadena = 33	2-107642-1
 SELECT tujunga FROM wikisql_data WHERE la_crescenta_montrose = 28	2-107642-1
 SELECT pasadena FROM wikisql_data WHERE tujunga = 36	2-107642-1
 SELECT glendale FROM wikisql_data WHERE la_cañada_flintridge = 5	2-107642-1
-SELECT la_crescenta_montrose FROM wikisql_data WHERE glendale = '$57,112'	2-107642-1
-SELECT drop_col FROM wikisql_data WHERE player = 'nicky little' AND venue = 'hong kong'	2-1074616-8
-SELECT conv FROM wikisql_data WHERE pens = '0' AND tries = '0'	2-1074616-8
-SELECT conv FROM wikisql_data WHERE player = 'severo koroduadua waqanibau' AND pens = '0'	2-1074616-8
-SELECT away_team_score FROM wikisql_data WHERE home_team_score = '16.8 (104)'	2-10776868-5
+SELECT la_crescenta_montrose FROM wikisql_data WHERE glendale = 57112	2-107642-1
+SELECT SUM(drop_col) FROM wikisql_data WHERE player = 'Nicky Little' AND venue = 'Hong Kong'	2-1074616-8
+SELECT COUNT(*) FROM wikisql_data WHERE pens = 0 AND tries = 0	2-1074616-8
+SELECT COUNT(conv) FROM wikisql_data WHERE player = "severo koroduadua waqanibau" AND pens = "0"	2-1074616-8
+SELECT away_team_score FROM wikisql_data WHERE home_team_score = 16.8	2-10776868-5
 SELECT home_team_score FROM wikisql_data WHERE venue = 'mcg'	2-10776868-5
 SELECT date FROM wikisql_data WHERE venue = 'western oval'	2-10776868-5
 SELECT bullet_diameter FROM wikisql_data WHERE name = '11.4mm werndl m/73'	2-1057617-3
-SELECT case_length FROM wikisql_data WHERE rim_diameter = '13.20 (.518)'	2-1057617-3
+SELECT case_length FROM wikisql_data WHERE rim_diameter = 13.20	2-1057617-3
 SELECT bullet_diameter FROM wikisql_data WHERE neck_diameter = '12.17 (.479)'	2-1057617-3
-SELECT rim_diameter FROM wikisql_data WHERE neck_diameter = '11.84 (.466)'	2-1057617-3
-SELECT case_type FROM wikisql_data WHERE cartridge_length = '64.77 (2.550)'	2-1057617-3
+SELECT rim_diameter FROM wikisql_data WHERE neck_diameter = 11.84	2-1057617-3
+SELECT case_type FROM wikisql_data WHERE cartridge_length = 64.77	2-1057617-3
 SELECT case_type FROM wikisql_data WHERE base_diameter = '13.03 (.513)' AND case_length = '63.5 (2.5)'	2-1057617-3
 SELECT date FROM wikisql_data WHERE attendance = 37500	2-10719633-1
 SELECT date FROM wikisql_data WHERE game_site = 'candlestick park'	2-10719633-1
 SELECT date FROM wikisql_data WHERE week = 4 AND attendance > 51319	2-10651649-2
 SELECT crowd FROM wikisql_data WHERE away_team = 'fitzroy'	2-10775890-17
 SELECT venue FROM wikisql_data WHERE away_team = 'geelong'	2-10775890-17
-SELECT dwellings FROM wikisql_data WHERE neighbourhood = "Beverly Heights" AND change > -5.2	2-10717762-1
+SELECT COUNT(dwellings) FROM wikisql_data WHERE neighbourhood = "Beverly Heights" AND change > -5.2	2-10717762-1
 SELECT density_people_km_2 FROM wikisql_data WHERE area_km_2 = 1.38 AND population_2012 > 12924	2-10717762-1
 SELECT AVG(week) FROM wikisql_data WHERE attendance < 22604	2-10649583-2
 SELECT max(attendance) FROM wikisql_data WHERE week > 10 AND opponent = 'Chicago Cardinals'	2-10649583-2
 SELECT AVG(crowd) FROM wikisql_data WHERE away_team = 'north melbourne'	2-10767641-6
 SELECT min(crowd) FROM wikisql_data WHERE away_team_score = 10.7	2-10767641-6
 SELECT away_team FROM wikisql_data WHERE away_team_score = 9.12 AND venue = 'windy hill'	2-10767641-6
-SELECT venue FROM wikisql_data WHERE away_team_score = '8.9 (57)'	2-10767641-6
+SELECT venue FROM wikisql_data WHERE away_team_score = 8.9	2-10767641-6
 SELECT AVG(crowd) FROM wikisql_data WHERE away_team = 'hawthorn'	2-10767641-6
 SELECT away_team FROM wikisql_data WHERE home_team = 'footscray'	2-10767641-6
 SELECT max(crowd) FROM wikisql_data WHERE away_team = 'essendon'	2-10746808-14
@@ -2671,11 +2671,11 @@ SELECT AVG(crowd) FROM wikisql_data WHERE venue = 'western oval'	2-10746808-14
 SELECT SUM(crowd) FROM wikisql_data WHERE home_team = 'north melbourne'	2-10746808-14
 SELECT crowd FROM wikisql_data WHERE venue = 'victoria park'	2-10746808-14
 SELECT MIN(crowd) FROM wikisql_data WHERE away_team_score = 3.10	2-10746808-14
-SELECT winning_score FROM wikisql_data WHERE margin_of_victory = '9 strokes'	2-1075064-2
+SELECT winning_score FROM wikisql_data WHERE margin_of_victory = 9	2-1075064-2
 SELECT margin_of_victory FROM wikisql_data WHERE date = 'Apr 23, 1967'	2-1075064-2
 SELECT make FROM wikisql_data WHERE driver = 'brian vickers'	2-10607482-1
 SELECT AVG(car) FROM wikisql_data WHERE points = 109	2-10607482-1
-SELECT AVG(car) FROM wikisql_data WHERE winnings = '111,683'	2-10607482-1
+SELECT AVG(car) FROM wikisql_data WHERE winnings = 111683	2-10607482-1
 SELECT crowd FROM wikisql_data WHERE home_team = 'essendon'	2-10747009-7
 SELECT home_team FROM wikisql_data WHERE away_team = 'geelong'	2-10747009-7
 SELECT SUM(crowd) FROM wikisql_data WHERE venue = 'mcg'	2-10747009-7
@@ -2683,14 +2683,14 @@ SELECT home_team_score FROM wikisql_data WHERE home_team = 'essendon'	2-10747009
 SELECT SUM(crowd) FROM wikisql_data WHERE venue = 'glenferrie oval'	2-10747009-7
 SELECT COUNT(*) FROM wikisql_data WHERE inhabitants > 36599 AND mayor = 'giovanni manildo'	2-10747104-2
 SELECT party FROM wikisql_data WHERE mayor = 'achille variati'	2-10747104-2
-SELECT COUNT(inhabitants) FROM wikisql_data WHERE party = 'five star movement' AND election < 2012	2-10747104-2
-SELECT SUM(inhabitants) FROM wikisql_data WHERE party = 'democratic party' AND election < 2009 AND mayor = 'stefano cimatti'	2-10747104-2
-SELECT time FROM wikisql_data WHERE speed = '96.76mph'	2-10638654-10
+SELECT COUNT(*) FROM wikisql_data WHERE party = 'five star movement' AND election < 2012	2-10747104-2
+SELECT sum(inhabitants) FROM wikisql_data WHERE party = 'democratic' AND election < 2009 AND mayor = 'stefano cimatti'	2-10747104-2
+SELECT time FROM wikisql_data WHERE speed = 96.76	2-10638654-10
 SELECT rider FROM wikisql_data WHERE time = '1:06.02.0'	2-10638654-10
 SELECT COUNT(*) FROM wikisql_data WHERE rider = 'ray pickrell'	2-10638654-10
 SELECT max(crowd) FROM wikisql_data WHERE away_team = 'Hawthorn'	2-10767118-18
 SELECT date FROM wikisql_data WHERE away_team = 'carlton'	2-10767118-18
-SELECT home_team_score FROM wikisql_data WHERE away_team_score = '14.12 (96)'	2-10767118-18
+SELECT home_team_score FROM wikisql_data WHERE away_team_score = 14.12	2-10767118-18
 SELECT away_team_score FROM wikisql_data WHERE crowd > 8000	2-10767118-18
 SELECT away_team FROM wikisql_data WHERE venue = 'corio oval'	2-10767118-18
 SELECT location FROM wikisql_data WHERE year = 2007	2-10611804-1
@@ -2711,7 +2711,7 @@ SELECT home_team FROM wikisql_data WHERE venue = 'western oval'	2-10640687-17
 SELECT venue FROM wikisql_data WHERE home_team_score = 10.9	2-10640687-17
 SELECT result FROM wikisql_data WHERE week = 4 AND opponent = 'Browns'	2-10651758-1
 SELECT year FROM wikisql_data WHERE slogan = 'wild side of soccer!'	2-1056106-2
-SELECT lner_1946_no FROM wikisql_data WHERE year = '1892' AND lner_no = '7347–7356'	2-10639582-1
+SELECT COUNT(lner_1946_no) FROM wikisql_data WHERE year = 1892 AND lner_no = "7347–7356"	2-10639582-1
 SELECT lner_1946_no FROM wikisql_data WHERE order_no = 'S24'	2-10639582-1
 SELECT away_team FROM wikisql_data WHERE venue = 'corio oval'	2-10767641-10
 SELECT home_team FROM wikisql_data WHERE away_team = 'melbourne'	2-10767641-10

@@ -1,22 +1,39 @@
 ================================================================================
 WIKISQL EVALUATION SUMMARY REPORT
-Generated : 2026-05-20 09:23:44
+Generated : 2026-05-20 23:11:48
 Results   : results/wikisql_results.json
 ================================================================================
 
 MAIN METRICS
 ----------------------------------------
-  Exact Match Accuracy : 68.37%  (68.4%)
-  Execution Accuracy   : 85.89%  (85.9%)
-  Total Evaluated      : 0
+  Structural EM (official)      : 84.04%  (84.0%)
+  String EM (legacy)            : 75.59%  (75.6%)
+  Execution Accuracy            : 87.03%  (87.0%)
+  Total Evaluated               : 0
+
+  Structural EM Components:
+    AGG  accuracy   : 91.39%
+    SEL  accuracy   : 96.57%
+    COND accuracy   : 95.53%
+    Parse rate      : 99.25%
+    Parse failures  : 63
+  Failure breakdown:
+    agg                   : 655
+    cond                  : 315
+    sel                   : 223
+    parse_fail_pred       : 63
+    agg+sel               : 29
+    agg+cond              : 24
+    sel+cond              : 23
+    agg+sel+cond          : 12
 
 PER-DIFFICULTY BREAKDOWN
 ----------------------------------------
-  easy     | count=64    | EM=78.12% | EX=82.81%
-  medium   | count=8351  | EM=68.29% | EX=85.92%
+  easy     | count=64    | EM=79.69% | EX=81.25%
+  medium   | count=8355  | EM=75.56% | EX=87.07%
   hard     | count=0     | EM=0.00% | EX=0.00%
   extra    | count=0     | EM=0.00% | EX=0.00%
-  all      | count=8415  | EM=68.37% | EX=85.89%
+  all      | count=8419  | EM=75.59% | EX=87.03%
 
 ================================================================================
 END OF REPORT
