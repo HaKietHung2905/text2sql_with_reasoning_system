@@ -54,7 +54,6 @@ for _name in [
 ]:
     logging.getLogger(_name).setLevel(logging.ERROR)
 
-warnings.filterwarnings('ignore')
 load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -63,7 +62,7 @@ from src.evaluation.foreign_key_mapper import build_foreign_key_map_from_json
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=UserWarning, module='multiprocessing')
 
 
 # ─────────────────────────────────────────────────────────────────────────────

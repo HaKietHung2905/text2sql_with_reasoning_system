@@ -120,6 +120,15 @@ class ReasoningBankPipeline:
             'use_parallel_scaling_for_hard_queries': True,
             'parallel_scaling_candidates': 5
         }
+    
+    def is_likely_hard(question: str) -> bool:
+        """Heuristic to detect hard queries needing more refinement."""
+        hard_keywords = [
+            'except', 'intersect', 'not in', 'not exists',
+            'having', 'nested', 'subquery', 'more than',
+            'at least', 'maximum', 'minimum among', 'rank'
+        ]
+        return any(kw in question.lower() for kw in hard_keywords)
 
     # ── Public entry point called by generate_predictions.py ─────────────────
     def generate_with_reasoning(
@@ -191,9 +200,12 @@ class ReasoningBankPipeline:
                 logger.debug(f"Strategy retrieval failed (non-critical): {e}")
 
         # Step 2: Decide scaling
-        use_scaling = self._should_use_test_time_scaling(
-            semantic_analysis=semantic_analysis,
-            strategies_used=strategies_used
+        use_scaling = (
+            self._should_use_test_time_scaling(
+                semantic_analysis=semantic_analysis,
+                strategies_used=strategies_used
+            )
+            or is_likely_hard(question)
         )
 
         # Step 3: Generate SQL

@@ -15,38 +15,25 @@ from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
 
-
 def _is_server_error(exc: Exception) -> bool:
-    """
-    Return True if exc (or any chained cause) is an HTTP 5xx server error.
-    Checks requests.HTTPError by status code first (most reliable),
-    then falls back to string matching.
-    """
-    _5xx_strings = ("500", "502", "503", "504",
-                    "Internal Server Error", "Bad Gateway",
-                    "Service Unavailable", "Gateway Timeout")
-    try:
-        import requests
-        _http_error_cls = requests.exceptions.HTTPError
-    except ImportError:
-        _http_error_cls = None
+    _5xx = ("500", "502", "503", "504",
+            "Internal Server Error", "Bad Gateway",
+            "Service Unavailable", "Gateway Timeout")
+    _403 = ("403", "Forbidden", "BILLING_DISABLED", "billing to be enabled")
 
     seen = set()
     node = exc
     while node is not None and id(node) not in seen:
         seen.add(id(node))
-        if _http_error_cls and isinstance(node, _http_error_cls):
-            try:
-                if node.response is not None and node.response.status_code >= 500:
-                    return True
-            except Exception:
-                pass
-        if any(code in str(node) for code in _5xx_strings):
+        if any(code in str(node) for code in _5xx):
             return True
-        if any(code in repr(node) for code in _5xx_strings):
+        if any(code in repr(node) for code in _5xx):
+            return True
+        if any(code in str(node) for code in _403):
+            return True
+        if any(code in repr(node) for code in _403):
             return True
         node = node.__cause__ or node.__context__
-
     return False
 
 
@@ -254,6 +241,30 @@ CRITICAL SPIDER FORMAT RULES (MUST FOLLOW):
 7. For single table queries: NEVER use table aliases
 8. For multi-table queries: Use simple lowercase aliases like t1, t2
 9. For "NOT EXISTS" queries: Use NOT IN with subquery
+10. SET OPERATORS — detect these question patterns:"
+    "    INTERSECT triggers: 'both', 'shared by', 'in both', 'appear in both groups'"
+    "    EXCEPT triggers: 'but not', 'not in', 'excluding', 'without'"
+    "    UNION triggers: 'either...or', 'combine', 'all X and all Y'"
+    "    When detected: ALWAYS use INTERSECT/EXCEPT/UNION, NEVER replace with self-JOIN."
+    "    Example — 'countries where singer above 40 AND below 30 exist':"
+    "    GOOD: SELECT country FROM singer WHERE age > 40 "
+    "INTERSECT SELECT country FROM singer WHERE age < 30"
+    "    BAD:  SELECT t1.country FROM singer t1 JOIN singer t2 ON t1.country=t2.country"
+    " WHERE t1.age>40 AND t2.age<30"
+11. SET OPERATORS: Use INTERSECT/EXCEPT/UNION — never replace with self-JOIN.
+    "    'shared by both groups' → INTERSECT"
+    "    'not in / excluding'    → EXCEPT"
+    "    'either X or Y list'    → UNION"
+11. DISTINCT: ONLY add DISTINCT when the question EXPLICITLY uses the words 'unique', 'different', or 'distinct'.
+    "    NEVER add DISTINCT inside COUNT() — always COUNT(*) to count rows."
+    "    NEVER add SELECT DISTINCT just because the query uses JOIN."
+    "    BAD:  SELECT COUNT(DISTINCT t1.maker) → loses rows"
+    "    GOOD: SELECT COUNT(*) FROM ..."
+13. ALWAYS output a COMPLETE SQL query with at minimum SELECT ... FROM ...
+14. COLUMN ORDER: output SELECT columns in EXACT order mentioned in the question.
+    "    Q: 'maximum and average capacity' → SELECT max(capacity), avg(capacity)"
+    "    Q: 'name and age of singers'      → SELECT name, age FROM singer"
+    "    NEVER reorder columns. Wrong order = wrong answer."
 
 CRITICAL OUTPUT FORMAT:
 - Output ONLY the raw SQL query — no explanations, no reasoning, no comments

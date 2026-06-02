@@ -30,7 +30,7 @@ from tqdm import tqdm
 from dotenv import load_dotenv
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=UserWarning, module='multiprocessing')
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 for h in logging.root.handlers[:]:
@@ -60,15 +60,16 @@ def load_config(path):
     except ImportError:
         return {}
 
-
 def _is_server_error(exc: Exception) -> bool:
     """
-    Return True if exc (or any chained cause) is an HTTP 5xx server error.
+    Return True if exc (or any chained cause) is an HTTP 5xx server error
+    or a 403 billing/auth error that warrants a retry.
     Walks __cause__ and __context__ so wrapped exceptions are also detected.
     """
     _5xx = ("500", "502", "503", "504",
             "Internal Server Error", "Bad Gateway",
             "Service Unavailable", "Gateway Timeout")
+    _403 = ("403", "Forbidden", "BILLING_DISABLED", "billing to be enabled")
 
     seen = set()
     node = exc
@@ -78,42 +79,34 @@ def _is_server_error(exc: Exception) -> bool:
             return True
         if any(code in repr(node) for code in _5xx):
             return True
+        if any(code in str(node) for code in _403):
+            return True
+        if any(code in repr(node) for code in _403):
+            return True
         node = node.__cause__ or node.__context__
 
-    return False
-
-
+    return False 
 def _stop_on_server_error(exc: Exception, out_f, already_done: int, i: int,
                            output_path: str) -> None:
-    """
-    On a 5xx server error: flush the checkpoint, wait, then re-exec this
-    process with --resume so generation continues automatically.
-    """
     if not _is_server_error(exc):
         return
     out_f.flush()
     done_so_far = already_done + i
-    wait_seconds = 60
 
-    logger.error(
-        f"\n{'='*60}\n"
-        f"❌  Server error (5xx) at question {done_so_far}.\n"
-        f"    Checkpoint saved: {output_path} ({done_so_far} lines)\n"
-        f"    Waiting {wait_seconds}s then auto-resuming...\n"
-        f"{'='*60}"
-    )
+    is_403 = any(c in str(exc) or c in repr(exc)
+                 for c in ("403", "Forbidden", "BILLING_DISABLED", "billing to be enabled"))
+    wait_seconds = 30 if is_403 else 60
 
+    print(f"\n⏸  Checkpoint at q{done_so_far}, retrying in {wait_seconds}s...", flush=True)
     time.sleep(wait_seconds)
 
     new_argv = sys.argv[:]
     if '--resume' not in new_argv:
         new_argv.append('--resume')
 
-    logger.info(f"🔄 Auto-resuming: {' '.join(new_argv)}")
+    os.environ['PYTHONWARNINGS'] = 'ignore'
+
     os.execv(sys.executable, [sys.executable] + new_argv)
-    # os.execv replaces the current process — nothing after this runs
-
-
 def main():
     parser = argparse.ArgumentParser(description='Generate SQL predictions to TSV file')
 
@@ -281,15 +274,6 @@ def main():
                         sql = sql or 'SELECT 1'
 
                     except Exception as e:
-                        # DEBUG — remove after confirming fix
-                        _cause_str = repr(str(e.__cause__)[:200]) if e.__cause__ else None
-                        _cause_type = type(e.__cause__).__name__ if e.__cause__ else None
-                        print(f"[DEBUG] type={type(e).__name__}", flush=True)
-                        print(f"[DEBUG] str={repr(str(e)[:200])}", flush=True)
-                        print(f"[DEBUG] cause_type={_cause_type}", flush=True)
-                        print(f"[DEBUG] cause_str={_cause_str}", flush=True)
-                        print(f"[DEBUG] _is_server_error={_is_server_error(e)}", flush=True)
-                        # Re-raise 5xx immediately — do NOT write SELECT 1
                         _stop_on_server_error(e, out_f, already_done, i, args.output)
                         logger.error(f"[{already_done + i}] Generation failed: {e}")
                         sql = 'SELECT 1'

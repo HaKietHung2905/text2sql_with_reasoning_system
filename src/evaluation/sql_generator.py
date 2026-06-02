@@ -413,7 +413,8 @@ class SQLGenerator:
             "- Output ONLY the raw SQL query — no explanations, no reasoning, no comments\n"
             "- Do NOT include markdown fences, labels like 'SQL:', or footnotes\n"
             "- Do NOT write 'But wait', 'However', 'Note', or any prose after the query\n"
-            "- Start your response DIRECTLY with SELECT\n\n"
+            "- Start your response DIRECTLY with SELECT\n"
+            "- ALWAYS output a complete query — never stop mid-query\n\n"
             "CRITICAL SPIDER FORMAT RULES:\n"
             "1. Use ONLY 'JOIN' — NEVER INNER JOIN, LEFT JOIN, RIGHT JOIN\n"
             "2. DO NOT use CASE statements\n"
@@ -421,15 +422,29 @@ class SQLGenerator:
             "4. Use lowercase for all identifiers\n"
             "5. Do not include trailing semicolons\n"
             "6. For single table queries: NEVER use table aliases\n"
-            "7. For multi-table queries: Use simple aliases like t1, t2\n\n"
-            "AGGREGATION RULES:\n"
-            '- "how many" / "total number of" → COUNT(col)  [NOT SUM]\n'
-            '- "total <numeric col>"          → SUM(col)\n'
-            '- "minimum / lowest"             → MIN(col)\n'
-            '- "maximum / highest"            → MAX(col)\n'
-            "- Exact string match: WHERE col = 'value'  [NOT LIKE]\n\n"
-            f"Question: {question}\n"
-            "SELECT"
+            "7. For multi-table queries: use simple lowercase aliases t1, t2, ...\n"
+            "8. For 'NOT EXISTS' patterns: use NOT IN with subquery\n"
+            "9. COLUMN ORDER: output SELECT columns in EXACT order mentioned in the question.\n"
+            "    Q: 'maximum and average capacity' → SELECT max(capacity), avg(capacity)\n"
+            "    Q: 'name and age of singers'      → SELECT name, age FROM singer\n"
+            "    NEVER reorder columns. Wrong order = wrong answer.\n"
+            "10. SET OPERATORS — detect these question patterns:\n"
+            "    INTERSECT triggers: 'both', 'shared by', 'in both', 'appear in both groups'\n"
+            "    EXCEPT triggers: 'but not', 'not in', 'excluding', 'without'\n"
+            "    UNION triggers: 'either...or', 'combine', 'all X and all Y'\n"
+            "    When detected: ALWAYS use INTERSECT/EXCEPT/UNION, NEVER replace with self-JOIN.\n"
+            "    Example — 'countries where singer above 40 AND below 30 exist':\n"
+            "    GOOD: SELECT country FROM singer WHERE age > 40 "
+            "INTERSECT SELECT country FROM singer WHERE age < 30\n"
+            "    BAD:  SELECT t1.country FROM singer t1 JOIN singer t2 ON t1.country=t2.country"
+            " WHERE t1.age>40 AND t2.age<30\n"
+            "11. DISTINCT: ONLY add DISTINCT when the question EXPLICITLY uses the words 'unique', 'different', or 'distinct'.\n"
+            "    NEVER add DISTINCT inside COUNT() — always COUNT(*) to count rows.\n"
+            "    NEVER add SELECT DISTINCT just because the query uses JOIN.\n"
+            "    BAD:  SELECT COUNT(DISTINCT t1.maker) → loses rows\n"
+            "    GOOD: SELECT COUNT(*) FROM ...\n"
+            f"\nQuestion: {question}\n\n"
+            "SQL:"
         )
 
     def _construct_prompt_wikisql(self, question: str, schema_str: str) -> str:
@@ -647,14 +662,37 @@ class SQLGenerator:
         return self._get_db_schema(db_path)
 
     def _get_schema_string(self, db_path: str) -> str:
-        """Build a human-readable schema string for prompt injection."""
-        schema_info = self._load_schema_info(db_path)
-        lines = []
-        for table, cols in schema_info.items():
-            lines.append(f"Table: {table}")
-            lines.append(f"Columns: {', '.join(cols)}")
-            lines.append("")
-        return "\n".join(lines)
+        try:
+            import sqlite3
+            conn = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            
+            # Get all tables
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [r[0] for r in cursor.fetchall()]
+            
+            schema_lines = []
+            fk_lines = []
+            
+            for table in tables:
+                cursor.execute(f"PRAGMA table_info({table})")
+                cols = [r[1] for r in cursor.fetchall()]
+                schema_lines.append(f"Table: {table} | Columns: {', '.join(cols)}")
+                
+                # Foreign keys
+                cursor.execute(f"PRAGMA foreign_key_list({table})")
+                for fk in cursor.fetchall():
+                    fk_lines.append(f"  {table}.{fk[3]} → {fk[2]}.{fk[4]}")
+            
+            result = "\n".join(schema_lines)
+            if fk_lines:
+                result += "\n\nForeign Keys:\n" + "\n".join(fk_lines)
+            
+            conn.close()
+            return result
+        except Exception as e:
+            logger.error(f"Error loading schema: {e}")
+            return ""
 
     def _get_db_schema(self, db_path: str) -> Dict[str, List[str]]:
         """Extract table/column names from a SQLite database."""

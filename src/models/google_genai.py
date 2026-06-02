@@ -129,6 +129,8 @@ class GoogleGenAI:
             "5. If unsure, output your best guess SQL - never output text\n"
             "6. Stop immediately after the semicolon or last SQL token\n"
             "Your entire response must be valid SQL starting with SELECT/WITH/INSERT/UPDATE/DELETE."
+            "- ALWAYS output a complete, executable SQL query. Never stop mid-query.\n"
+            "- A complete query must contain at minimum: SELECT ... FROM ...\n"
         )
         return [
             {"role": "system", "content": system},
