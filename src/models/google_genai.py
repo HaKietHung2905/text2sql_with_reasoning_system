@@ -117,70 +117,71 @@ class GoogleGenAI:
             self._token_expiry = time.time() + 3500
             logger.info("Refreshed MaaS access token")
 
-    def _wrap_prompt_for_maas(self, prompt: str) -> list:
-        """Wrap prompt as chat messages with strict SQL-only instruction"""
+    def _wrap_prompt_for_maas(
+        self,
+        prompt: str,
+        prefill: str = "SELECT ",         # ← NEW parameter
+    ) -> list:
+        """Wrap prompt as chat messages. prefill seeds the assistant turn."""
         system = (
-            "You are a SQL query generator. You output ONLY SQL. "
-            "ABSOLUTE RULES - no exceptions:\n"
+            "You are a SQL query generator. You output ONLY SQL.\n"
+            "ABSOLUTE RULES — no exceptions:\n"
             "1. Output a single SQL query and nothing else\n"
             "2. No explanations, no reasoning, no comments\n"
             "3. No markdown, no code fences, no backticks\n"
-            "4. No 'But', 'However', 'Note', or any English text\n"
-            "5. If unsure, output your best guess SQL - never output text\n"
-            "6. Stop immediately after the semicolon or last SQL token\n"
-            "Your entire response must be valid SQL starting with SELECT/WITH/INSERT/UPDATE/DELETE."
-            "- ALWAYS output a complete, executable SQL query. Never stop mid-query.\n"
-            "- A complete query must contain at minimum: SELECT ... FROM ...\n"
+            "4. No 'But', 'However', 'Note', or any English text whatsoever\n"
+            "5. If unsure, output your best-guess SQL — never output plain text\n"
+            "6. ALWAYS output a complete query: SELECT ... FROM ...\n"
+            "7. Stop immediately after the last SQL token\n"
+            "Your entire response must be valid SQL starting with SELECT."
         )
         return [
-            {"role": "system", "content": system},
-            {"role": "user", "content": prompt},
+            {"role": "system",    "content": system},
+            {"role": "user",      "content": prompt},
+            {"role": "assistant", "content": prefill},   # ← use prefill
         ]
 
-    def _generate_maas(self, prompt: str, temperature: float, max_output_tokens: int) -> str:
+    def _generate_maas(
+        self,
+        prompt: str,
+        temperature: float,
+        max_output_tokens: int,
+        prefill: str = "SELECT ",         # ← NEW parameter
+    ) -> str:
         self._refresh_token_if_needed()
-        headers = {
-            "Authorization": f"Bearer {self._token}",
-            "Content-Type": "application/json",
-        }
         import requests as _req
-
+ 
         MAX_RETRIES = 5
-        BASE_WAIT   = 30   
-        MAX_WAIT    = 120  
-
-        messages = self._wrap_prompt_for_maas(prompt)
-
-        # Check if we used assistant pre-fill (last message is assistant role)
-        has_prefill = messages and messages[-1].get("role") == "assistant"
+        BASE_WAIT   = 30
+        MAX_WAIT    = 120
+ 
+        messages = self._wrap_prompt_for_maas(prompt, prefill=prefill)   # ← pass prefill
+ 
+        has_prefill     = messages and messages[-1].get("role") == "assistant"
         prefill_content = messages[-1].get("content", "") if has_prefill else ""
-
+ 
         payload = {
-            "model": self.model_name,
-            "messages": messages,
+            "model":       self.model_name,
+            "messages":    messages,
             "temperature": temperature,
-            "max_tokens": max_output_tokens,
+            "max_tokens":  max_output_tokens,
         }
         last_exc = None
         for attempt in range(MAX_RETRIES):
             try:
-                # Refresh token on every retry in case it expired during a long wait
                 if attempt > 0:
                     self._refresh_token_if_needed()
-
+ 
                 headers = {
                     "Authorization": f"Bearer {self._token}",
                     "Content-Type":  "application/json",
                 }
-
                 resp = self._requests.post(
                     self._maas_url, headers=headers, json=payload, timeout=120
                 )
-
-                # ── Handle 429 explicitly ────────────────────────────────
+ 
                 if resp.status_code == 429:
                     wait = min(BASE_WAIT * (2 ** attempt), MAX_WAIT)
-                    # Honour Retry-After header if the server provides it
                     retry_after = resp.headers.get("Retry-After")
                     if retry_after:
                         try:
@@ -195,23 +196,20 @@ class GoogleGenAI:
                         time.sleep(wait)
                         continue
                     else:
-                        resp.raise_for_status()   # will raise HTTPError
-
-                # ── Raise on other 4xx / 5xx ─────────────────────────────
+                        resp.raise_for_status()
+ 
                 resp.raise_for_status()
-
-                # ── Happy path ───────────────────────────────────────────
+ 
                 content = resp.json()["choices"][0]["message"]["content"] or ""
-
-                # Strip <think>…</think> reasoning blocks (DeepSeek R1)
-                content = re.sub(r"<think>.*?</think>", "", content, flags=re.DOTALL).strip()
-
-                # Re-attach assistant pre-fill prefix when the model omits it
-                if has_prefill and prefill_content and not content.upper().startswith("SELECT"):
+                content = re.sub(r"<think>.*?</think>", "", content,
+                                 flags=re.DOTALL).strip()
+ 
+                if has_prefill and prefill_content \
+                        and not content.upper().startswith("SELECT"):
                     content = prefill_content + " " + content
-
+ 
                 return content
-
+ 
             except _req.exceptions.HTTPError as e:
                 last_exc = e
                 if "429" in str(e) and attempt < MAX_RETRIES - 1:
@@ -223,18 +221,20 @@ class GoogleGenAI:
                     time.sleep(wait)
                 else:
                     raise
-
+ 
             except _req.exceptions.Timeout:
                 last_exc = Exception("Request timed out")
                 wait = min(BASE_WAIT * (2 ** attempt), MAX_WAIT)
-                logger.warning(f"MaaS timeout (attempt {attempt + 1}). Retrying in {wait}s…")
+                logger.warning(
+                    f"MaaS timeout (attempt {attempt + 1}). Retrying in {wait}s…"
+                )
                 if attempt < MAX_RETRIES - 1:
                     time.sleep(wait)
                 else:
                     raise
-
+ 
         raise last_exc or RuntimeError("MaaS request failed after max retries")
-
+    
     # ------------------------------------------------------------------ #
     #  Google AI Studio backend                                           #
     # ------------------------------------------------------------------ #
@@ -331,11 +331,24 @@ class GoogleGenAI:
         prompt: str,
         temperature: float = 0.0,
         max_output_tokens: int = 2048,
-        stop_sequences: Optional[List[str]] = None
+        stop_sequences=None,
+        prefill: str = "SELECT ",         # ← NEW parameter
     ) -> str:
+        """
+        Generate text from a prompt.
+ 
+        prefill: assistant turn prefix injected into the chat messages.
+                 Default "SELECT " forces SQL output.
+                 Pass a longer string on retry to force specific SQL structure,
+                 e.g. "SELECT name FROM " to prevent truncation before FROM.
+        """
         if self._is_maas_model(self.model_name):
-            return self._generate_maas(prompt, temperature, max_output_tokens)
+            return self._generate_maas(prompt, temperature, max_output_tokens,
+                                       prefill=prefill)
         elif self.use_vertex_ai:
-            return self._generate_vertex_ai(prompt, temperature, max_output_tokens, stop_sequences)
+            return self._generate_vertex_ai(prompt, temperature,
+                                            max_output_tokens, stop_sequences)
         else:
-            return self._generate_ai_studio(prompt, temperature, max_output_tokens, stop_sequences)
+            return self._generate_ai_studio(prompt, temperature,
+                                            max_output_tokens, stop_sequences)
+ 

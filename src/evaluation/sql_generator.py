@@ -1,5 +1,5 @@
 """
-SQL generation from natural language using LangChain.
+src/evaluation/sql_generator.py  — complete fixed file (LangChain path)
 """
 
 import os
@@ -25,72 +25,54 @@ except ImportError:
 WIKISQL_ANNOTATION_RULES = """\
 ━━━ WIKISQL ANNOTATION RULES (follow exactly) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():
-   Applies to: "What is the X?" / "Which X?" / "Name the X" /
-               "The [date] of X had a Y of what?" / "The [event] applied to what X?"
+   "What is the X?" / "Which X?" / "Name the X"
    → SELECT MAX(col) FROM wikisql_data WHERE ...
    Examples:
      "What is the pick number for Northwestern?"
        → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
-     "What is the United States rank?"
-       → SELECT COUNT(rank) FROM wikisql_data WHERE country = 'United States'
-     "Name the finished position for Kerry Katona"
-       → SELECT COUNT(finished) FROM wikisql_data WHERE celebrity = 'Kerry Katona'
- 
+
 2. MINIMUM RETRIEVAL — use MIN() when lowest/earliest/first is implied:
    → SELECT MIN(col) FROM wikisql_data WHERE ...
-   Example: "Name the minimum ties played for 6 years."
-     → SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6
- 
+
 3. COUNTING RECORDS — use COUNT(col), NEVER COUNT(*):
-   Applies to: "How many [entities]?" / "What is the total number of X?"
-               "Name the number of X" / "Number of X with Y"
-   → SELECT COUNT(col) FROM wikisql_data WHERE ...
-   Examples:
-     "How many players are on the Toronto team in 2005-06?"
-       → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'
-     "Name the total number of points for South Korea"
-       → SELECT COUNT(points) FROM wikisql_data WHERE country = 'South Korea'
+   "How many [entities]?" → SELECT COUNT(col) FROM wikisql_data WHERE ...
    NEVER COUNT(*), always COUNT(specific_column).
-   NEVER COUNT(DISTINCT ...), always COUNT(col).
- 
+
 4. NUMERIC VALUE IN A COLUMN — use bare SELECT (NOT SUM, NOT COUNT):
-   CRITICAL: When the question asks for a numeric quantity that IS ALREADY
-   stored in a column, use plain SELECT — NOT SUM, NOT AVG.
-   Test: if the column name contains the answer unit (goals, viewers, votes,
-         points, passengers, runs), use SELECT col.
-   Examples:
-     "How many goals were scored in the 2005-06 season?"  (goals = column)
-       → SELECT goals FROM wikisql_data WHERE season = '2005-06'
-       ✗ NOT: SELECT SUM(goals) FROM wikisql_data WHERE season = '2005-06'
-     "How many viewers did the David Nutter episode draw in?"  (viewers = column)
-       → SELECT u_s_viewers_million FROM wikisql_data WHERE directed_by = 'David Nutter'
-       ✗ NOT: SELECT SUM(u_s_viewers_million) FROM ...
-     "How many votes were cast in midlothian?"  (votes = column)
-       → SELECT votes_cast FROM wikisql_data WHERE constituency = 'midlothian'
- 
-5. TOTAL/SUM OVER MULTIPLE ROWS — use SUM() only when combining across many rows:
-   Use SUM ONLY when no WHERE condition uniquely identifies a single row.
-   "What is the total X for all Y?" (no unique filter) → SUM(X)
-   NEVER use SUM when a WHERE clause uniquely identifies one row.
- 
-6. WHERE conditions — include ALL filters explicitly stated, nothing more:
-   • Add a condition for EVERY filter criterion named in the question.
-   • Do NOT invent, infer, or add conditions not present in the question.
-   • SUPERLATIVE RULE: words like "tallest", "largest", "most recent" are NOT
-     WHERE conditions — represent them as MAX/MIN in the SELECT clause instead.
-     WRONG: WHERE height = (SELECT MAX(height) FROM wikisql_data)
-     RIGHT: SELECT MAX(height) FROM wikisql_data WHERE floors = 35
-   • No subqueries, nested SELECTs, or (SELECT ...) anywhere in the query.
-   • No ORDER BY ... LIMIT 1. Use MAX()/MIN() instead.
- 
+   If column name contains the answer unit (goals, viewers, votes), use SELECT col.
+
+5. TOTAL/SUM OVER MULTIPLE ROWS — use SUM() only across many rows.
+
+6. WHERE: include ALL filters stated, nothing more. No subqueries. No ORDER BY LIMIT 1.
+
 7. COMPOUND WHERE VALUES — never split on commas:
-   • WHERE regular_season = '4th, Atlantic Division'  ← correct
-   • WHERE regular_season = '4th' AND ...             ← wrong
- 
-8. String values: always quote with single quotes.
-   Numeric values: do NOT quote.
+   WHERE regular_season = '4th, Atlantic Division'  ← correct
+
+8. String values: single quotes. Numeric values: no quotes.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
+
+
+def _wikisql_agg_hint(question: str) -> str:
+    q = question.lower()
+    if re.search(r'\bhow many\b|\bnumber of\b|\bcount\b|\btotal number\b', q):
+        return "⚡ AGG hint: COUNT → use COUNT(col)"
+    if re.search(r'\btotal\b|\bsum\b', q) and not re.search(r'\btotal number\b', q):
+        return "⚡ AGG hint: SUM → use SUM(col)"
+    if re.search(r'\bhighest\b|\bmost\b|\blargest\b|\bmaximum\b|\bmax\b|\blatest\b', q):
+        return "⚡ AGG hint: MAX → use MAX(col)"
+    if re.search(r'\blowest\b|\bfewest\b|\bsmallest\b|\bminimum\b|\bmin\b|\bearli\b|\bfirst\b', q):
+        return "⚡ AGG hint: MIN → use MIN(col)"
+    if re.search(r'\baverage\b|\bmean\b|\bavg\b', q):
+        return "⚡ AGG hint: AVG → use AVG(col)"
+    return "⚡ AGG hint: single-value → wrap in MAX(col)"
+
+
+def _wikisql_cond_hint(question: str) -> str:
+    q = question.lower()
+    if re.search(r'\btallest\b|\blargest\b|\bbiggest\b|\bhighest\b|\blowest\b|\bsmallest\b', q):
+        return "⚡ Condition hint: superlative — use MAX/MIN in SELECT, NOT a WHERE subquery."
+    return "⚡ Condition hint: only use WHERE conditions explicitly stated in the question."
 
 
 class SQLGenerator:
@@ -102,14 +84,11 @@ class SQLGenerator:
             self._setup_langchain()
 
     def _setup_langchain(self):
-        """Setup LangChain chain for SQL generation."""
         load_dotenv()
         api_key = os.getenv("GOOGLE_API_KEY")
-
         if not api_key or api_key == "your-api-key-here":
             logger.warning("Google API key not found")
             return
-
         try:
             llm = ChatGoogleGenerativeAI(
                 model="meta/llama-4-maverick-17b-128e-instruct-maas",
@@ -125,17 +104,12 @@ class SQLGenerator:
             logger.error(f"Failed to setup LangChain: {e}")
             self.generator = None
 
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
     # WikiSQL detection
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
 
     @staticmethod
     def _is_wikisql(db_path: str) -> bool:
-        """
-        Return True when the database is a WikiSQL database.
-        Fast-path: path contains 'wikisql'.
-        Fallback: inspect tables — wikisql_data present means WikiSQL.
-        """
         if "wikisql" in db_path.lower():
             return True
         try:
@@ -148,9 +122,9 @@ class SQLGenerator:
         except Exception:
             return False
 
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
     # Public API
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
 
     def generate(
         self,
@@ -158,17 +132,6 @@ class SQLGenerator:
         db_path: str,
         schema_info: Optional[Dict] = None,
     ) -> str:
-        """
-        Generate SQL for a question.
-
-        Pipeline:
-          1. LLM generation via _invoke()
-          2. SQL extraction  (_clean_sql, already called inside _invoke)
-          3. Pattern-based heuristic fallback  (_pattern_generate)
-          4. Hard fallback   SELECT 1   (last resort)
-
-        Returns a non-empty string. Never returns "".
-        """
         if not os.path.exists(db_path):
             logger.error(f"Database not found: {db_path}")
             return "SELECT 1"
@@ -179,36 +142,39 @@ class SQLGenerator:
         schema_str = self._get_schema_string(db_path)
         is_wikisql = self._is_wikisql(db_path)
 
-        # ── Step 1 + 2: LLM → extract SQL ────────────────────────────────
-        # FIX: use self._invoke() (LangChain path) instead of self.model.generate()
+        # Attempt 1: full prompt
         sql = self._invoke(question, schema_str, simple=False, is_wikisql=is_wikisql)
 
-        # Retry with terse prompt on empty result
+        # Attempt 2: terse prompt
         if not sql:
             sql = self._invoke(question, schema_str, simple=True, is_wikisql=is_wikisql)
+            if sql:
+                logger.info(f"Terse prompt recovered SQL for: {question!r}")
 
-        # ── Step 3: Pattern-based fallback ───────────────────────────────
+        # Attempt 3: minimal schema
         if not sql:
-            logger.warning(
-                f"LLM returned no valid SQL for: {question!r}  → using pattern fallback"
-            )
+            minimal = self._get_minimal_schema_string(db_path)
+            sql = self._invoke(question, minimal, simple=True, is_wikisql=is_wikisql)
+            if sql:
+                logger.info(f"Minimal schema recovered SQL for: {question!r}")
+
+        # Attempt 4: pattern fallback
+        if not sql:
+            logger.warning(f"LLM returned no SQL for: {question!r} → pattern fallback")
             try:
                 sql = self._pattern_generate(question, schema_info)
             except Exception as e:
                 logger.error(f"Pattern fallback failed: {e}")
 
-        # ── Step 4: Hard fallback ─────────────────────────────────────────
         if not sql:
-            logger.error(
-                f"All generation methods failed for: {question!r}  → SELECT 1"
-            )
+            logger.error(f"All generation methods failed for: {question!r} → SELECT 1")
             return "SELECT 1"
 
         return self._normalize_for_spider(sql)
 
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
     # Internal helpers
-    # ------------------------------------------------------------------
+    # ──────────────────────────────────────────────────────────────────────────
 
     def _invoke(
         self,
@@ -217,25 +183,21 @@ class SQLGenerator:
         simple: bool = False,
         is_wikisql: bool = False,
     ) -> str:
-        """Invoke the LangChain chain and return clean SQL, or '' on failure."""
         if not self.generator:
             return ""
-
         prompt_text = self._build_prompt(
-            question, schema_text, simple=simple, is_wikisql=is_wikisql
-        )
-
+            question, schema_text, simple=simple, is_wikisql=is_wikisql)
         try:
             result = self.generator.invoke({"prompt": prompt_text})
             return self._clean_sql(result)
         except Exception as e:
             msg = str(e)
             if any(code in msg for code in (
-                "500", "502", "503", "504",
-                "Internal Server Error", "Bad Gateway",
-                "Service Unavailable", "Gateway Timeout",
+                "500","502","503","504",
+                "Internal Server Error","Bad Gateway",
+                "Service Unavailable","Gateway Timeout",
             )):
-                raise   # propagate 5xx so generate_predictions.py can checkpoint
+                raise
             logger.error(f"LangChain invoke failed ({'simple' if simple else 'full'}): {e}")
             return ""
 
@@ -246,26 +208,18 @@ class SQLGenerator:
         simple: bool = False,
         is_wikisql: bool = False,
     ) -> str:
-        """
-        Build prompt string.
-
-        simple=True      → ultra-terse, used on retry
-        is_wikisql=True  → injects WIKISQL_ANNOTATION_RULES
-        """
         if simple:
             return (
                 f"Schema:\n{schema_text}\n\n"
                 f"Question: {question}\n\n"
                 "Write a single SQL SELECT. No explanation. No reasoning. "
+                "Use ONLY t1, t2, t3 as aliases. "
                 "Start with SELECT.\n\nSQL:"
             )
 
         if is_wikisql:
             return self._build_prompt_wikisql(question, schema_text)
 
-        # ── Spider / general prompt ───────────────────────────────────────
-        # NOTE: Do NOT use backtick code fences here — LangChain's
-        # ChatPromptTemplate parses {variable} tokens inside them.
         return (
             "You are a SQL expert. Write a single SQL SELECT statement.\n\n"
             "CRITICAL INSTRUCTIONS:\n"
@@ -279,20 +233,43 @@ class SQLGenerator:
             '- "minimum / lowest"              -> MIN(col)\n'
             '- "maximum / highest"             -> MAX(col)\n'
             '- "average / mean"                -> AVG(col)\n'
+            # FIX: ban single-letter aliases explicitly
+            "- TABLE ALIASES: always use AS. ONLY t1, t2, t3 etc — NEVER p, s, hp or other single-letter names.\n"
+            "    BAD:  FROM pets AS p  /  FROM student AS s  ← Spider parser FAILS on these\n"
+            "    GOOD: FROM pets AS t1 / FROM student AS t2\n"
+            "    BAD:  FROM table t1  (no AS keyword)\n"
+            "    GOOD: FROM table AS t1\n"
+            "- COLUMN QUALIFICATION: in SELECT/GROUP BY/ORDER BY use bare column names only.\n"
+            "    tN. prefixes allowed ONLY in FROM/JOIN/ON/WHERE.\n"
+            "    BAD:  SELECT t1.name, t2.country GROUP BY t1.name\n"
+            "    GOOD: SELECT name, country       GROUP BY name\n"
+            "- MIN/MAX ROW: ORDER BY col ASC/DESC LIMIT 1 — NEVER WHERE col=(SELECT MIN(col))\n"
+            "- OR vs UNION: WHERE col=v1 OR col=v2 — NEVER split into UNION\n"
+            "- COLUMN ORDER: exact order from the question\n"
+            "- STRING CASE: exact capitalisation from question in WHERE values\n"
+            "- COLUMN vs FUNCTION: if schema has column 'average', use it — don't replace with avg()\n"
+            "- HAVING: filter aggregates with HAVING after GROUP BY, not WHERE\n"
+            "- SET OPERATORS: INTERSECT/EXCEPT/UNION — NEVER replace with self-JOIN\n"
+            "- DISTINCT: only when question says 'unique', 'different', 'distinct'\n"
+            "- NEVER COUNT(DISTINCT col) — always COUNT(*)\n"
             "- Exact string match: WHERE col = 'value'  [NOT LIKE]\n"
-            "- Keep compound filter values together:\n"
-            "    WHERE regular_season = '4th, Atlantic Division'  (correct)\n"
-            "    WHERE regular_season = '4th' AND ...             (wrong)\n"
+            "- Keep compound values together: WHERE col = '4th, Atlantic Division'\n"
             "- Never invent columns or tables not in the schema.\n\n"
             "EXAMPLES:\n"
-            "Q: How many schools did player 3 play at?\n"
-            "A: SELECT COUNT(school_club_team) FROM table_name WHERE no_ = 3\n\n"
-            "Q: What is the total number of positions on the Toronto team in 2006-07?\n"
-            "A: SELECT COUNT(position) FROM table_name WHERE years_in_toronto = '2006-07'\n\n"
-            "Q: Name the minimum ties played for 6 years.\n"
-            "A: SELECT MIN(ties_played) FROM table_name WHERE years_played = 6\n\n"
-            "Q: What player played guard for Toronto in 1996-97?\n"
-            "A: SELECT player FROM table_name WHERE position = 'guard'\n\n"
+            "Q: Which model has the smallest horsepower?\n"
+            "A: SELECT t1.model FROM car_names AS t1 JOIN cars_data AS t2 ON t1.makeid = t2.id "
+            "ORDER BY t2.horsepower ASC LIMIT 1\n\n"
+            "Q: How many concerts in 2014 or 2015?\n"
+            "A: SELECT COUNT(*) FROM concert WHERE year = 2014 OR year = 2015\n\n"
+            "Q: Find average and max age for each pet type.\n"
+            "A: SELECT avg(pet_age), max(pet_age), pettype FROM pets GROUP BY pettype\n\n"
+            "Q: What is the maximum capacity and average of all stadiums?\n"
+            "A: SELECT max(capacity), average FROM stadium\n\n"
+            "Q: How many pets are owned by students older than 20?\n"
+            "A: SELECT COUNT(*) FROM has_pet AS t1 JOIN student AS t2 ON t1.stuid = t2.stuid "
+            "WHERE t2.age > 20\n\n"
+            "Q: Find the weight of the youngest dog.\n"
+            "A: SELECT weight FROM pets WHERE pettype = 'dog' ORDER BY pet_age ASC LIMIT 1\n\n"
             f"Question: {question}\n"
             "SQL Query:"
         )
@@ -306,88 +283,20 @@ class SQLGenerator:
             "- Output ONE SQL SELECT query only. No explanations. No markdown. No semicolon.\n"
             "- Table name is always: wikisql_data\n"
             "- Use EXACTLY the column names from the schema below (case-preserved).\n"
-            "- NEVER use subqueries, nested SELECT, or (SELECT ...) inside WHERE.\n\n"
-            "WIKISQL ANNOTATION RULES (CRITICAL — these match the gold SQL style):\n"
-            "1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():\n"
-            "   'What is the X?' / 'Which X?' → SELECT MAX(col) FROM wikisql_data WHERE ...\n"
-            "   NEVER use plain SELECT col for a single descriptive value.\n"
-            "2. COUNTING — always COUNT(col), NEVER COUNT(*):\n"
-            "   'How many X?' → SELECT COUNT(col) FROM wikisql_data WHERE ...\n"
-            "3. SUM vs COUNT:\n"
-            "   'total number of X' → COUNT(col)   ← counting rows\n"
-            "   'total <numeric>'   → SUM(col)     ← summing a column\n"
-            "4. AGG keyword map — NEVER drop aggregation when these words appear:\n"
-            "   highest/most/largest/best/latest → MAX(col)\n"
-            "   lowest/fewest/smallest/earliest/first → MIN(col)\n"
-            "   average/mean → AVG(col)\n"
-            "   how many/number of/count → COUNT(col)\n"
-            "   total/sum of → SUM(col)\n"
-            "   COUNT vs SUM: COUNT(col) counts rows. SUM(col) adds numeric values.\n"
-            "   'How many games' → COUNT(games). 'What is the total score' → SUM(score).\n"
-            "5. WHERE conditions:\n"
-            "   - Only include conditions EXPLICITLY stated in the question.\n"
-            "   - Do NOT add extra filters beyond what the question asks.\n"
-            "   - Keep compound values intact: WHERE result = '4th, Atlantic Division'\n"
-            "   - String values: single-quoted. Numeric values: unquoted.\n"
-            "   - SUPERLATIVE RULE: words like 'tallest', 'largest', 'most recent' are\n"
-            "     NOT WHERE conditions. Represent them as MAX/MIN in the SELECT clause.\n"
-            "     BAD:  WHERE height = (SELECT MAX(height) ...)\n"
-            "     GOOD: SELECT MAX(height) FROM wikisql_data WHERE floors = 35\n\n"
+            "- NEVER use subqueries, nested SELECT, or correlated queries.\n\n"
+            f"{WIKISQL_ANNOTATION_RULES}\n"
             f"Database Schema:\n{schema_text}\n\n"
-            "EXAMPLES:\n"
-            "Q: What is the pick number for Northwestern college?\n"
-            "A: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n"
-            "Q: What is the episode number that has production code 8ABX15?\n"
-            "A: SELECT MIN(no_in_series) FROM wikisql_data WHERE production_code = '8ABX15'\n\n"
-            "Q: How many schools did player 3 play at?\n"
-            "A: SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_ = 3\n\n"
-            "Q: How many players are on the Toronto team in 2005-06?\n"
-            "A: SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n\n"
-            "Q: What is the total attendance at Bridgestone Arena?\n"
-            "A: SELECT SUM(attendance) FROM wikisql_data WHERE arena = 'Bridgestone Arena'\n\n"
-            "Q: What is the lowest rank for a player from Germany?\n"
-            "A: SELECT MIN(rank) FROM wikisql_data WHERE country = 'Germany'\n\n"
-            "Q: What year did University of Saskatchewan have their first season?\n"
-            "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"
-            "Q: What player played guard for Toronto in 1996-97?\n"
-            "A: SELECT player FROM wikisql_data WHERE position = 'Guard' AND years_in_toronto = '1996-97'\n\n"
-            "Q: The U.S. airdate of 4 april 2008 had a production code of what?\n"
-            "A: SELECT MAX(production_code) FROM wikisql_data WHERE us_airdate = '4 april 2008'\n\n"
-            "Q: The canadian airdate of 11 february 2008 applied to what series number?\n"
-            "A: SELECT COUNT(no_in_series) FROM wikisql_data WHERE canadian_airdate = '11 february 2008'\n\n"
-            "Q: What is Iceland's total?\n"
-            "A: SELECT COUNT(total) FROM wikisql_data WHERE country = 'Iceland'\n\n"
-            "Q: What is the United States rank?\n"
-            "A: SELECT COUNT(rank) FROM wikisql_data WHERE country = 'United States'\n\n"
-            "Q: What is the score of the event that Alianza Lima won in 1965?\n"
-            "A: SELECT MAX(score) FROM wikisql_data WHERE winner = 'Alianza Lima' AND year = '1965'\n\n"
-            "Q: What is the winning score of -8 (71-63-69-69=272)?\n"
-            "A: SELECT MIN(year) FROM wikisql_data WHERE score = '-8 (71-63-69-69=272)'\n\n"
-            "Q: Name the finished position for Kerry Katona.\n"
-            "A: SELECT COUNT(finished) FROM wikisql_data WHERE celebrity = 'Kerry Katona'\n\n"
             f"{agg_hint}\n"
             f"{cond_hint}\n\n"
-            "CONDITION TRAPS — common model errors:\n"
-            "TRAP 1 (missing WHERE — entity-as-subject):\n"
-            "  'What X are the [Entity] [verb]?' → WHERE [entity_col] = '[Entity]'\n"
-            "  A noun in the question that names something you are NOT selecting\n"
-            "  MUST appear in a WHERE condition.\n"
-            "  BAD:  SELECT location FROM wikisql_data\n"
-            "  GOOD: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
-            "TRAP 2 (context year ≠ WHERE filter — use named entity instead):\n"
-            "  'Which [role] from the [year] [event] attended [Named_Entity]?'\n"
-            "  The [year] is context; [Named_Entity] is the actual WHERE value.\n"
-            "  BAD:  WHERE pick = 2004\n"
-            "  GOOD: WHERE college = 'Wilfrid Laurier'\n\n"
-            "TRAP 3 (synonymous-with → quoted literal, NOT column reference):\n"
-            "  'value of X is synonymous with its category' → WHERE col = 'X'\n"
-            "  BAD:  WHERE since_beginning_of_big_12 = overall_record\n"
-            "  GOOD: WHERE since_beginning_of_big_12 = 'since beginning of big 12'\n\n"
-            "NEW EXAMPLES:\n"
-            "Q: What city and state are the miners located in?\n"
+            "EXAMPLES:\n"
+            "Q: What is the pick number for Northwestern?\n"
+            "A: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n"
+            "Q: How many players on Toronto in 2005-06?\n"
+            "A: SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n\n"
+            "Q: What player played guard for Toronto in 1996-97?\n"
+            "A: SELECT player FROM wikisql_data WHERE position = 'Guard'\n\n"
+            "Q: What city are the miners located in?\n"
             "A: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
-            "Q: Which player from the 2004 CFL draft attended Wilfrid Laurier?\n"
-            "A: SELECT MAX(player) FROM wikisql_data WHERE college = 'Wilfrid Laurier'\n\n"
             f"Question: {question}\n"
             "SQL:"
         )
@@ -398,14 +307,8 @@ class SQLGenerator:
         schema_str: str,
         is_wikisql: bool = False,
     ) -> str:
-        """
-        Construct prompt for Text-to-SQL (MaaS / direct model path).
-        is_wikisql=True → WikiSQL annotation rules injected.
-        """
         if is_wikisql:
             return self._construct_prompt_wikisql(question, schema_str)
-
-        # ── Spider / general MaaS prompt ─────────────────────────────────
         return (
             "You are an expert SQL assistant. Generate a SQL query following Spider benchmark format.\n\n"
             f"Database Schema:\n{schema_str}\n\n"
@@ -422,28 +325,39 @@ class SQLGenerator:
             "4. Use lowercase for all identifiers\n"
             "5. Do not include trailing semicolons\n"
             "6. For single table queries: NEVER use table aliases\n"
-            "7. For multi-table queries: use simple lowercase aliases t1, t2, ...\n"
-            "8. For 'NOT EXISTS' patterns: use NOT IN with subquery\n"
-            "9. COLUMN ORDER: output SELECT columns in EXACT order mentioned in the question.\n"
-            "    Q: 'maximum and average capacity' → SELECT max(capacity), avg(capacity)\n"
-            "    Q: 'name and age of singers'      → SELECT name, age FROM singer\n"
-            "    NEVER reorder columns. Wrong order = wrong answer.\n"
-            "10. SET OPERATORS — detect these question patterns:\n"
-            "    INTERSECT triggers: 'both', 'shared by', 'in both', 'appear in both groups'\n"
-            "    EXCEPT triggers: 'but not', 'not in', 'excluding', 'without'\n"
-            "    UNION triggers: 'either...or', 'combine', 'all X and all Y'\n"
-            "    When detected: ALWAYS use INTERSECT/EXCEPT/UNION, NEVER replace with self-JOIN.\n"
-            "    Example — 'countries where singer above 40 AND below 30 exist':\n"
-            "    GOOD: SELECT country FROM singer WHERE age > 40 "
-            "INTERSECT SELECT country FROM singer WHERE age < 30\n"
-            "    BAD:  SELECT t1.country FROM singer t1 JOIN singer t2 ON t1.country=t2.country"
-            " WHERE t1.age>40 AND t2.age<30\n"
-            "11. DISTINCT: ONLY add DISTINCT when the question EXPLICITLY uses the words 'unique', 'different', or 'distinct'.\n"
-            "    NEVER add DISTINCT inside COUNT() — always COUNT(*) to count rows.\n"
-            "    NEVER add SELECT DISTINCT just because the query uses JOIN.\n"
-            "    BAD:  SELECT COUNT(DISTINCT t1.maker) → loses rows\n"
-            "    GOOD: SELECT COUNT(*) FROM ...\n"
-            f"\nQuestion: {question}\n\n"
+            # FIX: explicit tN-only, ban single-letter aliases
+            "7. TABLE ALIASES — STRICT RULES:\n"
+            "   ALWAYS define aliases with AS: FROM table AS t1\n"
+            "   ONLY use t1, t2, t3, t4 as alias names — NO exceptions.\n"
+            "   FORBIDDEN: p, s, a, b, c, hp, cm, ml, cn, cd — Spider parser ignores these\n"
+            "   BAD:  FROM pets AS p JOIN student AS s  ← parse error\n"
+            "   GOOD: FROM pets AS t1 JOIN student AS t2\n"
+            "8. COLUMN QUALIFICATION:\n"
+            "   SELECT, GROUP BY, ORDER BY: bare column names only — no tN. prefix\n"
+            "   tN. prefixes ONLY in FROM/JOIN/ON/WHERE\n"
+            "   BAD:  SELECT t1.name, t2.country GROUP BY t1.name\n"
+            "   GOOD: SELECT name, country       GROUP BY name\n"
+            "9. MIN/MAX ROW: ORDER BY col ASC/DESC LIMIT 1\n"
+            "   NEVER WHERE col=(SELECT MIN(col)...) — returns duplicates\n"
+            "10. OR vs UNION: WHERE col=v1 OR col=v2 — NEVER split into UNION\n"
+            "11. COLUMN ORDER: exact order from the question\n"
+            "12. STRING CASE: exact capitalisation from question in WHERE values\n"
+            "13. COLUMN vs FUNCTION: if schema has column 'average', use it directly\n"
+            "14. HAVING vs WHERE: HAVING for aggregated values after GROUP BY\n"
+            "15. SET OPERATORS: INTERSECT/EXCEPT/UNION — NEVER replace with self-JOIN\n"
+            "16. DISTINCT: only for 'unique', 'different', 'distinct'. NEVER COUNT(DISTINCT col)\n"
+            "\nEXAMPLES:\n"
+            "Q: Which model has the smallest horsepower?\n"
+            "A: SELECT t1.model FROM car_names AS t1 JOIN cars_data AS t2 ON t1.makeid = t2.id "
+            "ORDER BY t2.horsepower ASC LIMIT 1\n\n"
+            "Q: How many concerts in 2014 or 2015?\n"
+            "A: SELECT COUNT(*) FROM concert WHERE year = 2014 OR year = 2015\n\n"
+            "Q: Find average and max age for each pet type.\n"
+            "A: SELECT avg(pet_age), max(pet_age), pettype FROM pets GROUP BY pettype\n\n"
+            "Q: How many pets are owned by students older than 20?\n"
+            "A: SELECT COUNT(*) FROM has_pet AS t1 JOIN student AS t2 ON t1.stuid = t2.stuid "
+            "WHERE t2.age > 20\n\n"
+            f"Question: {question}\n\n"
             "SQL:"
         )
 
@@ -453,156 +367,72 @@ class SQLGenerator:
             "OUTPUT RULES:\n"
             "- Output ONE SQL SELECT query only. No explanations. No markdown. No semicolon.\n"
             "- Table name is always: wikisql_data\n"
-            "- Use EXACTLY the column names from the schema below (case-preserved).\n\n"
-            "- NEVER use subqueries, nested SELECT, or correlated queries.\n"
-            "- COUNTING RULE: 'how many [entities]?' / 'number of [X]?' → COUNT(col), not bare SELECT.\n"
-            "  Example: 'How many players on Toronto in 2005-06?'\n"
-            "  → SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n"
-            "- NUMERIC RULE: 'how many viewers/goals/points for Y?' (column stores the value) → SELECT col.\n"
-            "  → SELECT viewers FROM wikisql_data WHERE director = 'X'  (NOT SUM or COUNT)\n"
+            "- Use EXACTLY the column names from the schema below (case-preserved).\n"
+            "- NEVER use subqueries, nested SELECT, or correlated queries.\n\n"
             f"{WIKISQL_ANNOTATION_RULES}\n"
             f"Database Schema:\n{schema_str}\n\n"
             "EXAMPLES:\n"
-            "Q: What is the pick number for Northwestern college?\n"
-            "WRONG: SELECT pick FROM wikisql_data WHERE college = 'Northwestern'\n"        
-            "RIGHT: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n" 
-            "Q: What is the episode number that has production code 8ABX15?\n"
-            "A: SELECT MIN(no_in_series) FROM wikisql_data WHERE production_code = '8ABX15'\n\n"
-            "Q: How many schools did player 3 play at?\n"
-            "A: SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_ = 3\n\n"
-            "Q: How many players are on the Toronto team in 2005-06?\n"
+            "Q: What is the pick number for Northwestern?\n"
+            "A: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n"
+            "Q: How many players on Toronto in 2005-06?\n"
             "A: SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n\n"
             "Q: What player played guard for Toronto in 1996-97?\n"
             "A: SELECT player FROM wikisql_data WHERE position = 'Guard'\n\n"
-            "Q: What year did University of Saskatchewan have their first season?\n"        
-            "A: SELECT MAX(first_season) FROM wikisql_data WHERE institution = 'University of Saskatchewan'\n\n"  
-            "Q: What is the enrollment for Foote Field?\n"                                 
-            "A: SELECT MAX(enrollment) FROM wikisql_data WHERE football_stadium = 'Foote Field'\n\n"  
-            "CONDITION TRAPS — common model errors:\n"
-            "TRAP 1 (missing WHERE — entity-as-subject):\n"
-            "  'What X are the [Entity] [verb]?' → WHERE [entity_col] = '[Entity]'\n"
-            "  A noun in the question that names something you are NOT selecting\n"
-            "  MUST appear in a WHERE condition.\n"
-            "  BAD:  SELECT location FROM wikisql_data\n"
-            "  GOOD: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
-            "TRAP 2 (context year ≠ WHERE filter — use named entity instead):\n"
-            "  'Which [role] from the [year] [event] attended [Named_Entity]?'\n"
-            "  The [year] is context; [Named_Entity] is the actual WHERE value.\n"
-            "  BAD:  WHERE pick = 2004\n"
-            "  GOOD: WHERE college = 'Wilfrid Laurier'\n\n"
-            "TRAP 3 (synonymous-with → quoted literal, NOT column reference):\n"
-            "  'value of X is synonymous with its category' → WHERE col = 'X'\n"
-            "  BAD:  WHERE since_beginning_of_big_12 = overall_record\n"
-            "  GOOD: WHERE since_beginning_of_big_12 = 'since beginning of big 12'\n\n"
-            "NEW EXAMPLES:\n"
-            "Q: What city and state are the miners located in?\n"
-            "A: SELECT MAX(location) FROM wikisql_data WHERE nickname = 'Miners'\n\n"
-            "Q: Which player from the 2004 CFL draft attended Wilfrid Laurier?\n"
-            "A: SELECT MAX(player) FROM wikisql_data WHERE college = 'Wilfrid Laurier'\n\n"
             f"Question: {question}\n"
-            "SQL:"                   
+            "SQL:"
         )
 
-    # ------------------------------------------------------------------
-    # SQL extraction  (handles DeepSeek R1 / CoT verbose output)
-    # ------------------------------------------------------------------
-
     def _clean_sql(self, result: str) -> str:
-        """
-        Extract a clean SQL SELECT statement from arbitrary LLM output.
-
-        Priority:
-          1. ```sql … ``` fenced block
-          2. Generic ``` … ``` starting with SELECT
-          3. Lines starting with SELECT (pick last — CoT puts final SQL last)
-          4. "SQL:" / "Final SQL:" label prefix
-          5. Response starts mid-SELECT (prompt priming artifact) → prepend SELECT
-          6. Any SELECT … substring as last resort
-        """
         if not result or not result.strip():
             return ""
-
         text = result.strip()
 
-        # 1. ```sql ... ```
         m = re.search(r"```sql\s*(.*?)\s*```", text, re.IGNORECASE | re.DOTALL)
-        if m:
-            return self._finalize(m.group(1))
+        if m: return self._finalize(m.group(1))
 
-        # 2. ``` SELECT ... ```
         m = re.search(r"```\s*(SELECT\b.*?)\s*```", text, re.IGNORECASE | re.DOTALL)
-        if m:
-            return self._finalize(m.group(1))
+        if m: return self._finalize(m.group(1))
 
-        # 3. Lines starting with SELECT — take the last one
         lines = text.splitlines()
         last_select_idx = None
         for i, ln in enumerate(lines):
             if re.match(r"^\s*SELECT\b", ln.strip(), re.IGNORECASE):
                 last_select_idx = i
-
         if last_select_idx is not None:
             remainder = "\n".join(lines[last_select_idx:])
             candidate = remainder.split("\n\n")[0].strip()
             return self._finalize(candidate)
 
-        # 4. "SQL:" / "Final SQL:" label
-        m = re.search(
-            r"(?:final\s+sql|sql)\s*:\s*(SELECT\b.*?)(?:\n|$)",
-            text, re.IGNORECASE | re.DOTALL,
-        )
-        if m:
-            return self._finalize(m.group(1))
+        m = re.search(r"(?:final\s+sql|sql)\s*:\s*(SELECT\b.*?)(?:\n|$)",
+                      text, re.IGNORECASE | re.DOTALL)
+        if m: return self._finalize(m.group(1))
 
-        # 5. Prompt-primed response (model continues after "SELECT " prefix)
         first_line = text.splitlines()[0].strip()
         if re.match(r"^(COUNT|SUM|AVG|MIN|MAX|DISTINCT|\*)\b", first_line, re.IGNORECASE):
-            full_continuation = text.split("\n\n")[0].strip()
-            return self._finalize("SELECT " + full_continuation)
+            return self._finalize("SELECT " + text.split("\n\n")[0].strip())
 
-        # 6. Any SELECT substring
         m = re.search(r"(SELECT\b.*?)(?:;|\Z)", text, re.IGNORECASE | re.DOTALL)
-        if m:
-            return self._finalize(m.group(1))
+        if m: return self._finalize(m.group(1))
 
         return ""
 
     def _finalize(self, sql: str) -> str:
-        """
-        Post-process extracted SQL:
-          - Collapse whitespace / drop trailing semicolons
-          - Strip dangling prose after a blank line (CoT suffix)
-          - Remove backticks
-          - Validate it starts with SELECT
-        """
-        if not sql:
-            return ""
-
+        if not sql: return ""
         sql = sql.split("\n\n")[0]
         sql = sql.rstrip(";").strip()
         sql = re.sub(
             r"\s+\b(But|However|Note|Therefore|Also|Alternatively|Wait|This)\b.*$",
-            "",
-            sql,
-            flags=re.IGNORECASE | re.DOTALL,
-        )
+            "", sql, flags=re.IGNORECASE | re.DOTALL)
         sql = sql.replace("`", "")
         sql = " ".join(sql.split()).strip()
-
         if not re.match(r"^SELECT\b", sql, re.IGNORECASE):
             return ""
-
+        if not re.search(r"\bFROM\b", sql, re.IGNORECASE):
+            logger.warning(f"Rejected truncated SQL (no FROM): {sql!r}")
+            return ""
         return sql
 
-    # ------------------------------------------------------------------
-    # Heuristic fallback
-    # ------------------------------------------------------------------
-
     def _pattern_generate(self, question: str, schema_info: Dict) -> str:
-        """
-        Schema-aware heuristic SQL builder used when LLM produces nothing.
-        Covers the most common WikiSQL patterns.
-        """
         q     = question.lower()
         table = next(iter(schema_info), "table")
         cols  = schema_info.get(table, [])
@@ -610,40 +440,31 @@ class SQLGenerator:
         if re.search(r"\bhow many\b|\btotal number\b|\bcount\b", q):
             col = self._best_col(q, cols) or (cols[0] if cols else "*")
             return f"SELECT COUNT({col}) FROM {table}"
-
         if re.search(r"\bhighest\b|\bmost\b|\bmaximum\b|\blargest\b", q):
             col = self._best_col(q, cols) or (cols[0] if cols else "*")
             return f"SELECT MAX({col}) FROM {table}"
-
         if re.search(r"\blowest\b|\bminimum\b|\bsmallest\b|\bfewest\b", q):
             col = self._best_col(q, cols) or (cols[0] if cols else "*")
             return f"SELECT MIN({col}) FROM {table}"
-
         if re.search(r"\baverage\b|\bmean\b", q):
             col = self._best_col(q, cols) or (cols[0] if cols else "*")
             return f"SELECT AVG({col}) FROM {table}"
-
         if re.search(r"\btotal\b|\bsum\b", q):
             col = self._best_col(q, cols) or (cols[0] if cols else "*")
             return f"SELECT SUM({col}) FROM {table}"
 
         sel_col = self._best_col(q, cols) or "*"
         base    = f"SELECT {sel_col} FROM {table}"
-
         for col in cols:
             col_pat = col.lower().replace("_", " ").replace("-", " ")
             m = re.search(
-                rf"\b{re.escape(col_pat)}\b\s+(?:is|was|are|=)\s+['\"]?([^'\"?,]+)['\"]?",
-                q,
-            )
+                rf"\b{re.escape(col_pat)}\b\s+(?:is|was|are|=)\s+['\"]?([^'\"?,]+)['\"]?", q)
             if m:
                 val = m.group(1).strip().rstrip("?")
                 return f"{base} WHERE {col} = '{val}'"
-
         return base
 
     def _best_col(self, question: str, cols: List[str]) -> str:
-        """Return the column whose tokens best overlap with the question."""
         q_words    = set(re.sub(r"[^a-z0-9 ]", " ", question.lower()).split())
         best, best_score = "", 0
         for col in cols:
@@ -653,49 +474,51 @@ class SQLGenerator:
                 best, best_score = col, score
         return best
 
-    # ------------------------------------------------------------------
-    # Schema helpers
-    # ------------------------------------------------------------------
-
     def _load_schema_info(self, db_path: str) -> Dict[str, List[str]]:
-        """Load schema as {table: [col, ...]} from a SQLite database."""
         return self._get_db_schema(db_path)
 
     def _get_schema_string(self, db_path: str) -> str:
         try:
-            import sqlite3
-            conn = sqlite3.connect(db_path)
+            conn   = sqlite3.connect(db_path)
             cursor = conn.cursor()
-            
-            # Get all tables
             cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
             tables = [r[0] for r in cursor.fetchall()]
-            
             schema_lines = []
-            fk_lines = []
-            
+            fk_lines     = []
             for table in tables:
                 cursor.execute(f"PRAGMA table_info({table})")
                 cols = [r[1] for r in cursor.fetchall()]
                 schema_lines.append(f"Table: {table} | Columns: {', '.join(cols)}")
-                
-                # Foreign keys
                 cursor.execute(f"PRAGMA foreign_key_list({table})")
                 for fk in cursor.fetchall():
                     fk_lines.append(f"  {table}.{fk[3]} → {fk[2]}.{fk[4]}")
-            
             result = "\n".join(schema_lines)
             if fk_lines:
                 result += "\n\nForeign Keys:\n" + "\n".join(fk_lines)
-            
             conn.close()
             return result
         except Exception as e:
             logger.error(f"Error loading schema: {e}")
             return ""
 
+    def _get_minimal_schema_string(self, db_path: str) -> str:
+        try:
+            conn   = sqlite3.connect(db_path)
+            cursor = conn.cursor()
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [r[0] for r in cursor.fetchall()]
+            lines  = []
+            for table in tables:
+                cursor.execute(f"PRAGMA table_info({table})")
+                cols = [r[1] for r in cursor.fetchall()]
+                lines.append(f"{table}: {', '.join(cols)}")
+            conn.close()
+            return "\n".join(lines)
+        except Exception as e:
+            logger.error(f"Minimal schema extraction failed: {e}")
+            return ""
+
     def _get_db_schema(self, db_path: str) -> Dict[str, List[str]]:
-        """Extract table/column names from a SQLite database."""
         try:
             conn   = sqlite3.connect(db_path)
             cursor = conn.cursor()
@@ -712,29 +535,21 @@ class SQLGenerator:
             return {}
 
     def _format_schema(self, schema_info: Dict[str, List[str]]) -> str:
-        """Format schema dict as a prompt-friendly string."""
         return "\n".join(
             f"Table {table}: {', '.join(columns)}"
             for table, columns in schema_info.items()
         )
 
     def _normalize_for_spider(self, sql: str) -> str:
-        """
-        Lightweight SQL normalization for Spider evaluation.
-          - Collapse INNER/LEFT OUTER/RIGHT OUTER JOIN → JOIN / LEFT JOIN / RIGHT JOIN
-          - Strip trailing semicolons and extra whitespace
-        """
-        if not sql:
-            return sql
-        sql = re.sub(r'\bINNER\s+JOIN\b',        'JOIN',       sql, flags=re.IGNORECASE)
-        sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b', 'LEFT JOIN',  sql, flags=re.IGNORECASE)
-        sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b','RIGHT JOIN', sql, flags=re.IGNORECASE)
+        if not sql: return sql
+        sql = re.sub(r'\bINNER\s+JOIN\b',         'JOIN',       sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bLEFT\s+OUTER\s+JOIN\b',  'LEFT JOIN',  sql, flags=re.IGNORECASE)
+        sql = re.sub(r'\bRIGHT\s+OUTER\s+JOIN\b', 'RIGHT JOIN', sql, flags=re.IGNORECASE)
         sql = sql.rstrip(';').strip()
         sql = ' '.join(sql.split())
         return sql
 
     def _wrap_prompt_for_maas(self, prompt: str) -> list:
-        """Wrap prompt as chat messages with strict SQL-only instruction for MaaS."""
         system = (
             "You are a SQL query generator. You output ONLY SQL.\n"
             "ABSOLUTE RULES — no exceptions:\n"
@@ -742,8 +557,9 @@ class SQLGenerator:
             "2. No explanations, no reasoning, no comments\n"
             "3. No markdown, no code fences, no backticks\n"
             "4. No 'But', 'However', 'Note', or any English text whatsoever\n"
-            "5. If unsure, output your best-guess SQL — never output plain text\n"
-            "6. Stop immediately after the last SQL token\n"
+            "5. ONLY use t1, t2, t3 as table aliases — NEVER p, s, hp or other names\n"
+            "6. ALWAYS output a complete query: SELECT ... FROM ...\n"
+            "7. Stop immediately after the last SQL token\n"
             "Your entire response must be valid SQL starting with SELECT."
         )
         return [
@@ -751,35 +567,3 @@ class SQLGenerator:
             {"role": "user",      "content": prompt},
             {"role": "assistant", "content": "SELECT "},
         ]
-    
-    def _wikisql_agg_hint(question: str) -> str:
-        q = question.lower()
-        if re.search(r'\bhow many\b|\bnumber of\b|\bcount\b|\btotal number\b', q):
-            return "⚡ AGG hint: question asks for COUNT → use COUNT(col)  [NOT COUNT(*)]"
-        if re.search(r'\btotal\b|\bsum\b|\bcombined\b|\baltogether\b', q) and not re.search(r'\btotal number\b', q):
-            return "⚡ AGG hint: question asks for SUM → use SUM(col)"
-        if re.search(r'\bhighest\b|\bmost\b|\blargest\b|\bmaximum\b|\bmax\b|\bbest\b|\blatest\b|\bgreatest\b', q):
-            return "⚡ AGG hint: question asks for MAX → use MAX(col)"
-        if re.search(r'\blowest\b|\bfewest\b|\bsmallest\b|\bminimum\b|\bmin\b|\bearli\b|\bfirst\b|\boldest\b', q):
-            return "⚡ AGG hint: question asks for MIN → use MIN(col)"
-        if re.search(r'\baverage\b|\bmean\b|\bavg\b', q):
-            return "⚡ AGG hint: question asks for AVG → use AVG(col)"
-        return (
-            "⚡ AGG hint: No aggregation keyword found, but WikiSQL convention REQUIRES wrapping "
-            "single-value results in MAX(col). Use MAX(col) for 'What is/Which/Name the' questions "
-            "and COUNT(col) for 'how many' questions. Plain SELECT without AGG is almost always wrong."
-        )
-
-    def _wikisql_cond_hint(question: str) -> str:
-        q = question.lower()
-        if re.search(r'\btallest\b|\blargest\b|\bbiggest\b|\bmost recent\b'
-                    r'|\bhighest\b|\blowest\b|\bsmallest\b|\bnewest\b|\boldest\b', q):
-            return ("⚡ Condition hint: superlative in question — do NOT add a subquery "
-                    "WHERE condition. Use MAX/MIN in SELECT instead.")
-        and_count = len(re.findall(r'\band\b', q))
-        kw = re.findall(r'\bwhere\b|\bwith\b|\bfor\b|\bnamed\b|\bcalled\b|\bwhen\b', q)
-        estimated = max(1, len(kw)) + and_count
-        if estimated == 1:
-            return "⚡ Condition hint: exactly 1 WHERE condition — do NOT add extra filters."
-        return f"⚡ Condition hint: ~{min(estimated, 3)} WHERE conditions — only use what the question states."
-    

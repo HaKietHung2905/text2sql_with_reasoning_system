@@ -1,22 +1,22 @@
 ================================================================================
-WIKISQL EVALUATION SUMMARY REPORT
-Generated : 2026-06-02 15:50:07
+SPIDER EVALUATION SUMMARY REPORT
+Generated : 2026-06-03 10:17:07
 Results   : results/evaluation_results.json
 ================================================================================
 
 MAIN METRICS
 ----------------------------------------
-  Exact Match Accuracy : 47.10%  (47.1%)
-  Execution Accuracy   : 78.82%  (78.8%)
+  Exact Match Accuracy : 69.54%  (69.5%)
+  Execution Accuracy   : 85.59%  (85.6%)
   Total Evaluated      : 0
 
 PER-DIFFICULTY BREAKDOWN
 ----------------------------------------
-  easy     | count=116   | EM=84.48% | EX=93.10%
-  medium   | count=358   | EM=74.58% | EX=90.78%
-  hard     | count=293   | EM=22.18% | EX=66.89%
-  extra    | count=267   | EM=21.35% | EX=69.66%
-  all      | count=1034  | EM=47.10% | EX=78.82%
+  easy     | count=116   | EM=86.21% | EX=93.97%
+  medium   | count=358   | EM=87.99% | EX=94.97%
+  hard     | count=293   | EM=60.41% | EX=82.94%
+  extra    | count=267   | EM=47.57% | EX=72.28%
+  all      | count=1034  | EM=69.54% | EX=85.59%
 
 ================================================================================
 END OF REPORT
