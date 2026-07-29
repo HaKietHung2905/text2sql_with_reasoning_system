@@ -1,39 +1,39 @@
 ================================================================================
 WIKISQL EVALUATION SUMMARY REPORT
-Generated : 2026-07-29 09:35:39
+Generated : 2026-07-29 18:01:39
 Results   : results/wikisql_results.json
 ================================================================================
 
 MAIN METRICS
 ----------------------------------------
-  Structural EM (official)      : 83.80%  (83.8%)
-  String EM (legacy)            : 75.33%  (75.3%)
-  Execution Accuracy            : 85.79%  (85.8%)
+  Structural EM (official)      : 84.57%  (84.6%)
+  String EM (legacy)            : 76.07%  (76.1%)
+  Execution Accuracy            : 87.55%  (87.6%)
   Total Evaluated               : 0
 
   Structural EM Components:
-    AGG  accuracy   : 91.46%
-    SEL  accuracy   : 96.79%
-    COND accuracy   : 96.90%
-    Parse rate      : 97.58%
-    Parse failures  : 204
+    AGG  accuracy   : 91.43%
+    SEL  accuracy   : 96.82%
+    COND accuracy   : 96.03%
+    Parse rate      : 99.32%
+    Parse failures  : 57
   Failure breakdown:
-    agg                   : 653
-    sel                   : 229
-    cond                  : 219
-    parse_fail_pred       : 204
-    agg+cond              : 24
+    agg                   : 657
+    cond                  : 284
+    sel                   : 230
+    parse_fail_pred       : 57
+    agg+cond              : 35
     agg+sel               : 23
-    sel+cond              : 10
+    sel+cond              : 11
     agg+sel+cond          : 2
 
 PER-DIFFICULTY BREAKDOWN
 ----------------------------------------
   easy     | count=64    | EM=93.75% | EX=95.31%
-  medium   | count=8182  | EM=76.78% | EX=87.53%
+  medium   | count=8355  | EM=75.93% | EX=87.49%
   hard     | count=0     | EM=0.00% | EX=0.00%
   extra    | count=0     | EM=0.00% | EX=0.00%
-  all      | count=8419  | EM=75.33% | EX=85.79%
+  all      | count=8419  | EM=76.07% | EX=87.55%
 
 ================================================================================
 END OF REPORT

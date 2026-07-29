@@ -5424,183 +5424,183 @@ SELECT final FROM wikisql_data WHERE team = 'liechtenstein (lie) liechtenstein i
 SELECT run_2 FROM wikisql_data WHERE run_1 = '1:30.03'	2-16977283-2
 SELECT Run_4 FROM wikisql_data WHERE Run_3 = '1:26.63'	2-16977283-2
 SELECT Run_4 FROM wikisql_data WHERE Run_1 = '1:25.82'	2-16977283-2
-SELECT 1	2-16977283-2
+SELECT final FROM wikisql_data WHERE run_2 = '1:27.58'	2-16977283-2
 SELECT t1.opponents_in_the_final FROM wikisql_data t1 WHERE t1.championship = 'U.S. Championships' AND t1.year > 1945 AND t1.score = '3–6, 6–4, 2–6, 6–3, 20–18'	2-1639306-2
 SELECT MAX(year) FROM wikisql_data WHERE partner = 'Gardnar Mulloy' AND score = '12–10, 8–10, 12–10, 6–2'	2-1639306-2
-SELECT 1	2-16832887-1
+SELECT ship FROM wikisql_data t1 WHERE t1.builder = 'Cammell Laird'	2-16832887-1
 SELECT country FROM wikisql_data t1 WHERE t1.ship = 'John S. McCain'	2-16832887-1
-SELECT 1	2-16832887-1
+SELECT ship FROM wikisql_data t1 WHERE t1.location = 'Birkenhead' AND t1.class_type = 'Cargo Ship'	2-16832887-1
 SELECT MAX(t1.population) FROM wikisql_data t1 WHERE t1.lds / t1.population = 0.0054 AND t1.total_congregations > 2	2-16785053-2
-SELECT 1	2-16785053-2
-SELECT 1	2-16785053-2
-SELECT 1	2-16785053-2
-SELECT 1	2-1730771-1
-SELECT 1	2-1730771-1
-SELECT 1	2-1730771-1
-SELECT 1	2-1730771-1
-SELECT 1	2-1730771-1
-SELECT 1	2-16406736-1
-SELECT 1	2-16406736-1
-SELECT 1	2-16406736-1
-SELECT 1	2-17382360-10
-SELECT 1	2-1738964-1
-SELECT 1	2-1738964-1
-SELECT 1	2-1738964-1
-SELECT 1	2-1738964-1
-SELECT 1	2-1738964-1
-SELECT 1	2-10856203-2
-SELECT 1	2-10856203-2
-SELECT 1	2-10856203-2
-SELECT 1	2-10856203-2
-SELECT 1	2-10856203-2
-SELECT 1	2-11680175-1
-SELECT 1	2-11902503-7
-SELECT 1	2-11965481-11
-SELECT 1	2-11965481-11
-SELECT 1	2-11965481-11
-SELECT 1	2-1106979-2
-SELECT 1	2-1106979-2
-SELECT 1	2-1106979-2
-SELECT 1	2-1106979-2
-SELECT 1	2-1106979-2
-SELECT 1	2-12032893-1
-SELECT 1	2-12032893-1
-SELECT 1	2-12032893-1
-SELECT 1	2-12032893-1
-SELECT 1	2-12032893-1
-SELECT 1	2-1108995-1
-SELECT 1	2-11750790-1
-SELECT 1	2-11750790-1
-SELECT 1	2-11750790-1
-SELECT 1	2-11750790-1
-SELECT 1	2-11750790-1
-SELECT 1	2-11561331-41
-SELECT 1	2-11561331-41
-SELECT 1	2-11561331-41
-SELECT 1	2-11957555-1
-SELECT 1	2-11957555-1
-SELECT 1	2-11957555-1
-SELECT 1	2-11636955-11
-SELECT 1	2-11636955-11
-SELECT 1	2-11636955-11
-SELECT 1	2-11267418-1
-SELECT 1	2-11267418-1
-SELECT 1	2-11801035-7
-SELECT 1	2-11801035-7
-SELECT 1	2-11449590-1
-SELECT 1	2-11449590-1
-SELECT 1	2-11449590-1
-SELECT 1	2-11590808-1
-SELECT 1	2-11939305-3
-SELECT 1	2-11939305-3
-SELECT 1	2-11939305-3
-SELECT 1	2-10812293-8
-SELECT 1	2-10812293-8
-SELECT 1	2-10809157-11
-SELECT 1	2-10809157-11
-SELECT 1	2-10809157-11
-SELECT 1	2-11960407-2
-SELECT 1	2-11960407-2
-SELECT 1	2-11960407-2
-SELECT 1	2-11902366-7
-SELECT 1	2-11902366-7
-SELECT 1	2-11100973-1
-SELECT 1	2-11100973-1
-SELECT 1	2-11902580-6
-SELECT 1	2-11902580-6
-SELECT 1	2-11437463-1
-SELECT 1	2-11437463-1
-SELECT 1	2-11437463-1
-SELECT 1	2-10809351-10
-SELECT 1	2-11801649-17
-SELECT 1	2-11801649-17
-SELECT 1	2-11801649-17
-SELECT 1	2-11801649-17
-SELECT 1	2-1080294-2
-SELECT 1	2-10996155-1
-SELECT 1	2-10996155-1
-SELECT 1	2-11129881-1
-SELECT 1	2-11129881-1
-SELECT 1	2-12097215-2
-SELECT 1	2-12097215-2
-SELECT 1	2-12097215-2
-SELECT 1	2-12097215-2
-SELECT 1	2-12097215-2
-SELECT 1	2-12097215-2
-SELECT 1	2-113080-1
-SELECT 1	2-10966872-6
-SELECT 1	2-10966872-6
-SELECT 1	2-1132588-1
-SELECT 1	2-1132588-1
-SELECT 1	2-1132588-1
-SELECT 1	2-1132588-1
-SELECT 1	2-1132588-1
-SELECT 1	2-1132588-1
-SELECT 1	2-11972799-3
-SELECT 1	2-11972799-3
-SELECT 1	2-11972799-3
-SELECT 1	2-11972799-3
-SELECT 1	2-11054706-1
-SELECT 1	2-11621799-4
-SELECT 1	2-11621799-4
-SELECT 1	2-11621799-4
-SELECT 1	2-1123247-2
-SELECT 1	2-1123247-2
-SELECT 1	2-1169552-11
-SELECT 1	2-1169552-11
-SELECT 1	2-11622632-10
-SELECT 1	2-10808346-16
-SELECT 1	2-10808346-16
-SELECT 1	2-10790510-2
-SELECT 1	2-10790510-2
-SELECT 1	2-10790510-2
-SELECT 1	2-10790510-2
-SELECT 1	2-1126627-1
-SELECT 1	2-1126627-1
-SELECT 1	2-1126627-1
-SELECT 1	2-11628153-8
-SELECT 1	2-11628153-8
-SELECT 1	2-11628153-8
-SELECT 1	2-11220799-6
-SELECT 1	2-11554565-3
-SELECT 1	2-11554565-3
-SELECT 1	2-11554565-3
-SELECT 1	2-11681226-1
-SELECT 1	2-11681226-1
-SELECT 1	2-11681226-1
-SELECT 1	2-11681226-1
-SELECT 1	2-11681226-1
-SELECT 1	2-11801035-6
-SELECT 1	2-11801035-6
-SELECT 1	2-11775918-5
-SELECT 1	2-1169552-9
-SELECT 1	2-10887379-6
-SELECT 1	2-10887379-6
-SELECT 1	2-10790510-17
-SELECT 1	2-10790510-17
-SELECT 1	2-10790510-17
-SELECT 1	2-1140074-1
-SELECT 1	2-1140074-1
-SELECT 1	2-1140074-1
-SELECT 1	2-11338646-2
-SELECT 1	2-11338646-2
-SELECT 1	2-11338646-2
-SELECT 1	2-11338646-2
-SELECT 1	2-11338646-2
-SELECT 1	2-1123351-2
-SELECT 1	2-1123351-2
-SELECT 1	2-1123351-2
-SELECT 1	2-1176486-3
-SELECT 1	2-1176486-3
-SELECT 1	2-1176486-3
-SELECT 1	2-11051840-4
-SELECT 1	2-11051840-4
-SELECT 1	2-11051840-4
-SELECT 1	2-11771022-3
-SELECT 1	2-11771022-3
-SELECT 1	2-11771022-3
-SELECT 1	2-11771022-3
-SELECT 1	2-1083851-1
+SELECT SUM(total_congregations) FROM wikisql_data t1 WHERE t1.lds = 0.54 AND t1.population > 105275	2-16785053-2
+SELECT MAX(t1.population) FROM wikisql_data t1 WHERE t1.state = 'Puerto Rico' AND t1.total_congregations > 41	2-16785053-2
+SELECT t1.population FROM wikisql_data t1 WHERE t1.total_congregations < 4 AND t1.lds / t1.population = 0.0054	2-16785053-2
+SELECT t1.actor_in_moscow_2007 FROM wikisql_data t1 JOIN wikisql_data t2 ON t1.voyage = t2.voyage WHERE t2.actor_in_london_2002 = 'John Carlisle'	2-1730771-1
+SELECT t1.actor_in_london_2002 FROM wikisql_data t1 WHERE t1.shipwreck = 'Leonty Ibayev'	2-1730771-1
+SELECT t1.actor_in_new_york_2006 FROM wikisql_data t1 WHERE t1.actor_in_moscow_2007 = 'Ramilya Iskander'	2-1730771-1
+SELECT t1.actor_in_moscow_2007 FROM wikisql_data t1 WHERE t1.voyage = 'Varenka Bakunin'	2-1730771-1
+SELECT actor_in_moscow_2007 FROM wikisql_data WHERE voyage = 'Leonty Ibayev' AND shipwreck = 'Leonty Ibayev'	2-1730771-1
+SELECT institution FROM wikisql_data WHERE affiliation IN ('Private', 'Catholic')	2-16406736-1
+SELECT AVG(enrollment) FROM wikisql_data t1 WHERE t1.nickname = 'Redbirds'	2-16406736-1
+SELECT affiliation FROM wikisql_data WHERE institution = 'Southern Illinois University Edwardsville'	2-16406736-1
+SELECT high_points FROM wikisql_data WHERE series = '0-2'	2-17382360-10
+SELECT masculine_an_stems FROM wikisql_data WHERE feminine_ō_stems = 'siangar' AND masculine_u_stems = 'syni'	2-1738964-1
+SELECT feminine_ōn_stems FROM wikisql_data	2-1738964-1
+SELECT masculine_u_stems FROM wikisql_data WHERE neuter_a_stems = 'skip' AND masculine_a_stems = 'fisker'	2-1738964-1
+SELECT masculine_an_stems FROM wikisql_data WHERE feminine_ō_stems = 'siangar' AND masculine_u_stems = 'sunar'	2-1738964-1
+SELECT masculine_u_stems FROM wikisql_data WHERE neuter_a_stems = 'skipum'	2-1738964-1
+SELECT date, tournament FROM wikisql_data t1 WHERE t1.margin_of_victory = 2 AND t1.to_par = -16	2-10856203-2
+SELECT runner_up FROM wikisql_data WHERE margin_of_victory = 2 AND to_par = -16	2-10856203-2
+SELECT to_par FROM wikisql_data t1 WHERE t1.runner_up = 'Ken Duke'	2-10856203-2
+SELECT margin_of_victory FROM wikisql_data t1 WHERE t1.runner_up = 'Brandt Snedeker'	2-10856203-2
+SELECT date FROM wikisql_data WHERE winning_score = '67-70-68-67=272'	2-10856203-2
+SELECT year FROM wikisql_data t1 WHERE t1.schwante < 2.043 AND t1.eichstädt < 848 AND t1.bärenklau < 1.262	2-11680175-1
+SELECT score FROM wikisql_data WHERE game > 56 AND record = '29-24-7' AND decision = 'lundqvist'	2-11902503-7
+SELECT high_rebounds FROM wikisql_data WHERE series = '4–2'	2-11965481-11
+SELECT high_rebounds, high_assists FROM wikisql_data t1 WHERE t1.high_assists = 7 AND t1.team = '@ utah'	2-11965481-11
+SELECT series FROM wikisql_data t1 WHERE t1.high_rebounds = 'Gasol (10)'	2-11965481-11
+SELECT t1.d_49, t1.d_46 FROM wikisql_data t1 WHERE t1.rowid = 13	2-1106979-2
+SELECT t1.d_40, t1.d_44 FROM wikisql_data t1	2-1106979-2
+SELECT t1.d_45, t1.d_42 FROM wikisql_data t1 WHERE t1.d_49 = 'r 22'	2-1106979-2
+SELECT t1.d_46 FROM wikisql_data t1 WHERE t1.d_45 = 'r 5'	2-1106979-2
+SELECT t1.d_47 FROM wikisql_data t1 WHERE t1.d_41 = 'r 21'	2-1106979-2
+SELECT t1.name FROM wikisql_data t1 WHERE t1.year = 'junior' AND t1.high_school LIKE '%wheatley%'	2-12032893-1
+SELECT home_town FROM wikisql_data t1 WHERE t1.name LIKE '%rob cunningham%'	2-12032893-1
+SELECT position FROM wikisql_data t1 WHERE t1.year = 'freshman' AND t1.weight > 210	2-12032893-1
+SELECT home_town FROM wikisql_data WHERE year = 'freshman' AND height = '6–6'	2-12032893-1
+SELECT name FROM wikisql_data t1 WHERE t1.year = 'freshman' AND t1.home_town = 'los angeles, ca' AND t1.height = '6–4'	2-12032893-1
+SELECT result FROM wikisql_data WHERE goal = '3'	2-1108995-1
+SELECT AVG(ties) FROM wikisql_data AS t1 WHERE t1.team = 'montreal victorias' AND t1.games_played > 8	2-11750790-1
+SELECT AVG(losses) FROM wikisql_data WHERE wins = 3	2-11750790-1
+SELECT MAX(goals_against) FROM wikisql_data AS t1 WHERE t1.wins < 1	2-11750790-1
+SELECT SUM(goals_for) FROM wikisql_data WHERE ties > 0 AND goals_against > 35 AND wins < 2	2-11750790-1
+SELECT SUM(losses) FROM wikisql_data AS t1 WHERE t1.goals_against < 34 AND t1.games_played < 8	2-11750790-1
+SELECT t1.platform FROM wikisql_data t1	2-11561331-41
+SELECT system FROM wikisql_data WHERE name = 'ELKJS'	2-11561331-41
+SELECT system FROM wikisql_data WHERE name = 'ELKJS'	2-11561331-41
+SELECT t1.numbers FROM wikisql_data t1 WHERE t1.completed < '1904-01-01'	2-11957555-1
+SELECT MIN(completed) FROM wikisql_data t1 WHERE t1.quantity > 10 AND t1.numbers BETWEEN 53 AND 58 OR t1.numbers BETWEEN 61 AND 72	2-11957555-1
+SELECT quantity FROM wikisql_data WHERE numbers = '29-36'	2-11957555-1
+SELECT reg_gp FROM wikisql_data t1 WHERE t1.rd = 1 AND t1.player = 'rick vaive'	2-11636955-11
+SELECT reg_gp FROM wikisql_data t1 WHERE t1.rd = 1 AND t1.player = 'rick vaive'	2-11636955-11
+SELECT COUNT(rd) FROM wikisql_data WHERE pick < 5	2-11636955-11
+SELECT opponent FROM wikisql_data t1 WHERE t1.week > 15	2-11267418-1
+SELECT opponent FROM wikisql_data t1 WHERE t1.game_site = 'Robert F. Kennedy Memorial Stadium' AND t1.week = 8	2-11267418-1
+SELECT date FROM wikisql_data t1 WHERE t1.record = '31–19–9'	2-11801035-7
+SELECT visitor FROM wikisql_data t1 WHERE t1.record = '30–19–9'	2-11801035-7
+SELECT school FROM wikisql_data WHERE player = 'Bo Jackson'	2-11449590-1
+SELECT MAX(pick) FROM wikisql_data t1 WHERE t1.position = 'Guard'	2-11449590-1
+SELECT MAX(pick) FROM wikisql_data t1 WHERE t1.school = 'auburn'	2-11449590-1
+SELECT code FROM wikisql_data t1 WHERE t1.place = 'Glen Harvie' AND t1.population > 2774	2-11590808-1
+SELECT rider FROM wikisql_data WHERE round_1_points = 18.185	2-11939305-3
+SELECT MAX(total) FROM wikisql_data WHERE horse = 'carlson'	2-11939305-3
+SELECT t1.rider FROM wikisql_data t1 WHERE t1.round_1_points = 7.465 AND t1.total > 16.615	2-11939305-3
+SELECT high_assists FROM wikisql_data t1 WHERE t1.date = 'April 8' AND t1.game < 78	2-10812293-8
+SELECT score FROM wikisql_data WHERE game = 82	2-10812293-8
+SELECT t1.home_team FROM wikisql_data t1 WHERE t1.away_team = 'Essendon' AND t1.crowd > 19491	2-10809157-11
+SELECT date FROM wikisql_data WHERE away_team_score = 15.7	2-10809157-11
+SELECT date FROM wikisql_data t1 WHERE t1.venue = 'Kardinia Park'	2-10809157-11
+SELECT t1.high_points FROM wikisql_data t1 JOIN wikisql_data t2 ON t1.date = t2.date AND t1.game = t2.game WHERE t2.high_rebounds = 13 AND t2.high_rebounds_name = 'Chris Bosh'	2-11960407-2
+SELECT score FROM wikisql_data WHERE team = '@ Cleveland'	2-11960407-2
+SELECT high_rebounds FROM wikisql_data WHERE game = 6	2-11960407-2
+SELECT score FROM wikisql_data t1 WHERE t1.visitor = 'NY Islanders'	2-11902366-7
+SELECT t1.record FROM wikisql_data t1 WHERE t1.visitor = 'Ottawa'	2-11902366-7
+SELECT total_seats FROM wikisql_data t1 WHERE t1.constituency_seats > 0 AND t1.party = 'Liberal Democrat' AND t1.regional_seats < 6	2-11100973-1
+SELECT regional_seats FROM wikisql_data t1 WHERE t1.party = 'SNP' AND t1.total_seats > 46	2-11100973-1
+SELECT visitor FROM wikisql_data WHERE date = 'January 10'	2-11902580-6
+SELECT date FROM wikisql_data t1 WHERE t1.decision = 'Niittymaki' AND t1.attendance > 19207 AND t1.record = '28–17–5'	2-11902580-6
+SELECT AVG(draw) FROM wikisql_data WHERE place > 5	2-11437463-1
+SELECT MIN(draw) FROM wikisql_data t1 WHERE t1.artist = 'Stine Findsen' AND t1.points > 42	2-11437463-1
+SELECT draw FROM wikisql_data t1 WHERE t1.points > 44 AND t1.place > 1	2-11437463-1
+SELECT away_team_score FROM wikisql_data WHERE home_team_score = 20.12	2-10809351-10
+SELECT t1.position FROM wikisql_data t1 WHERE t1.round = 2 AND t1.nationality = 'Sweden'	2-11801649-17
+SELECT MAX(t1.round) FROM wikisql_data t1 WHERE t1.player = 'Ian Cole' AND t1.position = 'D' AND t1.nationality = 'United States'	2-11801649-17
+SELECT player FROM wikisql_data t1 WHERE t1.nationality = 'Denmark' AND t1.position = 'C'	2-11801649-17
+SELECT college_junior_club_team_league FROM wikisql_data WHERE player = 'Brett Sonne'	2-11801649-17
+SELECT date FROM wikisql_data WHERE to_par = -12	2-1080294-2
+SELECT COUNT(attendance) FROM wikisql_data WHERE date = '2001-12-16'	2-10996155-1
+SELECT week FROM wikisql_data WHERE attendance = 0	2-10996155-1
+SELECT entered_service FROM wikisql_data WHERE locomotive = 13	2-11129881-1
+SELECT t1.locomotive FROM wikisql_data t1 WHERE t1.type = '2-8-2t' AND t1.entered_service < 1915 AND t1.built > 1911	2-11129881-1
+SELECT MAX(wins) FROM wikisql_data t1 WHERE t1.goal_difference < 4 AND t1.club = 'Villarreal CF' AND t1.played > 38	2-12097215-2
+SELECT MAX(played) FROM wikisql_data WHERE goal_difference < -27	2-12097215-2
+SELECT MAX(losses) FROM wikisql_data WHERE position = 7 AND goals_for > 45	2-12097215-2
+SELECT MAX(position) FROM wikisql_data AS t1 WHERE t1.losses < 17 AND t1.goals_for > 57 AND t1.goal_difference < 4	2-12097215-2
+SELECT AVG(goal_difference) FROM wikisql_data WHERE goals_against = 51 AND losses < 17	2-12097215-2
+SELECT MIN(t1.position) FROM wikisql_data t1 WHERE t1.points BETWEEN 6 AND 32 AND t1.goals_for < 59 AND t1.played > 38	2-12097215-2
+SELECT score_in_the_final FROM wikisql_data WHERE championship = 'Australian Open'	2-113080-1
+SELECT record_set FROM wikisql_data t1 WHERE t1.actor = 'walter brennan' AND t1.year < 1941	2-10966872-6
+SELECT MIN(year) FROM wikisql_data t1 WHERE t1.notes LIKE '%ordinary people%'	2-10966872-6
+SELECT engine FROM wikisql_data WHERE rounds = 'all' AND tyre = 'm' AND driver = 'david coulthard'	2-1132588-1
+SELECT entrant FROM wikisql_data WHERE engine = 'bmw p82'	2-1132588-1
+SELECT rounds FROM wikisql_data WHERE engine = 'Mercedes FO110M'	2-1132588-1
+SELECT driver FROM wikisql_data WHERE engine = 'mercedes fo110m'	2-1132588-1
+SELECT tyre FROM wikisql_data WHERE engine = 'Asiatech AT02' AND driver = 'Alex Yoong'	2-1132588-1
+SELECT chassis FROM wikisql_data t1 WHERE t1.tyre = 'b' AND t1.engine IN ('ferrari 050', 'ferrari 051') AND t1.driver = 'rubens barrichello'	2-1132588-1
+SELECT rank FROM wikisql_data t1 WHERE t1.time = '1:41.40.55'	2-11972799-3
+SELECT time FROM wikisql_data t1 WHERE t1.team = 'Yamaha' AND t1.rider = '398cc'	2-11972799-3
+SELECT time FROM wikisql_data t1 WHERE t1.rank = 6	2-11972799-3
+SELECT rider FROM wikisql_data WHERE team = '399cc Kawasaki'	2-11972799-3
+SELECT high_school FROM wikisql_data WHERE utah_mr_basketball = 'Tyler Haws' AND year = 2009	2-11054706-1
+SELECT COUNT(*) FROM wikisql_data t1 WHERE t1.player = 'Bob Charles' AND t1.earnings > 7646958	2-11621799-4
+SELECT SUM(earnings) FROM wikisql_data t1 WHERE t1.wins = 14 AND t1.rank < 3	2-11621799-4
+SELECT AVG(t1.wins) FROM wikisql_data t1 WHERE t1.rank < 2 AND t1.earnings > 7676552	2-11621799-4
+SELECT t1.constructor FROM wikisql_data t1 WHERE t1.time_retired = 'Out of fuel' AND t1.laps < 28	2-1123247-2
+SELECT MAX(t1.laps) FROM wikisql_data t1 WHERE t1.grid > 21 AND t1.time_retired = '+2 laps'	2-1123247-2
+SELECT secr_numbers FROM wikisql_data WHERE class = 'b1'	2-1169552-11
+SELECT class FROM wikisql_data WHERE year_made = 1880	2-1169552-11
+SELECT date FROM wikisql_data WHERE attendance > 20682	2-11622632-10
+SELECT * FROM wikisql_data t1 WHERE t1.home_team_score = 8.11	2-10808346-16
+SELECT venue FROM wikisql_data WHERE away_team_score = 14.17	2-10808346-16
+SELECT venue FROM wikisql_data t1 WHERE t1.away_team_score = 10.17	2-10790510-2
+SELECT home_team FROM wikisql_data t1 WHERE t1.away_team = 'Richmond'	2-10790510-2
+SELECT home_team_score FROM wikisql_data t1 WHERE t1.away_team = 'south melbourne'	2-10790510-2
+SELECT away_team_score FROM wikisql_data t1 WHERE t1.venue = 'arden street oval'	2-10790510-2
+SELECT rounds FROM wikisql_data WHERE tyre = 'B' AND engine = 'Ferrari 053'	2-1126627-1
+SELECT chassis FROM wikisql_data WHERE driver = 'Ricardo Zonta'	2-1126627-1
+SELECT free_practice_driver_s FROM wikisql_data WHERE engine = 'Ford RS2'	2-1126627-1
+SELECT SUM(matches) FROM wikisql_data AS t1 WHERE t1.season = '2008/2009' AND t1.lost < 5 AND t1.draw > 9	2-11628153-8
+SELECT competition FROM wikisql_data AS t1 WHERE t1.points > 30 AND t1.draw < 5 AND t1.lost > 10	2-11628153-8
+SELECT SUM(lost) FROM wikisql_data WHERE matches > 26 AND points = 62 AND draw > 5	2-11628153-8
+SELECT AVG(rating) FROM wikisql_data WHERE episode = 'a lost puppy dog'	2-11220799-6
+SELECT record FROM wikisql_data t1 WHERE t1.date = 'January 19'	2-11554565-3
+SELECT score FROM wikisql_data WHERE date = 'January 12'	2-11554565-3
+SELECT t1.home FROM wikisql_data t1 WHERE t1.visitor = 'Montreal Canadiens' AND t1.date = 'February 12'	2-11554565-3
+SELECT city_of_license, frequency_mhz FROM wikisql_data WHERE frequency_mhz = 90.3	2-11681226-1
+SELECT call_sign FROM wikisql_data WHERE erp_w = 4	2-11681226-1
+SELECT frequency_mhz FROM wikisql_data WHERE erp_w = 55	2-11681226-1
+SELECT fcc_info FROM wikisql_data WHERE call_sign = 'w279at'	2-11681226-1
+SELECT call_sign FROM wikisql_data WHERE erp_w = 27	2-11681226-1
+SELECT date FROM wikisql_data WHERE score = '3 – 1'	2-11801035-6
+SELECT score FROM wikisql_data t1 WHERE t1.visitor = 'Boston Bruins'	2-11801035-6
+SELECT score FROM wikisql_data WHERE record = '16–14–6'	2-11775918-5
+SELECT secr_numbers FROM wikisql_data WHERE year_made = 1861	2-1169552-9
+SELECT venue FROM wikisql_data WHERE home_team = 'geelong'	2-10887379-6
+SELECT home_team_score FROM wikisql_data WHERE crowd > 11918 AND venue = 'windy hill'	2-10887379-6
+SELECT away_team_score FROM wikisql_data WHERE home_team_score = 14.14	2-10790510-17
+SELECT home_team FROM wikisql_data WHERE venue = 'Punt Road Oval'	2-10790510-17
+SELECT away_team_score FROM wikisql_data WHERE away_team = 'Melbourne'	2-10790510-17
+SELECT driver FROM wikisql_data t1 WHERE t1.chassis = 'd6'	2-1140074-1
+SELECT constructor FROM wikisql_data t1 WHERE t1.driver = 'Niki Lauda' AND t1.chassis = 'mp4/1c'	2-1140074-1
+SELECT constructor FROM wikisql_data WHERE driver = 'Piercarlo Ghinzani' AND engine = 'Ford Cosworth DFV 3.0 V8'	2-1140074-1
+SELECT t1.seniors FROM wikisql_data t1, wikisql_data t2, wikisql_data t3 WHERE t1.year < 2007 AND t2.fourths_under_14_s = 'kiewa-sandy creek' AND t3.reserves = 'mitta united'	2-11338646-2
+SELECT t1.seniors FROM wikisql_data t1 WHERE t1.year > 2005 AND t1.reserves = 'kiewa-sandy creek' AND t1.fourths_under_14_s = 'kiewa-sandy creek'	2-11338646-2
+SELECT t1.fourths_under_14_s FROM wikisql_data t1 WHERE t1.seniors = 'dederang mt beauty'	2-11338646-2
+SELECT t1.thirds_under_17_s FROM wikisql_data t1 WHERE t1.reserves = 'barnawartha'	2-11338646-2
+SELECT t1.seniors FROM wikisql_data t1 WHERE t1.year < 2006 AND t1.fourths_under_14_s = 'kiewa-sandy creek'	2-11338646-2
+SELECT MAX(grid) FROM wikisql_data t1 WHERE t1.driver = 'Jean Alesi' AND t1.laps < 24	2-1123351-2
+SELECT laps FROM wikisql_data t1 WHERE t1.driver = 'Ricardo Zonta' AND t1.grid < 14	2-1123351-2
+SELECT MAX(grid) FROM wikisql_data t1 WHERE t1.driver = 'Alexander Wurz' AND t1.laps < 25	2-1123351-2
+SELECT COUNT(year) FROM wikisql_data WHERE title = 'Magia Nuda'	2-1176486-3
+SELECT country FROM wikisql_data t1 WHERE t1.music = 'Angelo Francesco Lavagnino' AND t1.year = 1969	2-1176486-3
+SELECT music FROM wikisql_data t1 WHERE t1.notes = 'AKA Africa Uncensored'	2-1176486-3
+SELECT t1.right_ascension_j2000 FROM wikisql_data t1 WHERE t1.constellation = 'Pegasus' AND t1.ngc_number = '7318a'	2-11051840-4
+SELECT declination_j2000 FROM wikisql_data t1 WHERE t1.object_type = 'Spiral Galaxy' AND t1.constellation = 'Pegasus' AND t1.ngc_number = 7337	2-11051840-4
+SELECT right_ascension_j2000 FROM wikisql_data t1 WHERE t1.constellation = 'Pegasus' AND t1.ngc_number = 7343	2-11051840-4
+SELECT score FROM wikisql_data WHERE date = 'October 13'	2-11771022-3
+SELECT home FROM wikisql_data WHERE visitor = 'Carolina' AND decision = 'won'	2-11771022-3
+SELECT score FROM wikisql_data WHERE date = 'October 31'	2-11771022-3
+SELECT home FROM wikisql_data WHERE date = 'October 13'	2-11771022-3
+SELECT t1.team FROM wikisql_data t1 WHERE t1.capacity > 26542 AND t1.home_city = 'milan' AND t1.col_2011_12_season = 6	2-1083851-1
 SELECT home_city FROM wikisql_data WHERE stadium = 'Angelo Massimino Stadium'	2-1083851-1
 SELECT h_a FROM wikisql_data WHERE date = '20 february 2007'	2-11115098-8
 SELECT COUNT(attendance) FROM wikisql_data WHERE date = '2 may 2007'	2-11115098-8

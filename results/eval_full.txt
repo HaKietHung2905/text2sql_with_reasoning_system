@@ -1,22 +1,22 @@
 ================================================================================
 SPIDER EVALUATION SUMMARY REPORT
-Generated : 2026-07-28 08:45:42
+Generated : 2026-07-29 19:11:31
 Results   : results/eval_full.json
 ================================================================================
 
 MAIN METRICS
 ----------------------------------------
-  Exact Match Accuracy : 69.54%  (69.5%)
-  Execution Accuracy   : 85.20%  (85.2%)
+  Exact Match Accuracy : 69.73%  (69.7%)
+  Execution Accuracy   : 86.36%  (86.4%)
   Total Evaluated      : 0
 
 PER-DIFFICULTY BREAKDOWN
 ----------------------------------------
   easy     | count=116   | EM=85.34% | EX=93.10%
-  medium   | count=358   | EM=87.71% | EX=94.69%
-  hard     | count=292   | EM=60.62% | EX=82.19%
-  extra    | count=265   | EM=48.68% | EX=73.21%
-  all      | count=1034  | EM=69.54% | EX=85.20%
+  medium   | count=358   | EM=87.43% | EX=94.97%
+  hard     | count=293   | EM=60.75% | EX=83.28%
+  extra    | count=267   | EM=49.06% | EX=75.28%
+  all      | count=1034  | EM=69.73% | EX=86.36%
 
 ================================================================================
 END OF REPORT
