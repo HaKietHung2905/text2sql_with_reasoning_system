@@ -31,7 +31,7 @@ import sqlite3
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional
 from dotenv import load_dotenv
 
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -58,7 +58,6 @@ load_dotenv()
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.reasoning.evaluator import evaluate
-from src.evaluation.foreign_key_mapper import build_foreign_key_map_from_json
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -641,17 +640,26 @@ def _sem_gold_to_struct(gold_sql_field: Any, headers: List[str]) -> Optional[Dic
         "count_star": (agg == _SEM_AGG_OPS.index("COUNT")),
     }
 
+def _load_table_records(table_file: str) -> List[dict]:
+    """
+    Load table records from either a JSON array file (tables.json) or a
+    JSONL file (dev.tables.jsonl — one JSON object per line).
+    """
+    with open(table_file, encoding="utf-8") as f:
+        if table_file.endswith(".jsonl"):
+            return [json.loads(line) for line in f if line.strip()]
+        return json.load(f)
 
 def _sem_load_headers_map(table_file: str) -> Dict[str, List[str]]:
     """
-    Load column headers from tables.json.
+    Load column headers from tables.json or tables.jsonl.
     Handles BOTH formats:
       - Original WikiSQL: {"id": "...", "header": ["col1", "col2"]}
       - Spider format:    {"db_id": "...", "column_names_original": [[-1,"*"],[0,"col1"]]}
+    Also accepts JSONL (one JSON object per line), e.g. dev.tables.jsonl.
     """
     headers_map: Dict[str, List[str]] = {}
-    with open(table_file, encoding="utf-8") as f:
-        tables = json.load(f)
+    tables = _load_table_records(table_file)
     for t in tables:
         db_id = t.get("db_id") or t.get("id", "")
         if not db_id:

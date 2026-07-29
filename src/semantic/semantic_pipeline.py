@@ -29,17 +29,6 @@ except ImportError:
     import logging
     logger = logging.getLogger(__name__)
 
-def __init__(self):
-    self.analysis_cache = {} 
-
-def analyze(self, question: str) -> Dict:
-    cache_key = question.lower().strip()
-    if cache_key in self.analysis_cache:
-        return self.analysis_cache[cache_key]
-    
-    result = self._perform_analysis(question)
-    self.analysis_cache[cache_key] = result
-    return result
 
 class SemanticPipeline:
     """
@@ -80,14 +69,29 @@ class SemanticPipeline:
             'enhanced_queries': 0
         }
     
-    def enhance_question(self, question: str, schema: Optional[Dict] = None) -> Dict:
+    def enhance_question(
+        self,
+        question: str,
+        db_id: Optional[str] = None,
+        schema: Optional[Dict] = None,
+    ) -> Dict:
         """
-        Original method name - enhance a question with semantic understanding
-        
+        Analyze a question with the rule-based semantic layer and produce
+        a short natural-language hint block for prompt injection.
+
+        The question text itself is NOT rewritten (safer — avoids corrupting
+        the original NL question); instead, 'semantic_hints' carries the
+        signal to be injected as a separate prompt block, analogous to how
+        Semantic RAG contributes Ek(q) and ReasoningBank contributes Φm(q).
+
         Args:
             question: Natural language query
-            schema: Database schema (optional)
-            
+            db_id: Database identifier (kept for interface consistency;
+                entity detection uses `schema` directly, not db_id)
+            schema: {table_name: [column_names]} for the question's target
+                database. When provided, entity detection generalizes to
+                any database via SimpleSemanticLayer.detect_entities_from_schema.
+
         Returns:
             Dictionary with enhanced question and analysis
         """
@@ -95,42 +99,93 @@ class SemanticPipeline:
             return {
                 'original_question': question,
                 'enhanced_question': question,
+                'semantic_hints': '',
                 'analysis': {},
                 'enhanced': False
             }
-        
+
         try:
-            # Analyze query intent
-            analysis = self.semantic_layer.analyze_query_intent(question)
-            
+            # Analyze query intent (schema-aware entity detection)
+            analysis = self.semantic_layer.analyze_query_intent(
+                question, schema_info=schema)
+
             # Track statistics
             self.stats['queries_analyzed'] += 1
             if analysis.get('relevant_metrics'):
                 self.stats['intents_detected'] += 1
             if analysis.get('relevant_dimensions'):
                 self.stats['entities_mapped'] += 1
-            
-            # Enhance question (placeholder - implement your enhancement logic)
-            enhanced_question = question
-            enhanced = False
-            
+
+            semantic_hints = self._format_semantic_hints(analysis)
+            enhanced = bool(semantic_hints)
+            if enhanced:
+                self.stats['enhanced_queries'] += 1
+
             return {
                 'original_question': question,
-                'enhanced_question': enhanced_question,
+                'enhanced_question': question,
+                'semantic_hints': semantic_hints,
                 'analysis': analysis,
                 'enhanced': enhanced,
                 'complexity': self._assess_complexity(analysis)
             }
-            
+
         except Exception as e:
             logger.warning(f"Question enhancement failed: {e}")
             return {
                 'original_question': question,
                 'enhanced_question': question,
+                'semantic_hints': '',
                 'analysis': {},
                 'enhanced': False
             }
-    
+
+    def _format_semantic_hints(self, analysis: Dict) -> str:
+        """Turn rule-based semantic analysis into short natural-language hints."""
+        if not analysis:
+            return ""
+
+        hints = []
+        intent_categories = analysis.get('intent_categories', [])
+        metric_types = {m['type'] for m in analysis.get('relevant_metrics', [])}
+
+        if 'count' in metric_types:
+            hints.append("Likely needs COUNT aggregation.")
+        if 'distinct_count' in metric_types:
+            hints.append("Likely needs COUNT(DISTINCT ...).")
+        if 'average' in metric_types:
+            hints.append("Likely needs AVG aggregation.")
+        if 'sum' in metric_types:
+            hints.append("Likely needs SUM aggregation.")
+        if 'max' in metric_types:
+            hints.append("Likely needs MAX aggregation.")
+        if 'min' in metric_types:
+            hints.append("Likely needs MIN aggregation.")
+
+        if analysis.get('relevant_dimensions') and 'grouping' in intent_categories:
+            hints.append("Likely needs GROUP BY on a categorical or temporal column.")
+
+        if 'ordering' in intent_categories:
+            hints.append("Likely needs ORDER BY with LIMIT if a single top/bottom row is requested.")
+
+        if 'filtering' in intent_categories or 'comparison' in intent_categories:
+            hints.append("Likely needs a WHERE clause filtering on a specific value or comparison.")
+
+        entities = analysis.get('relevant_entities', [])
+        if entities:
+            table_names = sorted({e.get('name', e.get('primary_table', '')) for e in entities if e})
+            table_names = [t for t in table_names if t]
+            if table_names:
+                hints.append(f"Question likely references table(s): {', '.join(table_names)}.")
+
+        if not hints:
+            return ""
+
+        return (
+            "SEMANTIC LAYER HINTS (heuristic — verify against actual schema):\n"
+            + "\n".join(f"- {h}" for h in hints) + "\n"
+        )
+
     def analyze(self, question: str, schema: Optional[Dict] = None) -> Dict:
         """
         Alias for enhance_question - analyze a question
@@ -144,7 +199,7 @@ class SemanticPipeline:
         Returns:
             Dictionary with analysis and complexity assessment
         """
-        result = self.enhance_question(question, schema)
+        result = self.enhance_question(question, None, schema)
         
         # Return simplified format for analysis
         return {

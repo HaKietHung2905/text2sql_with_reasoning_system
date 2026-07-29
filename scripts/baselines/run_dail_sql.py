@@ -53,7 +53,7 @@ import numpy as np
 import time
 import subprocess
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict
 from tqdm import tqdm
 from dotenv import load_dotenv
 

@@ -15,20 +15,31 @@ logger = get_logger(__name__)
 
 WIKISQL_ANNOTATION_RULES = """\
 ━━━ WIKISQL ANNOTATION RULES (follow exactly) ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-1. SINGLE-VALUE RETRIEVAL — always wrap in MAX():
-   "What is the X?" / "Which X?" / "Name the X"
-   → SELECT MAX(col) FROM wikisql_data WHERE ...
+1. DEFAULT — bare SELECT, no aggregation:
+   Most "What is X?" / "Which X?" / "Name the X" questions do NOT need
+   MAX/MIN/SUM/COUNT — they just select the matching column.
+   → SELECT col FROM wikisql_data WHERE ...
+   Example: "What player played guard for Toronto in 1996-97?"
+            → SELECT player FROM wikisql_data WHERE position = 'Guard'
 
-2. MINIMUM RETRIEVAL — use MIN() when lowest/earliest/first is implied:
+2. MAXIMUM — ONLY when the question has an explicit superlative word
+   ("highest", "most", "best", "latest", "top", "greatest", "maximum"):
+   → SELECT MAX(col) FROM wikisql_data WHERE ...
+   Example: "What is the highest pick number for Northwestern?"
+            → SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'
+   Do NOT use MAX() just because the question starts with "What is the X" —
+   only when a superlative word like above is present.
+
+3. MINIMUM — ONLY when the question has an explicit superlative word
+   ("lowest", "earliest", "first", "least", "smallest", "minimum"):
    → SELECT MIN(col) FROM wikisql_data WHERE ...
 
-3. COUNTING RECORDS — use COUNT(col), NEVER COUNT(*):
+4. COUNTING RECORDS — use COUNT(col), NEVER COUNT(*):
    "How many [entities]?" → SELECT COUNT(col) FROM wikisql_data WHERE ...
 
-4. NUMERIC VALUE IN A COLUMN — use bare SELECT (NOT SUM, NOT COUNT):
-   If column name contains the answer unit (goals, viewers, votes), use SELECT col.
-
-5. TOTAL/SUM OVER MULTIPLE ROWS — use SUM() only across many rows.
+5. TOTAL/SUM OVER MULTIPLE ROWS — use SUM() only when the question asks
+   for a combined/total value across multiple matching rows
+   ("total", "combined", "sum of").
 
 6. WHERE: include ALL filters stated, nothing more. No subqueries. No ORDER BY LIMIT 1.
 
@@ -36,9 +47,12 @@ WIKISQL_ANNOTATION_RULES = """\
    WHERE regular_season = '4th, Atlantic Division'  ← correct
 
 8. String values: single quotes. Numeric values: no quotes.
+
+DECISION ORDER: check rules 2/3/4/5 for explicit trigger words first.
+If none apply, default to rule 1 (bare SELECT) — this is the MOST COMMON
+case. Do not add MAX/MIN/SUM/COUNT unless a trigger word is present.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 """
-
 
 def _is_server_error(exc: Exception) -> bool:
     _5xx = ("500","502","503","504","Internal Server Error","Bad Gateway",
@@ -97,6 +111,33 @@ class SQLGenerator:
             return False
 
     # ──────────────────────────────────────────────────────────────────────────
+    # Prompt-injection helpers (Semantic Layer + Semantic RAG)
+    # ──────────────────────────────────────────────────────────────────────────
+
+    def _format_semantic_hints_block(self, semantic_hints: Optional[str]) -> str:
+        """Pass through pre-formatted Semantic Layer hints (see SemanticPipeline)."""
+        if not semantic_hints:
+            return ""
+        return semantic_hints + "\n"
+
+    def _format_few_shot_block(self, few_shot_examples: Optional[List[Dict]]) -> str:
+        """Format retrieved few-shot examples (Ek(q)) as a prompt block."""
+        if not few_shot_examples:
+            return ""
+        lines = ["RETRIEVED SIMILAR EXAMPLES (from training set):"]
+        for i, ex in enumerate(few_shot_examples, 1):
+            q = ex.get('question', ex.get('original_question', ''))
+            sql = ex.get('sql_query', ex.get('sql', ''))
+            if q and sql:
+                lines.append(f"Example {i}:")
+                lines.append(f"Q: {q}")
+                lines.append(f"SQL: {sql}")
+        if len(lines) == 1:
+            return ""
+        lines.append("")
+        return "\n".join(lines) + "\n"
+
+    # ──────────────────────────────────────────────────────────────────────────
     # Public API
     # ──────────────────────────────────────────────────────────────────────────
 
@@ -105,11 +146,14 @@ class SQLGenerator:
         question: str,
         db_path: str,
         schema_info: Optional[Dict] = None,
+        few_shot_examples: Optional[List[Dict]] = None,
+        semantic_hints: Optional[str] = None,
     ) -> str:
         """
         Generate SQL.
 
-        Attempt 1: full prompt,   prefill="SELECT "
+        Attempt 1: full prompt (Semantic Layer hints + Semantic RAG few-shot),
+                   prefill="SELECT "
         Attempt 2: terse prompt,  prefill="SELECT * FROM "  ← forces FROM clause
         Attempt 3: minimal schema, prefill="SELECT * FROM "
         Fallback:  SELECT 1
@@ -121,8 +165,12 @@ class SQLGenerator:
         schema_str = self._get_schema_string(db_path)
         is_wikisql = self._is_wikisql(db_path)
 
-        # Attempt 1: full prompt
-        prompt = self._construct_prompt(question, schema_str, is_wikisql=is_wikisql)
+        # Attempt 1: full prompt (Semantic Layer hints + Semantic RAG few-shot)
+        prompt = self._construct_prompt(
+            question, schema_str, is_wikisql=is_wikisql,
+            few_shot_examples=few_shot_examples,
+            semantic_hints=semantic_hints,
+        )
         try:
             sql = self._clean_sql(self.model.generate(prompt, prefill="SELECT "))
         except Exception as e:
@@ -178,12 +226,22 @@ class SQLGenerator:
         question: str,
         schema_str: str,
         is_wikisql: bool = False,
+        few_shot_examples: Optional[List[Dict]] = None,
+        semantic_hints: Optional[str] = None,
     ) -> str:
         if is_wikisql:
-            return self._construct_prompt_wikisql(question, schema_str)
-        return self._construct_prompt_spider(question, schema_str)
+            return self._construct_prompt_wikisql(
+                question, schema_str, few_shot_examples, semantic_hints)
+        return self._construct_prompt_spider(
+            question, schema_str, few_shot_examples, semantic_hints)
 
-    def _construct_prompt_spider(self, question: str, schema_str: str) -> str:
+    def _construct_prompt_spider(
+        self,
+        question: str,
+        schema_str: str,
+        few_shot_examples: Optional[List[Dict]] = None,
+        semantic_hints: Optional[str] = None,
+    ) -> str:
         return (
             "You are an expert SQL assistant. Generate a SQL query following Spider benchmark format.\n\n"
             f"Database Schema:\n{schema_str}\n\n"
@@ -246,10 +304,18 @@ class SQLGenerator:
             "WHERE t2.age > 20\n\n"
             "Q: Find the weight of the youngest dog.\n"
             "A: SELECT weight FROM pets WHERE pettype = 'dog' ORDER BY pet_age ASC LIMIT 1\n\n"
+            f"{self._format_semantic_hints_block(semantic_hints)}"
+            f"{self._format_few_shot_block(few_shot_examples)}"
             f"Question: {question}\n\nSQL:"
         )
 
-    def _construct_prompt_wikisql(self, question: str, schema_str: str) -> str:
+    def _construct_prompt_wikisql(
+        self,
+        question: str,
+        schema_str: str,
+        few_shot_examples: Optional[List[Dict]] = None,
+        semantic_hints: Optional[str] = None,
+    ) -> str:
         return (
             "You are a Text-to-SQL expert for WikiSQL.\n\n"
             "OUTPUT RULES:\n"
@@ -260,12 +326,16 @@ class SQLGenerator:
             f"{WIKISQL_ANNOTATION_RULES}\n"
             f"Database Schema:\n{schema_str}\n\n"
             "EXAMPLES:\n"
-            "Q: What is the pick number for Northwestern?\n"
+            "Q: What is the highest pick number for Northwestern?\n"
             "A: SELECT MAX(pick) FROM wikisql_data WHERE college = 'Northwestern'\n\n"
+            "Q: What is the pick number for Northwestern?\n"
+            "A: SELECT pick FROM wikisql_data WHERE college = 'Northwestern'\n\n"
             "Q: How many players on Toronto in 2005-06?\n"
             "A: SELECT COUNT(player) FROM wikisql_data WHERE years_in_toronto = '2005-06'\n\n"
             "Q: What player played guard for Toronto in 1996-97?\n"
             "A: SELECT player FROM wikisql_data WHERE position = 'Guard'\n\n"
+            f"{self._format_semantic_hints_block(semantic_hints)}"
+            f"{self._format_few_shot_block(few_shot_examples)}"
             f"Question: {question}\n"
             "SQL:"
         )

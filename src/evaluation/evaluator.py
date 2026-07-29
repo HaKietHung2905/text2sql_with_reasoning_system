@@ -6,7 +6,7 @@ Handles the complete evaluation pipeline for Spider dataset.
 import os
 import re
 import json
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from pathlib import Path
 from tqdm import tqdm
 
@@ -14,7 +14,6 @@ from utils.sql_schema import Schema, get_schema
 from src.data.sql_parser import parse_sql
 from src.evaluation.base_evaluator import BaseEvaluator
 from src.evaluation.hardness import eval_hardness
-from src.evaluation.result_formatter import print_scores
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -575,8 +574,8 @@ def evaluate(
     if use_semantic and SEMANTIC_PIPELINE_AVAILABLE and semantic_pipeline:
         try:
             results['semantic_statistics'] = semantic_pipeline.get_statistics()
-        except:
-            pass
+        except Exception as e:
+            logger.warning(f"Could not retrieve semantic statistics: {e}")
     
     # === SUMMARY ===
     logger.info(f"\n{'='*80}")

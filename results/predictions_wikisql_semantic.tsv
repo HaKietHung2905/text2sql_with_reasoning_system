@@ -1,0 +1,25 @@
+SELECT MAX(position) FROM wikisql_data WHERE school_club_team = 'Butler CC (KS)'	1-10015132-11
+SELECT COUNT(school_club_team) FROM wikisql_data WHERE no_col = 3	1-10015132-11
+SELECT MAX(school_club_team) FROM wikisql_data WHERE no_col = 21	1-10015132-11
+SELECT MAX(player) FROM wikisql_data WHERE no_col = 42	1-10015132-11
+SELECT player FROM wikisql_data WHERE position = 'Guard' AND years_in_toronto = '1996-97'	1-10015132-11
+SELECT player FROM wikisql_data WHERE school_club_team = 'Westchester High School'	1-10015132-9
+SELECT MAX(school_club_team) FROM wikisql_data WHERE player = 'Amir Johnson'	1-10015132-9
+SELECT COUNT(no_col) FROM wikisql_data WHERE years_in_toronto = '2005-06'	1-10015132-9
+SELECT COUNT(position) FROM wikisql_data WHERE years_in_toronto = '2006-07'	1-10015132-9
+SELECT nationality FROM wikisql_data WHERE school_club_team = 'Fresno State'	1-10015132-9
+SELECT MAX(school_club_team) FROM wikisql_data WHERE player = 'Trey Johnson'	1-10015132-9
+SELECT MAX(ended_time_as_senior_g8_leader) FROM wikisql_data WHERE person = 'Jacques Chirac'	1-10026563-1
+SELECT MAX(entered_office_as_head_of_state_or_government) FROM wikisql_data WHERE office = 'Prime Minister of Italy'	1-10026563-1
+SELECT MAX(country_exonym) FROM wikisql_data WHERE official_or_native_language_s_alphabet_script = 'Dutch Papiamento'	1-1008653-1
+SELECT official_or_native_language_s_alphabet_script FROM wikisql_data WHERE capital_exonym = 'Canberra'	1-1008653-1
+SELECT MAX(capital_endonym) FROM wikisql_data WHERE capital_exonym = 'Canberra'	1-1008653-1
+SELECT MAX(capital_endonym) FROM wikisql_data WHERE country_endonym = 'Anguilla'	1-1008653-1
+SELECT MAX(capital_exonym) FROM wikisql_data WHERE capital_endonym = 'St. John's'	1-1008653-1
+SELECT COUNT(capital_exonym) FROM wikisql_data WHERE country_exonym = 'Australia'	1-1008653-1
+SELECT MAX(original_air_date) FROM wikisql_data WHERE production_code = '9ABX02'	1-10088101-1
+SELECT MAX(no_in_series) FROM wikisql_data WHERE production_code = '8ABX15'	1-10088101-1
+SELECT MIN(ties_played) FROM wikisql_data WHERE years_played = 6	1-10295819-2
+SELECT amount_of_trees_that_require_replacement FROM wikisql_data WHERE prevailing_types = 'pine — 29.37 poplar — 26.12 acer negundo — 13.2'	1-10342194-3
+SELECT MAX(amount_of_trees_that_require_replacement) FROM wikisql_data WHERE district = 'Leninsky'	1-10342194-3
+SELECT MAX(district) FROM wikisql_data WHERE total_amount_of_trees < 150817.6878461314 AND amount_of_old_trees = 1928	1-10342194-3

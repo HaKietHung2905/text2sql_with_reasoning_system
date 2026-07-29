@@ -120,6 +120,10 @@ def main():
     # Feature flags
     parser.add_argument('--use_chromadb',      action='store_true')
     parser.add_argument('--chromadb_config',   default=None)
+    parser.add_argument('--chromadb_persist_dir', default='./data/embeddings/chroma_db',
+                        help='ChromaDB persist directory for Semantic RAG retrieval')
+    parser.add_argument('--top_k', type=int, default=3,
+                        help='Number of few-shot examples to retrieve via Semantic RAG')
     parser.add_argument('--use_semantic',      action='store_true')
     parser.add_argument('--semantic_config',   default=None)
     parser.add_argument('--use_reasoning_bank', action='store_true')
@@ -195,6 +199,21 @@ def main():
         except Exception as e:
             logger.warning(f"ReasoningBank failed: {e}")
 
+    # ── Semantic RAG retriever ───────────────────────────────────────────────
+    retriever = None
+    if args.use_chromadb:
+        try:
+            from src.retrieval.retriever import SpiderRetriever
+            is_wikisql_run = 'wikisql' in args.questions.lower() or 'wikisql' in args.db.lower()
+            prefix = 'wikisql' if is_wikisql_run else 'spider'
+            retriever = SpiderRetriever(
+                persist_dir=args.chromadb_persist_dir,
+                collection_prefix=prefix,
+            )
+            logger.info(f"✓ Semantic RAG retriever ready (prefix={prefix}, top_k={args.top_k})")
+        except Exception as e:
+            logger.warning(f"Semantic RAG retriever failed to load: {e}")
+
     # ── SQL generator ─────────────────────────────────────────────────────────
     try:
         from src.generation.sql_generator import SQLGenerator
@@ -236,28 +255,54 @@ def main():
 
                 else:
                     try:
-                        # ── Semantic enhancement ──────────────────────────────
+                        # ── Load schema once (shared by Semantic Layer + ReasoningBank) ──
+                        db_context = None
+                        if semantic_pipeline or reasoning_pipeline:
+                            try:
+                                db_context = load_full_db_context(db_id, args.db)
+                            except Exception as e:
+                                logger.debug(f"Failed to load db context for {db_id}: {e}")
+
+                        # ── Semantic Layer enhancement (rule-based hints) ─────
                         enhanced_question = question
+                        semantic_hints = None
                         if semantic_pipeline:
                             try:
+                                schema_for_semantic = (db_context or {}).get('schema', {})
                                 res = semantic_pipeline.enhance_question(
-                                    question, db_id, None)
+                                    question, db_id, schema_for_semantic)
                                 enhanced_question = res.get('enhanced_question', question)
-                            except Exception:
-                                pass
+                                semantic_hints = res.get('semantic_hints') or None
+                            except Exception as e:
+                                logger.debug(f"Semantic Layer enhancement failed: {e}")
+
+                        # ── Semantic RAG: retrieve few-shot examples Ek(q) ────
+                        few_shot_examples = None
+                        if retriever:
+                            try:
+                                rag_result = retriever.retrieve_similar_questions(
+                                    enhanced_question, n_results=args.top_k
+                                )
+                                few_shot_examples = rag_result.get('results')
+                            except Exception as e:
+                                logger.debug(f"Semantic RAG retrieval failed: {e}")
+                                few_shot_examples = None
 
                         # ── ReasoningBank ─────────────────────────────────────
                         sql = ''
                         if reasoning_pipeline:
                             try:
-                                db_context = load_full_db_context(db_id, args.db)
+                                if db_context is None:
+                                    db_context = load_full_db_context(db_id, args.db)
                                 rb_result = reasoning_pipeline.generate_with_reasoning(
                                     question=enhanced_question,
                                     db_id=db_id,
                                     schema=db_context.get('schema', {}),
                                     gold_sql=item.get('query', item.get('sql')),
                                     sql_generator=lambda q: sql_generator.generate(
-                                        q, db_path),
+                                        q, db_path,
+                                        few_shot_examples=few_shot_examples,
+                                        semantic_hints=semantic_hints),
                                 )
                                 sql = rb_result.get('sql', '') or ''
                             except Exception as e:
@@ -269,7 +314,10 @@ def main():
 
                         # ── Plain generation fallback ─────────────────────────
                         if not sql or sql.strip().upper() == 'SELECT 1':
-                            sql = sql_generator.generate(enhanced_question, db_path)
+                            sql = sql_generator.generate(
+                                enhanced_question, db_path,
+                                few_shot_examples=few_shot_examples,
+                                semantic_hints=semantic_hints)
 
                         sql = sql or 'SELECT 1'
 

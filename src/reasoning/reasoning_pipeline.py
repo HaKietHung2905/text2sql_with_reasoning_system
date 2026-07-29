@@ -7,7 +7,7 @@ to the evaluation system, enabling continuous learning from experiences.
 
 import time
 import uuid
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 from pathlib import Path
 import json
 
@@ -24,7 +24,7 @@ from src.reasoning import (
     ParallelScaling,
     SequentialScaling
 )
-from src.reasoning.memory_retrieval import RetrievalContext, RetrievalResult
+from src.reasoning.memory_retrieval import RetrievalContext
 from utils.logging_utils import get_logger
 
 logger = get_logger(__name__)
@@ -222,7 +222,11 @@ class ReasoningBankPipeline:
             generation_metadata = result['metadata']
         else:
             # Standard generation — let 5xx propagate directly
-            predicted_sql = sql_generator(question) if sql_generator else None
+            prompt_to_use = (
+                self._apply_strategies_to_prompt(question, strategies_used)
+                if strategies_used else question
+            )
+            predicted_sql = sql_generator(prompt_to_use) if sql_generator else None
             generation_metadata = {
                 'method': 'standard',
                 'strategies_applied': len(strategies_used)

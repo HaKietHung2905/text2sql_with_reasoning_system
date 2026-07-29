@@ -321,7 +321,9 @@ class SimpleSemanticLayer:
         for dimension in default_dimensions:
             self.add_dimension(dimension)
         
-        # Default entities (Spider dataset specific)
+        # Default entities (fallback only — used when schema_info is not
+        # provided to analyze_query_intent(); see detect_entities_from_schema
+        # for the schema-driven, database-agnostic path used in production).
         default_entities = [
             Entity("car", "cars_data", ["car", "vehicle", "automobile", "auto"], 
                    ["car_names", "car_makers", "model_list"]),
@@ -345,9 +347,65 @@ class SimpleSemanticLayer:
     def add_entity(self, entity: Entity):
         """Add an entity to the semantic layer"""
         self.entities[entity.name] = entity
-    
-    def analyze_query_intent(self, query: str) -> Dict[str, Any]:
-        """Analyze query to understand intent and suggest enhancements"""
+
+    def detect_entities_from_schema(
+        self,
+        query: str,
+        schema_info: Optional[Dict[str, List[str]]]
+    ) -> List[Dict[str, str]]:
+        """
+        Generalized entity detection.
+        Args:
+            query: Natural language question
+            schema_info: {table_name: [column_names, ...]} for the specific
+                database this question targets (e.g. from
+                utils.sql_schema.load_full_db_context)
+
+        Returns:
+            List of {'table': str, 'matched_term': str}
+        """
+        if not schema_info:
+            return []
+
+        query_tokens = set(re.findall(r"[a-z]+", query.lower()))
+        detected = []
+
+        for table in schema_info.keys():
+            table_lower = table.lower()
+            candidates = {table_lower}
+
+            # naive singular/plural variant
+            if table_lower.endswith("s") and len(table_lower) > 3:
+                candidates.add(table_lower[:-1])
+            else:
+                candidates.add(table_lower + "s")
+
+            # snake_case / space-separated words as extra candidates
+            candidates.update(p for p in re.split(r"[_\s]+", table_lower) if len(p) > 2)
+
+            matched_term = next((c for c in candidates if c in query_tokens), None)
+            if matched_term:
+                detected.append({'table': table, 'matched_term': matched_term})
+
+        return detected
+
+    def analyze_query_intent(
+        self,
+        query: str,
+        schema_info: Optional[Dict[str, List[str]]] = None
+    ) -> Dict[str, Any]:
+        """
+        Analyze query to understand intent and suggest enhancements.
+
+        Args:
+            query: Natural language question
+            schema_info: Optional {table_name: [columns]} for the question's
+                target database. When provided, entity detection is done
+                dynamically against the real schema (generalizes to all
+                databases); when omitted, falls back to the small hardcoded
+                entity dictionary (car/student/customer) for backward
+                compatibility with callers that don't have schema on hand.
+        """
         query_lower = query.lower()
         
         analysis = {
@@ -372,11 +430,21 @@ class SimpleSemanticLayer:
                 analysis['relevant_dimensions'].append(dimension.to_dict())
                 analysis['complexity_score'] += 1
         
-        # Find relevant entities
-        for entity in self.entities.values():
-            if entity.matches_query(query):
-                analysis['relevant_entities'].append(entity.to_dict())
+        # Find relevant entities — schema-driven when schema_info is given,
+        # otherwise fall back to the hardcoded 3-database dictionary.
+        if schema_info:
+            for match in self.detect_entities_from_schema(query, schema_info):
+                analysis['relevant_entities'].append({
+                    'name': match['table'],
+                    'primary_table': match['table'],
+                    'matched_term': match['matched_term'],
+                })
                 analysis['complexity_score'] += 1
+        else:
+            for entity in self.entities.values():
+                if entity.matches_query(query):
+                    analysis['relevant_entities'].append(entity.to_dict())
+                    analysis['complexity_score'] += 1
         
         # Analyze intent categories
         analysis['intent_categories'] = self._analyze_intent_categories(query)
@@ -524,7 +592,7 @@ class SimpleSemanticLayer:
     
     def get_semantic_context(self, query: str, schema_info: Dict = None) -> Dict[str, Any]:
         """Get comprehensive semantic context for a query"""
-        analysis = self.analyze_query_intent(query)
+        analysis = self.analyze_query_intent(query, schema_info=schema_info)
         
         context = {
             'semantic_analysis': analysis,

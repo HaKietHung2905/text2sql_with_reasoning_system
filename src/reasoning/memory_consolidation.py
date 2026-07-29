@@ -204,43 +204,35 @@ class MemoryConsolidation:
         return dict(strategy_applications)
 
     
-    def _make_consolidation_decision(
-        self,
-        strategy: ReasoningStrategy,
-        applications: List[Tuple[Trajectory, JudgmentResult]]
-    ) -> str:
-        """Decide what to do with a strategy based on new applications"""
-        
+    def _make_consolidation_decision(self, strategy, applications):
+        # Insufficient new evidence → leave unchanged
         if len(applications) < self.config['min_applications']:
-            # Not enough data to make a decision
             return ConsolidationDecision.KEEP
-        
-        # Calculate new performance
+
         successes = sum(1 for _, j in applications if j.is_complete_success())
         new_success_rate = successes / len(applications)
-        
-        # Performance analysis
-        performance_delta = new_success_rate - strategy.success_rate
-        
-        # Decision 1: Delete if consistently failing
-        if (strategy.success_rate < self.config['deprecation_threshold'] and
-            new_success_rate < self.config['deprecation_threshold'] and
-            strategy.sample_count < self.config['min_sample_count']):
+
+        # Decision 1: Delete — success rate below 0.2, AND enough accumulated
+        # samples to be confident this is persistent, not an unlucky draw.
+        if (new_success_rate < self.config['delete_threshold'] and       # 0.2
+            strategy.sample_count >= self.config['min_sample_count']):
             return ConsolidationDecision.DELETE
-        
-        # Decision 2: Deprecate if significant performance drop
-        if performance_delta < -self.config['performance_drop_threshold']:
+
+        # Decision 2: Deprecate — success rate below 0.4.
+        # (This also catches rate < 0.2 cases that didn't have enough samples
+        # to qualify for Decision 1 — deprecated instead of deleted outright.)
+        if new_success_rate < self.config['deprecate_threshold']:        # 0.4
             return ConsolidationDecision.DEPRECATE
-        
-        # Decision 3: Split if high variance in performance
+
+        # Decision 3: Split — high variance across difficulty/database groups
         if self._should_split_strategy(strategy, applications):
             return ConsolidationDecision.SPLIT
-        
-        # Decision 4: Refine if performance is stable or improving
-        if abs(performance_delta) > 0.02 or len(applications) >= self.config['refinement_frequency']:
+
+        # Decision 4: Refine — success rate in [0.4, 0.6)
+        if new_success_rate < self.config['keep_threshold']:             # 0.6
             return ConsolidationDecision.REFINE
-        
-        # Default: Keep as is
+
+        # Decision 5: Keep — success rate >= 0.6
         return ConsolidationDecision.KEEP
     
     def _refine_strategy(

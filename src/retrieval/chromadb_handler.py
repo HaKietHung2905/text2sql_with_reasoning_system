@@ -80,25 +80,29 @@ class ChromaDBHandler:
         collection = self.client.get_or_create_collection(name)
         logger.info(f"Created/retrieved collection: {name}")
         return collection
-    
-    def setup_collections(self, reset: bool = True) -> None:
+ 
+    def setup_collections(self, reset: bool = True, prefix: str = "spider") -> None:
         """
-        Setup standard Spider collections
-        
+        Setup collections for a given dataset prefix.
+
         Args:
             reset: If True, delete existing collections first
+            prefix: Dataset prefix, e.g. "spider" or "wikisql". Collections
+                are named "{prefix}_schemas", "{prefix}_questions",
+                "{prefix}_sql" so multiple datasets can coexist in the same
+                persist_dir without clobbering each other.
         """
-        collection_names = ["spider_schemas", "spider_questions", "spider_sql"]
+        collection_names = [f"{prefix}_schemas", f"{prefix}_questions", f"{prefix}_sql"]
         
         if reset:
             for name in collection_names:
                 self.delete_collection(name)
         
-        self.schema_collection = self.create_collection("spider_schemas")
-        self.question_collection = self.create_collection("spider_questions")
-        self.sql_collection = self.create_collection("spider_sql")
+        self.schema_collection = self.create_collection(collection_names[0])
+        self.question_collection = self.create_collection(collection_names[1])
+        self.sql_collection = self.create_collection(collection_names[2])
         
-        logger.info("All collections setup complete")
+        logger.info(f"All '{prefix}' collections setup complete")
     
     def add_batch(
         self,

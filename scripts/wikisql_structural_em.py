@@ -610,35 +610,29 @@ def load_predictions(tsv_path: str) -> List[str]:
             preds.append(parts[0].strip())
     return preds
 
+def _load_table_records(table_file: str) -> List[dict]:
+    """
+    Load table records from either a JSON array file (tables.json) or a
+    JSONL file (dev.tables.jsonl — one JSON object per line).
+    """
+    with open(table_file, encoding="utf-8") as f:
+        if table_file.endswith(".jsonl"):
+            return [json.loads(line) for line in f if line.strip()]
+        return json.load(f)
 
 def build_headers_map(table_file: str) -> Dict[str, List[str]]:
     """
-    Build a db_id → [column_names] map from tables.json.
+    Build a db_id → [column_names] map from tables.json or tables.jsonl.
 
     Handles two formats:
       WikiSQL tables.json  → each entry has "id" and "header": ["col1", "col2", ...]
       Spider  tables.json  → each entry has "db_id" and "column_names_original":
                              [[-1, "*"], [0, "col1"], [0, "col2"], ...]
+    Also accepts JSONL (one JSON object per line), e.g. dev.tables.jsonl.
     """
-    with open(table_file, encoding="utf-8") as f:
-        tables = json.load(f)
+    tables = _load_table_records(table_file)
 
     headers_map: Dict[str, List[str]] = {}
-    for t in tables:
-        db_id = t.get("db_id") or t.get("id", "")
-
-        # WikiSQL format: "header" is a plain list of column name strings
-        headers = t.get("header", [])
-
-        # Spider format fallback: "column_names_original" is [[table_idx, col_name], ...]
-        if not headers:
-            cols = t.get("column_names_original", [])
-            headers = [c[1] for c in cols if isinstance(c, (list, tuple)) and len(c) == 2 and c[0] >= 0]
-
-        if db_id and headers:
-            headers_map[db_id] = headers
-
-    return headers_map
 
 
 def _diagnose(gold_data: List, preds: List, headers_map: Dict) -> None:
