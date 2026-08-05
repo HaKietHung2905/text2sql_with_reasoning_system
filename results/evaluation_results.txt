@@ -1,35 +1,22 @@
 ================================================================================
 SPIDER EVALUATION SUMMARY REPORT
-Generated : 2026-07-27 01:17:19
+Generated : 2026-08-04 18:26:15
 Results   : results/evaluation_results.json
 ================================================================================
 
 MAIN METRICS
 ----------------------------------------
-  Exact Match Accuracy : 67.12%  (67.1%)
-  Execution Accuracy   : 86.46%  (86.5%)
+  Exact Match Accuracy : 64.31%  (64.3%)
+  Execution Accuracy   : 85.20%  (85.2%)
   Total Evaluated      : 0
-
-REASONINGBANK STATISTICS
-----------------------------------------
-  trajectories_collected: 0
-  strategies_distilled: 0
-  strategies_used: 0
-  memory_consolidations: 0
-  test_time_scaling_used: 0
-  total_strategies_in_memory: 10494
-  memory_store_stats: {'total_strategies': 10494, 'active_strategies': 10494, 'avg_success_rate': 0.9995235372593864, 'total_samples': 98618, 'total_applications': 120, 'successful_applications': 115, 'pattern_distribution': {'AGGREGATION_FILTERING': 1597, 'AGGREGATION': 1185, 'FILTERING': 1065, 'AGGREGATION_FILTERING_SUBQUERY': 1029, 'AGGREGATION_GROUPING': 778, 'FILTERING_JOIN': 740, 'FILTERING_JOIN_SUBQUERY': 730, 'AGGREGATION_FILTERING_JOIN_SUBQUERY': 519, 'AGGREGATION_FILTERING_ORDERING_RANKING_SUBQUERY': 386, 'FILTERING_JOIN_ORDERING_RANKING': 372, 'AGGREGATION_FILTERING_JOIN': 293, 'AGGREGATION_GROUPING_JOIN_ORDERING_RANKING': 278, 'AGGREGATION_GROUPING_JOIN': 258, 'ORDERING_RANKING': 233, 'ORDERING': 229, 'FILTERING_SUBQUERY': 221, 'BASIC_SELECT': 211, 'AGGREGATION_GROUPING_ORDERING_RANKING': 171, 'JOIN': 149, 'FILTERING_ORDERING': 45, 'aggregation': 1, 'filtering': 1, 'join': 1, 'ordering': 1, 'subquery': 1}, 'chromadb_count': 10494}
-  distillation: {'new_strategies': 0, 'trajectories_processed': 0}
-  consolidation: {'new_strategies': 0, 'updated_strategies': 0, 'patterns_identified': 0, 'total_trajectories': 0, 'errors': []}
-  total_trajectories_collected: 0
 
 PER-DIFFICULTY BREAKDOWN
 ----------------------------------------
-  easy     | count=116   | EM=86.21% | EX=93.97%
-  medium   | count=358   | EM=85.47% | EX=94.97%
-  hard     | count=293   | EM=56.31% | EX=83.96%
-  extra    | count=267   | EM=46.07% | EX=74.53%
-  all      | count=1034  | EM=67.12% | EX=86.46%
+  easy     | count=116   | EM=77.59% | EX=91.38%
+  medium   | count=358   | EM=84.92% | EX=93.58%
+  hard     | count=293   | EM=54.61% | EX=85.32%
+  extra    | count=264   | EM=42.05% | EX=71.97%
+  all      | count=1034  | EM=64.31% | EX=85.20%
 
 ================================================================================
 END OF REPORT

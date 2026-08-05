@@ -341,3 +341,9 @@ experimental:
   adaptive_consolidation:
     enabled: false
     adjust_frequency_based_on_performance: false
+  
+  # ── Self-Consistency (used ONLY when gold_sql is not available) ──────────
+  enable_self_consistency_judging: true
+  self_consistency_n_candidates: 4          # extra candidates besides primary
+  self_consistency_agreement_threshold: 0.6 # min agreement to call primary "correct"
+  self_consistency_max_confidence: 0.85     # hard cap, pseudo-label != gold

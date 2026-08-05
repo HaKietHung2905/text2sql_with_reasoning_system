@@ -8,6 +8,7 @@ regen_failed.py — Re-generate failed predictions in-place
 import sys, os, json, shutil, argparse, logging, warnings, time, re, subprocess
 from pathlib import Path
 from dotenv import load_dotenv
+from typing import Optional
 
 warnings.filterwarnings("ignore")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -140,6 +141,7 @@ def regen_one(line_no, questions_data, db_dir,
                         question=enhanced, db_id=db_id,
                         schema=ctx.get("schema", {}),
                         gold_sql=item.get("query", item.get("sql")),
+                        db_path = db_path,
                         sql_generator=lambda q: sql_generator.generate(q, db_path))
                     sql = rb.get("sql", "") or ""
                 except Exception as e:

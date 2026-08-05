@@ -545,25 +545,25 @@ def evaluate(
                                     scores[level]['partial'][type_]['rec'] += p_score['rec']
                                     scores[level]['partial'][type_]['f1']  += p_score['f1']
 
-            trajectory_id = trajectory_map.get(i)
-            if reasoning_pipeline and trajectory_id:
-                try:
-                    reasoning_pipeline.update_trajectory(
-                        trajectory_id=trajectory_id,
-                        success=bool(res['exact_score']),
-                        execution_success=res.get('exec_score', 0) > 0,
-                        metadata={
-                            'exact_match':      bool(res['exact_score']),
-                            'execution_match':  res.get('exec_score', 0) > 0,
-                            'hardness':         res.get('hardness', 'unknown'),
-                            'component_scores': res.get('component_scores'),
-                            'partial_scores':   res.get('partial_scores'),
-                            'error':            res.get('error'),
-                            'parse_error':      res.get('parse_error')
-                        }
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to update trajectory {trajectory_id}: {e}")
+            # trajectory_id = trajectory_map.get(i)
+            # if reasoning_pipeline and trajectory_id:
+            #     try:
+            #         reasoning_pipeline.update_trajectory(
+            #             trajectory_id=trajectory_id,
+            #             success=bool(res['exact_score']),
+            #             execution_success=res.get('exec_score', 0) > 0,
+            #             metadata={
+            #                 'exact_match':      bool(res['exact_score']),
+            #                 'execution_match':  res.get('exec_score', 0) > 0,
+            #                 'hardness':         res.get('hardness', 'unknown'),
+            #                 'component_scores': res.get('component_scores'),
+            #                 'partial_scores':   res.get('partial_scores'),
+            #                 'error':            res.get('error'),
+            #                 'parse_error':      res.get('parse_error')
+            #             }
+            #         )
+            #     except Exception as e:
+            #         logger.warning(f"Failed to update trajectory {trajectory_id}: {e}")
 
             question = (
                 questions_data_ref[i]['question']
@@ -729,6 +729,7 @@ def generate_sql_with_pipeline(
                 db_id=db_id,
                 schema=schema,
                 gold_sql=gold_sql,
+                db_path = db_path,
                 semantic_analysis=semantic_analysis,
                 sql_generator=sql_generator
             )

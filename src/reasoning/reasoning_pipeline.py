@@ -10,7 +10,7 @@ import uuid
 from typing import Dict, List, Optional
 from pathlib import Path
 import json
-
+import requests
 from src.reasoning import (
     ExperienceCollector,
     Trajectory,
@@ -26,6 +26,7 @@ from src.reasoning import (
 )
 from src.reasoning.memory_retrieval import RetrievalContext
 from utils.logging_utils import get_logger
+from src.reasoning.self_consistency import ExecutionSelfConsistency
 
 logger = get_logger(__name__)
 
@@ -35,7 +36,7 @@ def _is_server_error(exc: Exception) -> bool:
     Return True if exc (or any chained cause) is an HTTP 5xx server error.
     Also catches requests.HTTPError directly by status code.
     """
-    import requests
+
     _5xx_strings = ("500", "502", "503", "504",
                     "Internal Server Error", "Bad Gateway",
                     "Service Unavailable", "Gateway Timeout")
@@ -58,6 +59,16 @@ def _is_server_error(exc: Exception) -> bool:
         node = node.__cause__ or node.__context__
 
     return False
+
+def is_likely_hard(question: str) -> bool:
+        """Heuristic to detect hard queries needing more refinement."""
+        hard_keywords = [
+            'except', 'intersect', 'not in', 'not exists',
+            'having', 'nested', 'subquery', 'more than',
+            'at least', 'maximum', 'minimum among', 'rank'
+        ]
+        return any(kw in question.lower() for kw in hard_keywords)
+
 
 
 class ReasoningBankPipeline:
@@ -98,6 +109,10 @@ class ReasoningBankPipeline:
         )
         self.parallel_scaling = None
         self.sequential_scaling = None
+        self.self_consistency = ExecutionSelfConsistency(
+            agreement_threshold=self.config.get('self_consistency_agreement_threshold', 0.6),
+            max_confidence=self.config.get('self_consistency_max_confidence', 0.85),
+        )
 
         self.stats = {
             'trajectories_collected': 0,
@@ -121,15 +136,6 @@ class ReasoningBankPipeline:
             'parallel_scaling_candidates': 5
         }
     
-    def is_likely_hard(question: str) -> bool:
-        """Heuristic to detect hard queries needing more refinement."""
-        hard_keywords = [
-            'except', 'intersect', 'not in', 'not exists',
-            'having', 'nested', 'subquery', 'more than',
-            'at least', 'maximum', 'minimum among', 'rank'
-        ]
-        return any(kw in question.lower() for kw in hard_keywords)
-
     # ── Public entry point called by generate_predictions.py ─────────────────
     def generate_with_reasoning(
         self,
@@ -137,6 +143,7 @@ class ReasoningBankPipeline:
         db_id: str,
         schema: Dict,
         gold_sql: Optional[str] = None,
+        db_path: Optional[str] = None,         
         semantic_analysis: Optional[Dict] = None,
         sql_generator: Optional[callable] = None
     ) -> Dict:
@@ -163,6 +170,7 @@ class ReasoningBankPipeline:
             db_id=db_id,
             schema=schema,
             gold_sql=gold_sql,
+            db_path=db_path,
             semantic_analysis=semantic_analysis,
             sql_generator=sql_generator,
         )
@@ -173,6 +181,7 @@ class ReasoningBankPipeline:
         db_id: str,
         schema: Dict,
         gold_sql: Optional[str] = None,
+        db_path: Optional[str] = None,
         semantic_analysis: Optional[Dict] = None,
         sql_generator: Optional[callable] = None
     ) -> Dict:
@@ -221,12 +230,15 @@ class ReasoningBankPipeline:
             predicted_sql = result['sql']
             generation_metadata = result['metadata']
         else:
-            # Standard generation — let 5xx propagate directly
-            prompt_to_use = (
-                self._apply_strategies_to_prompt(question, strategies_used)
-                if strategies_used else question
-            )
-            predicted_sql = sql_generator(prompt_to_use) if sql_generator else None
+            strategy_hints_text = self._format_strategies_as_hints(strategies_used) if strategies_used else None
+            try:
+                predicted_sql = sql_generator(question, strategy_hints=strategy_hints_text) if sql_generator else None
+            except TypeError:
+                prompt_to_use = (
+                    self._apply_strategies_to_prompt(question, strategies_used)
+                    if strategies_used else question
+                )
+                predicted_sql = sql_generator(prompt_to_use) if sql_generator else None
             generation_metadata = {
                 'method': 'standard',
                 'strategies_applied': len(strategies_used)
@@ -250,6 +262,51 @@ class ReasoningBankPipeline:
             )
             self.experience_collector.add_trajectory(trajectory)
             self.stats['trajectories_collected'] += 1
+
+            if (
+                # gold_sql is None and 
+                db_path
+                and self.config.get('enable_self_consistency_judging', True)
+                and sql_generator is not None
+            ):
+                try:
+                    prompt_for_candidates = (
+                        self._apply_strategies_to_prompt(question, strategies_used)
+                        if strategies_used else question
+                    )
+
+                    def _candidate_gen(temperature: float) -> str:
+                        try:
+                            return sql_generator(prompt_for_candidates, temperature=temperature)
+                        except TypeError:
+                            # sql_generator doesn't accept temperature kwarg
+                            return sql_generator(prompt_for_candidates)
+
+                    sc_result = self.self_consistency.generate_pseudo_labels(
+                        primary_sql=predicted_sql,
+                        db_path=db_path,
+                        candidate_generator_fn=_candidate_gen,
+                        n_additional_candidates=self.config.get('self_consistency_n_candidates', 4),
+                    )
+
+                    trajectory.metadata = trajectory.metadata or {}
+                    trajectory.metadata['label_source'] = 'self_consistency'
+                    trajectory.metadata['agreement_ratio'] = sc_result.agreement_ratio
+                    trajectory.metadata['max_confidence'] = self.self_consistency.max_confidence
+
+                    self.process_evaluation_result(
+                        trajectory_id=trajectory_id,
+                        exact_match=sc_result.pseudo_exact_match,
+                        execution_match=sc_result.pseudo_execution_match,
+                    )
+                    generation_metadata['self_consistency'] = {
+                        'agreement_ratio': sc_result.agreement_ratio,
+                        'n_candidates': sc_result.n_candidates,
+                        'pseudo_exact_match': sc_result.pseudo_exact_match,
+                    }
+                except Exception as e:
+                    logger.debug(f"Self-consistency judging failed (non-critical): {e}")
+
         except Exception as e:
             logger.debug(f"Trajectory collection failed (non-critical): {e}")
 
@@ -261,6 +318,13 @@ class ReasoningBankPipeline:
             'metadata': generation_metadata
         }
 
+    def _format_strategies_as_hints(self, strategies: List[ReasoningStrategy]) -> str:
+        """Format strategies as a standalone hints string (NOT appended to question)."""
+        lines = []
+        for s in strategies:
+            lines.append(f"- {s.name}: {s.description}")
+        return "\n".join(lines)
+    
     def _apply_strategies_to_prompt(
         self,
         base_prompt: str,
@@ -422,7 +486,7 @@ class ReasoningBankPipeline:
         )
         retrieval_results = self.memory_retrieval.retrieve_strategies(
             context=retrieval_context,
-            top_k=5
+            top_k=self.config.get('strategy_retrieval_top_k', 3)
         )
         strategies = [r.strategy for r in retrieval_results]
         self.stats['strategies_used'] += len(strategies)

@@ -148,6 +148,7 @@ class SQLGenerator:
         schema_info: Optional[Dict] = None,
         few_shot_examples: Optional[List[Dict]] = None,
         semantic_hints: Optional[str] = None,
+        strategy_hints: Optional[str] = None,
     ) -> str:
         """
         Generate SQL.
@@ -162,7 +163,10 @@ class SQLGenerator:
             logger.error(f"Database not found at {db_path}")
             return "SELECT 1"
 
-        schema_str = self._get_schema_string(db_path)
+        schema_str = (
+            self._format_schema_dict(schema_info)
+            if schema_info else self._get_schema_string(db_path)
+        )
         is_wikisql = self._is_wikisql(db_path)
 
         # Attempt 1: full prompt (Semantic Layer hints + Semantic RAG few-shot)
@@ -170,6 +174,7 @@ class SQLGenerator:
             question, schema_str, is_wikisql=is_wikisql,
             few_shot_examples=few_shot_examples,
             semantic_hints=semantic_hints,
+            strategy_hints=strategy_hints,
         )
         try:
             sql = self._clean_sql(self.model.generate(prompt, prefill="SELECT "))
@@ -217,6 +222,17 @@ class SQLGenerator:
 
         return self._normalize_for_spider(sql)
 
+    def _format_strategy_block(self, strategy_hints: Optional[str]) -> str:
+        """Format ReasoningBank strategies as their OWN prompt block —
+        never mixed into the 'Question:' field."""
+        if not strategy_hints:
+            return ""
+        return (
+            "REASONING STRATEGIES (learned from prior similar queries — "
+            "apply only if relevant, do not force):\n"
+            + strategy_hints + "\n"
+        )
+    
     # ──────────────────────────────────────────────────────────────────────────
     # Prompt builders
     # ──────────────────────────────────────────────────────────────────────────
@@ -228,12 +244,19 @@ class SQLGenerator:
         is_wikisql: bool = False,
         few_shot_examples: Optional[List[Dict]] = None,
         semantic_hints: Optional[str] = None,
+        strategy_hints: Optional[str] = None,
+        max_prompt_tokens: int = 6000,
     ) -> str:
         if is_wikisql:
             return self._construct_prompt_wikisql(
-                question, schema_str, few_shot_examples, semantic_hints)
+                question, schema_str, few_shot_examples, semantic_hints, strategy_hints)
         return self._construct_prompt_spider(
-            question, schema_str, few_shot_examples, semantic_hints)
+            question, schema_str, few_shot_examples, semantic_hints, strategy_hints,
+            max_prompt_tokens=max_prompt_tokens)
+    
+    def _estimate_tokens(self, text: str) -> int:
+        """Rough estimate: ~4 chars/token for English + SQL-mixed text."""
+        return len(text) // 4 if text else 0
 
     def _construct_prompt_spider(
         self,
@@ -241,80 +264,85 @@ class SQLGenerator:
         schema_str: str,
         few_shot_examples: Optional[List[Dict]] = None,
         semantic_hints: Optional[str] = None,
+        strategy_hints: Optional[str] = None,
+        max_prompt_tokens: int = 6000,
     ) -> str:
-        return (
+        # ── Phần BẮT BUỘC, không bao giờ bị cắt: rules + schema + question ──
+        header = (
             "You are an expert SQL assistant. Generate a SQL query following Spider benchmark format.\n\n"
-            f"Database Schema:\n{schema_str}\n\n"
             "CRITICAL OUTPUT FORMAT:\n"
             "- Output ONLY the raw SQL query — no explanations, no reasoning, no comments\n"
             "- Do NOT include markdown fences, labels like 'SQL:', or footnotes\n"
-            "- Do NOT write 'But wait', 'However', 'Note', or any prose after the query\n"
             "- Start your response DIRECTLY with SELECT\n"
             "- ALWAYS output a complete query — SELECT ... FROM ... at minimum\n\n"
             "CRITICAL SPIDER FORMAT RULES:\n"
-            "1. Use ONLY 'JOIN' — NEVER INNER JOIN, LEFT JOIN, RIGHT JOIN\n"
+            "1. Use ONLY 'JOIN' — NEVER INNER/LEFT/RIGHT JOIN\n"
             "2. DO NOT use CASE statements\n"
-            "3. Use aggregate functions: COUNT(*), SUM(), AVG(), MIN(), MAX()\n"
-            "4. Use lowercase for all identifiers\n"
-            "5. No trailing semicolons\n"
-            "6. Single table queries: NEVER use table aliases\n"
-            # FIX: explicit tN-only rule, ban single-letter aliases
-            "7. TABLE ALIASES — STRICT RULES:\n"
-            "   ALWAYS define aliases with AS: FROM table AS t1\n"
-            "   ONLY use t1, t2, t3, t4 as alias names — NO exceptions.\n"
-            "   FORBIDDEN: p, s, a, b, c, hp, cm, ml, cn, cd, T (anything not tN)\n"
-            "   Spider parser ONLY resolves tN-style aliases — others cause parse errors\n"
-            "   BAD:  FROM pets AS p JOIN student AS s ON p.petid = s.stuid\n"
+            "3. Use lowercase for all identifiers, no trailing semicolons\n"
+            "4. Single table queries: NEVER use table aliases\n"
+            "5. TABLE ALIASES — STRICT: ONLY t1, t2, t3, t4 (ALWAYS with AS).\n"
+            "   Spider parser ONLY resolves tN-style aliases — anything else causes parse errors.\n"
             "   GOOD: FROM pets AS t1 JOIN student AS t2 ON t1.petid = t2.stuid\n"
-            "   BAD:  FROM table t1  (missing AS keyword)\n"
-            "   GOOD: FROM table AS t1\n"
-            "8. COLUMN QUALIFICATION:\n"
-            "   SELECT, GROUP BY, ORDER BY: bare column names only — no tN. prefix\n"
-            "   tN. prefixes allowed ONLY in FROM/JOIN/ON/WHERE\n"
-            "   BAD:  SELECT t1.name, t2.country GROUP BY t1.name\n"
-            "   GOOD: SELECT name, country       GROUP BY name\n"
-            "9. MIN/MAX ROW: use ORDER BY col ASC/DESC LIMIT 1\n"
-            "   NEVER WHERE col=(SELECT MIN(col)...) — returns duplicates\n"
-            "10. OR vs UNION: WHERE col=v1 OR col=v2 — NEVER split into UNION\n"
-            "11. COLUMN ORDER: exact order from the question\n"
-            "    Q: 'average and max age for each type' → SELECT avg(age), max(age), pettype\n"
-            "12. STRING CASE: exact capitalisation from question in WHERE values\n"
-            "    Q: 'singers from France' → WHERE country = 'France'  NOT 'france'\n"
-            "13. COLUMN vs FUNCTION: if schema has column 'average', use it — don't replace with avg()\n"
-            "14. HAVING vs WHERE: filter aggregates with HAVING after GROUP BY\n"
-            "15. SET OPERATORS:\n"
-            "    INTERSECT: 'both', 'shared by', 'in both'\n"
-            "    EXCEPT:    'but not', 'not in', 'excluding'\n"
-            "    UNION:     'either...or', 'all X and all Y'\n"
-            "    NEVER replace with self-JOIN\n"
-            "16. DISTINCT: only when question says 'unique', 'different', 'distinct'\n"
-            "    NEVER COUNT(DISTINCT col) — always COUNT(*)\n"
+            "6. COLUMN QUALIFICATION: SELECT/GROUP BY/ORDER BY use bare column names (no tN.).\n"
+            "   tN. prefixes ONLY in FROM/JOIN/ON/WHERE.\n"
+            "7. MIN/MAX ROW: ORDER BY col ASC/DESC LIMIT 1 — NEVER WHERE col=(SELECT MIN...)\n"
+            "8. OR vs UNION: WHERE col=v1 OR col=v2 — NEVER split into UNION\n"
+            "9. COLUMN ORDER: exact order from the question\n"
+            "10. STRING CASE: exact capitalisation from question in WHERE values\n"
+            "11. HAVING vs WHERE: filter aggregates with HAVING after GROUP BY\n"
+            "12. SET OPERATORS: INTERSECT='both/shared', EXCEPT='but not/excluding', "
+            "UNION='either...or' — NEVER replace with self-JOIN\n"
+            "13. DISTINCT only when question says 'unique'/'distinct' — NEVER COUNT(DISTINCT col)\n"
             "\nEXAMPLES:\n"
             "Q: Which model has the smallest horsepower?\n"
             "A: SELECT t1.model FROM car_names AS t1 JOIN cars_data AS t2 ON t1.makeid = t2.id "
             "ORDER BY t2.horsepower ASC LIMIT 1\n\n"
-            "Q: How many concerts in 2014 or 2015?\n"
-            "A: SELECT COUNT(*) FROM concert WHERE year = 2014 OR year = 2015\n\n"
             "Q: Find average and max age for each pet type.\n"
             "A: SELECT avg(pet_age), max(pet_age), pettype FROM pets GROUP BY pettype\n\n"
-            "Q: What is the maximum capacity and average of all stadiums?\n"
-            "A: SELECT max(capacity), average FROM stadium\n\n"
             "Q: How many pets are owned by students older than 20?\n"
             "A: SELECT COUNT(*) FROM has_pet AS t1 JOIN student AS t2 ON t1.stuid = t2.stuid "
             "WHERE t2.age > 20\n\n"
-            "Q: Find the weight of the youngest dog.\n"
-            "A: SELECT weight FROM pets WHERE pettype = 'dog' ORDER BY pet_age ASC LIMIT 1\n\n"
-            f"{self._format_semantic_hints_block(semantic_hints)}"
-            f"{self._format_few_shot_block(few_shot_examples)}"
-            f"Question: {question}\n\nSQL:"
         )
+        schema_block = f"Database Schema:\n{schema_str}\n\n"
+        tail = f"Question: {question}\n\nSQL:"
 
+        fixed_cost = self._estimate_tokens(header + schema_block + tail)
+        budget_left = max_prompt_tokens - fixed_cost
+
+       
+        semantic_block = self._format_semantic_hints_block(semantic_hints)
+        few_shot_block = self._format_few_shot_block(few_shot_examples)
+        strategy_block = self._format_strategy_block(strategy_hints)
+
+        optional_ordered = [
+            ("semantic_hints", semantic_block),
+            ("few_shot_examples", few_shot_block),
+            ("strategy_hints", strategy_block),
+        ]
+
+        included = []
+        for name, block in optional_ordered:
+            if not block:
+                continue
+            cost = self._estimate_tokens(block)
+            if cost <= budget_left:
+                included.append(block)
+                budget_left -= cost
+            else:
+                logger.debug(
+                    f"Prompt budget exceeded ({max_prompt_tokens} tok cap) — "
+                    f"dropping '{name}' block (~{cost} tok, only {budget_left} left)"
+                )
+
+        return header + schema_block + "".join(included) + tail
+    
     def _construct_prompt_wikisql(
         self,
         question: str,
         schema_str: str,
         few_shot_examples: Optional[List[Dict]] = None,
         semantic_hints: Optional[str] = None,
+        strategy_hints: Optional[str] = None,
     ) -> str:
         return (
             "You are a Text-to-SQL expert for WikiSQL.\n\n"
@@ -336,6 +364,7 @@ class SQLGenerator:
             "A: SELECT player FROM wikisql_data WHERE position = 'Guard'\n\n"
             f"{self._format_semantic_hints_block(semantic_hints)}"
             f"{self._format_few_shot_block(few_shot_examples)}"
+            f"{self._format_strategy_block(strategy_hints)}"
             f"Question: {question}\n"
             "SQL:"
         )

@@ -143,23 +143,36 @@ class SelfJudgment:
             return SuccessType.PARSE_FAILURE, 1.0
         
         # Priority 3: Check evaluation results
+        label_source = (trajectory.metadata or {}).get('label_source', 'gold')
+        agreement_ratio = (trajectory.metadata or {}).get('agreement_ratio', None)
+        is_pseudo_label = (label_source == 'self_consistency')
+
+        def _discount(confidence: float) -> float:
+            if not is_pseudo_label:
+                return confidence
+            # Scale by how much the candidates actually agreed with each
+            # other, then cap so pseudo-labels can never look as trustworthy
+            # as a real gold-verified judgment.
+            max_conf = (trajectory.metadata or {}).get('max_confidence', 0.85)
+            scaled = confidence * (agreement_ratio if agreement_ratio is not None else 0.5)
+            return min(scaled, max_conf)
+
         if trajectory.exact_match and trajectory.execution_match:
-            # Perfect match - highest confidence
-            return SuccessType.COMPLETE_SUCCESS, 1.0
-        
+            # Perfect match - highest confidence (discounted if pseudo-label)
+            return SuccessType.COMPLETE_SUCCESS, _discount(1.0)
+
         elif trajectory.execution_match and not trajectory.exact_match:
-            # Works but formatting issues
-            # Confidence based on how close it was
+            # Works but formatting issues / minority result
             confidence = self._calculate_partial_success_confidence(trajectory)
-            return SuccessType.PARTIAL_SUCCESS, confidence
-        
+            return SuccessType.PARTIAL_SUCCESS, _discount(confidence)
+
         elif not trajectory.execution_match:
-            # Logic errors - results don't match
-            return SuccessType.EXECUTION_FAILURE, 1.0
-        
+            # Logic errors - results don't match / didn't execute
+            return SuccessType.EXECUTION_FAILURE, _discount(1.0)
+
         else:
             # Fallback - unclear case
-            return SuccessType.EXECUTION_FAILURE, 0.5
+            return SuccessType.EXECUTION_FAILURE, _discount(0.5)
     
     def _calculate_partial_success_confidence(self, trajectory: Trajectory) -> float:
         """Calculate confidence for partial success cases"""
