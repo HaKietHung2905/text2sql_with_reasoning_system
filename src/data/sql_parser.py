@@ -142,6 +142,12 @@ class SQLParser:
             if alias.startswith('"') or alias.startswith("'"):
                 raise ValueError(f"Error parsing column: {tok}")
             table = tables_with_alias.get(alias, alias)
+            
+            if table.startswith("__derived_"):
+                key = table + "." + col
+                if key not in self.schema.idMap:
+                    self.schema.idMap[key] = -(len(self.schema.idMap) + 100000)
+                return start_idx + 1, self.schema.idMap[key]
 
             for candidate_col in _col_candidates(col):
                 key = table + "." + candidate_col
@@ -404,9 +410,13 @@ class SQLParser:
             idx, val_unit = self._parse_val_unit(toks, idx, tables_with_alias, default_tables)
             val_units.append((agg_id, val_unit))
             
+            # NEW: bỏ qua "AS alias" cho cột tính toán (vd COUNT(*) AS num_friends)
+            if idx < len_ and toks[idx] == 'as':
+                idx += 2
+            
             if idx < len_ and toks[idx] == ',':
                 idx += 1
-        
+
         return idx, (isDistinct, val_units)
     
     def _parse_from(
@@ -417,44 +427,63 @@ class SQLParser:
     ) -> Tuple[int, List, List, List[str]]:
         """Parse FROM clause"""
         assert 'from' in toks[start_idx:]
-        
+
         len_ = len(toks)
         idx = toks.index('from', start_idx) + 1
         default_tables = []
         table_units = []
         conds = []
-        
+
         while idx < len_:
             isBlock = False
+            if idx < len_ and toks[idx] == 'join':
+                idx += 1
             if toks[idx] == '(':
                 isBlock = True
                 idx += 1
-            
+
+            is_derived = False
             if toks[idx] == 'select':
                 idx, sql = self._parse_sql(toks, idx, tables_with_alias)
                 table_units.append((TABLE_TYPE['sql'], sql))
+                is_derived = True
             else:
-                if idx < len_ and toks[idx] == 'join':
-                    idx += 1
-                
                 idx, table_unit, table_name = self._parse_table_unit(toks, idx, tables_with_alias)
                 table_units.append((TABLE_TYPE['table_unit'], table_unit))
                 default_tables.append(table_name)
-            
+
+            # Case 1: plain table already consumed "AS alias" inside
+            # _parse_table_unit() — "on" may follow immediately here.
             if idx < len_ and toks[idx] == "on":
                 idx += 1
                 idx, this_conds = self._parse_condition(toks, idx, tables_with_alias, default_tables)
                 if len(conds) > 0:
                     conds.append('and')
                 conds.extend(this_conds)
-            
+
             if isBlock:
                 assert toks[idx] == ')'
                 idx += 1
-            
+
+            if idx < len_ and toks[idx] == 'as':
+                idx += 1
+                alias_name = toks[idx]
+                idx += 1
+                if is_derived:
+                    synthetic_table = f"__derived_{alias_name}__"
+                    tables_with_alias[alias_name] = synthetic_table
+                    default_tables.append(synthetic_table)
+
+            if idx < len_ and toks[idx] == "on":
+                idx += 1
+                idx, this_conds = self._parse_condition(toks, idx, tables_with_alias, default_tables)
+                if len(conds) > 0:
+                    conds.append('and')
+                conds.extend(this_conds)
+
             if idx < len_ and (toks[idx] in CLAUSE_KEYWORDS or toks[idx] in (")", ";")):
                 break
-        
+
         return idx, table_units, conds, default_tables
     
     def _parse_where(

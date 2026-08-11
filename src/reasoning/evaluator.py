@@ -524,7 +524,8 @@ def evaluate(
             evaluator=evaluator_obj,
             plug_value=plug_value,
             keep_distinct=keep_distinct,
-            progress_bar=progress_bar_for_each_datapoint
+            progress_bar=progress_bar_for_each_datapoint,
+            idx=i
         )
 
         if res:
@@ -820,7 +821,7 @@ def create_evaluator(
 def evaluate_turn(
     p_turn, g_turn, db_dir: str, etype: str, kmaps: Dict,
     evaluator, plug_value: bool, keep_distinct: bool,
-    progress_bar: bool
+    progress_bar: bool, idx: int = -1
 ) -> Optional[Dict]:
     """
     Evaluate a single (predicted, gold) SQL pair.
@@ -886,7 +887,7 @@ def evaluate_turn(
         }
 
     hardness = eval_hardness(g_sql)
-
+ 
     # ── Parse predicted SQL ───────────────────────────────────────────────────
     p_parse_error = None
     if not _is_complete_sql(p_str_normalized):
@@ -897,9 +898,11 @@ def evaluate_turn(
         try:
             p_sql = get_sql(p_str_normalized, schema)
         except Exception as e:
-            error_msg     = str(e) if str(e) else "Unknown parse error"
-            logger.warning(f"Predicted SQL parse error: {error_msg}")
-            logger.debug(f"Predict SQL: {p_str}")
+            error_msg = str(e) if str(e) else "Unknown parse error"
+            print(f"\n❗ Real error [TSV line {idx+1}] db={db_name}")
+            print(f"   Predicted (normalized): {p_str_normalized}")
+            print(f"   Predicted (raw)       : {p_str}")
+            import traceback; traceback.print_exc()
             p_sql         = None
             p_parse_error = f"Predicted SQL parse error: {error_msg}"
 

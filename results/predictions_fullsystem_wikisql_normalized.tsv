@@ -403,7 +403,7 @@ SELECT computing_mechanism FROM wikisql_data WHERE first_operational = 'February
 SELECT turing_complete FROM wikisql_data WHERE name = 'Atanasoff–Berry Computer (US)'	1-13636-1
 SELECT MIN(first_operational) FROM wikisql_data WHERE programming = 'Not programmable—single purpose'	1-13636-1
 SELECT country FROM wikisql_data WHERE security = 5.5	1-13677808-1
-SELECT COUNT(country) FROM wikisql_data WHERE country = 'denmark' AND technology IS NOT NULL	1-13677808-1
+SELECT COUNT(country) FROM wikisql_data WHERE country = 'denmark'	1-13677808-1
 SELECT environment FROM wikisql_data WHERE overall_average = 4.7	1-13677808-1
 SELECT migration FROM wikisql_data WHERE trade = 5.7	1-13677808-1
 SELECT MIN(pf) FROM wikisql_data	1-1370559-1
@@ -893,7 +893,7 @@ SELECT COUNT(candidates) FROM wikisql_data WHERE incumbent = 'Robin Hayes'	1-180
 SELECT district FROM wikisql_data WHERE party = 'Democratic' AND first_elected = 1998	1-1805191-50
 SELECT COUNT(ast) FROM wikisql_data WHERE avg_col = '23.7'	1-18064020-21
 SELECT COUNT(name) FROM wikisql_data WHERE name = 'Jake Flaherty'	1-18064020-21
-SELECT SUM(brup) FROM wikisql_data	1-18064020-21
+SELECT MAX(brup) FROM wikisql_data	1-18064020-21
 SELECT MAX(td) FROM wikisql_data	1-18064020-21
 SELECT total FROM wikisql_data WHERE tfl_yds = '2.5-4'	1-18064020-21
 SELECT MIN(tonkolili) FROM wikisql_data	1-18103265-1
@@ -922,7 +922,7 @@ SELECT score FROM wikisql_data WHERE opponent = 'Dominika Cibulková'	1-18183850
 SELECT outcome FROM wikisql_data WHERE opponent = 'magdaléna rybáriková'	1-18183850-12
 SELECT edition FROM wikisql_data WHERE surface = 'clay (i)' AND outcome = 'winner'	1-18183850-12
 SELECT opponent FROM wikisql_data WHERE attendance = 60425	1-18207285-2
-SELECT COUNT(DISTINCT raiders_first_downs) FROM wikisql_data WHERE game = '9'	1-18207285-2
+SELECT COUNT(raiders_first_downs) FROM wikisql_data WHERE game = '9'	1-18207285-2
 SELECT record FROM wikisql_data WHERE opponent = '42'	1-18207285-2
 SELECT result FROM wikisql_data WHERE attendance = 31095	1-18207285-2
 SELECT COUNT(opponent) FROM wikisql_data WHERE result = 'win'	1-18207285-2
@@ -1028,7 +1028,7 @@ SELECT market_value_billion FROM wikisql_data WHERE company = 'RHB Capital'	1-19
 SELECT profits_billion FROM wikisql_data WHERE market_value_billion = '11.8'	1-19112-3
 SELECT industry FROM wikisql_data WHERE revenue_billion = 2.1	1-19112-3
 SELECT COUNT(industry) FROM wikisql_data WHERE company = 'maxis'	1-19112-3
-SELECT COUNT(game) FROM wikisql_data WHERE date = 'February 26' AND high_rebounds IS NOT NULL	1-19169116-6
+SELECT COUNT(game) FROM wikisql_data WHERE date = 'February 26'	1-19169116-6
 SELECT institute FROM wikisql_data WHERE date_released = 'October 6, 1985' AND democratic_renewal >= '18.0%' AND democratic_renewal <= '22.0%'	1-1919538-1
 SELECT of_seats_to_be_won FROM wikisql_data WHERE of_popular_vote = '6.88%'	1-19283982-4
 SELECT of_total_votes FROM wikisql_data WHERE of_seats_won = 30	1-19283982-4
@@ -1041,11 +1041,11 @@ SELECT COUNT(location) FROM wikisql_data WHERE median_household_income_2011 = '$
 SELECT col_2012_election_results FROM wikisql_data WHERE representative = 'Barbara Lee'	1-19283806-4
 SELECT MAX(no_in_season) FROM wikisql_data WHERE production_code = '816'	1-19422702-1
 SELECT COUNT(us_airdate) FROM wikisql_data WHERE no_in_season = 4	1-19422702-1
-SELECT COUNT(DISTINCT c_high) FROM wikisql_data WHERE category = 'good'	1-1942366-9
+SELECT COUNT(c_high) FROM wikisql_data WHERE category = 'good'	1-1942366-9
 SELECT c_high FROM wikisql_data WHERE c_low = 250.5	1-1942366-9
 SELECT i_high FROM wikisql_data WHERE c_low = 250.5	1-1942366-9
 SELECT c_low FROM wikisql_data WHERE c_high = 12.0	1-1942366-9
-SELECT COUNT(DISTINCT category) FROM wikisql_data WHERE c_low = 35.5	1-1942366-9
+SELECT COUNT(category) FROM wikisql_data WHERE c_low = 35.5	1-1942366-9
 SELECT COUNT(members) FROM wikisql_data WHERE sold_albums_and_singles = '65 million'	1-19439814-1
 SELECT girl_group FROM wikisql_data WHERE studio_albums = '29'	1-19439814-1
 SELECT ålesund FROM wikisql_data WHERE bergen = 88	1-19439864-2
@@ -1296,8 +1296,8 @@ SELECT COUNT(team_s) FROM wikisql_data WHERE avg_finish = '23.3'	1-2190919-1
 SELECT COUNT(versus) FROM wikisql_data WHERE versus = 'India'	1-21907770-4
 SELECT date FROM wikisql_data WHERE versus = 'South Africa'	1-21907770-4
 SELECT championship_titles_finals FROM wikisql_data WHERE year = '1981'	1-2201541-3
-SELECT COUNT(DISTINCT outcome) FROM wikisql_data WHERE partner = 'Paul McNamee'	1-2201541-3
-SELECT COUNT(DISTINCT partner) FROM wikisql_data WHERE surface = 'French Open (0/1)'	1-2201541-3
+SELECT COUNT(outcome) FROM wikisql_data WHERE partner = 'Paul McNamee'	1-2201541-3
+SELECT COUNT(partner) FROM wikisql_data WHERE surface = 'French Open (0/1)'	1-2201541-3
 SELECT directed_by FROM wikisql_data WHERE title = 'Freaky Friday'	1-2221374-3
 SELECT original_air_date FROM wikisql_data WHERE directed_by = 'James Widdoes' AND production_code = '320'	1-2221374-3
 SELECT COUNT(production_code) FROM wikisql_data WHERE title = 'The Sub'	1-2221374-3
@@ -1464,8 +1464,8 @@ SELECT high_points FROM wikisql_data WHERE location_attendance = 'Verizon Center
 SELECT Score FROM wikisql_data WHERE Date = 'december 7'	1-23286112-7
 SELECT game FROM wikisql_data WHERE high_rebounds = 8	1-23286223-5
 SELECT Date FROM wikisql_data WHERE high_assists = 'Deron Williams (13)'	1-23286223-5
-SELECT COUNT(DISTINCT high_rebounds) FROM wikisql_data WHERE game = '26'	1-23286223-5
-SELECT COUNT(DISTINCT high_assists) FROM wikisql_data WHERE date = 'March 4'	1-23286223-8
+SELECT COUNT(high_rebounds) FROM wikisql_data WHERE game = '26'	1-23286223-5
+SELECT COUNT(high_assists) FROM wikisql_data WHERE date = 'March 4'	1-23286223-8
 SELECT record FROM wikisql_data WHERE high_assists = 'Deron Williams (6)'	1-23286223-8
 SELECT location_attendance FROM wikisql_data WHERE date = 'march 24'	1-23286223-8
 SELECT COUNT(high_points) FROM wikisql_data WHERE record = '39-22'	1-23286223-8
@@ -2005,7 +2005,7 @@ SELECT date_of_vacancy FROM wikisql_data WHERE team = 'Kartalspor'	1-27091128-3
 SELECT replaced_by FROM wikisql_data WHERE team = 'Akhisar B.G.S.'	1-27091128-3
 SELECT team FROM wikisql_data WHERE replaced_by = 'Serhat Güller'	1-27091128-3
 SELECT COUNT(episode) FROM wikisql_data WHERE written_by = 'Sheri Elwood' AND directed_by = 'Jim Allodi'	1-27155243-3
-SELECT COUNT(DISTINCT episode) FROM wikisql_data WHERE directed_by = 'Sheri Elwood'	1-27155243-3
+SELECT COUNT(episode) FROM wikisql_data WHERE directed_by = 'Sheri Elwood'	1-27155243-3
 SELECT original_airdate FROM wikisql_data WHERE writer = 'Robin Mukherjee' AND director = 'Margy Kinmonth'	1-27208814-1
 SELECT MIN(series_no) FROM wikisql_data WHERE episode = '78'	1-27208814-1
 SELECT col_50s FROM wikisql_data WHERE highest_score = 88	1-27268238-4
@@ -2135,7 +2135,7 @@ SELECT Womens_doubles FROM wikisql_data WHERE Mixed_doubles = 'Zhang Nan Zhao Yu
 SELECT Womens_doubles FROM wikisql_data WHERE Tour = 'French Super Series'	1-27753492-2
 SELECT Score FROM wikisql_data WHERE high_points = 'Michael Beasley (26)'	1-27756314-11
 SELECT MAX(high_rebounds) FROM wikisql_data WHERE date = 'April 6'	1-27756314-11
-SELECT COUNT(DISTINCT high_rebounds) FROM wikisql_data WHERE game = 76	1-27756314-11
+SELECT COUNT(high_rebounds) FROM wikisql_data WHERE game = 76	1-27756314-11
 SELECT COUNT(game) FROM wikisql_data WHERE high_assists = 'Luke Ridnour (5)'	1-27756314-11
 SELECT high_points FROM wikisql_data WHERE team = 'charlotte'	1-27756314-8
 SELECT MAX(game) FROM wikisql_data WHERE team = '@ l.a. clippers'	1-27756314-8
@@ -2345,7 +2345,7 @@ SELECT location FROM wikisql_data WHERE acc_team = 'Wake Forest'	1-29535057-4
 SELECT location FROM wikisql_data WHERE big_ten_team = 'Wisconsin'	1-29535057-4
 SELECT high_assists FROM wikisql_data WHERE date = 'January 5'	1-29556461-7
 SELECT team FROM wikisql_data WHERE date = 'January 19'	1-29556461-7
-SELECT COUNT(DISTINCT colors) FROM wikisql_data WHERE location = 'Maroa, Illinois'	1-29612224-1
+SELECT COUNT(colors) FROM wikisql_data WHERE location = 'Maroa, Illinois'	1-29612224-1
 SELECT school_website FROM wikisql_data WHERE location = 'Macon, Illinois'	1-29612224-1
 SELECT location FROM wikisql_data WHERE col_9_12_enrollment = 363	1-29612224-1
 SELECT colors FROM wikisql_data WHERE location = 'tolono, illinois'	1-29612224-1
@@ -2379,7 +2379,7 @@ SELECT player FROM wikisql_data WHERE pick = '34'	1-29836557-2
 SELECT mls_team FROM wikisql_data WHERE player = 'Babayele Sodade'	1-29836557-2
 SELECT international_use FROM wikisql_data WHERE flag_name = '1 единица'	1-29997112-3
 SELECT flag_name FROM wikisql_data WHERE meaning = 'decimal digit 2'	1-29997112-3
-SELECT COUNT(DISTINCT description) FROM wikisql_data WHERE meaning = 'decimal digit 2'	1-29997112-3
+SELECT COUNT(description) FROM wikisql_data WHERE meaning = 'decimal digit 2'	1-29997112-3
 SELECT meaning FROM wikisql_data WHERE transliteration = 'dvojka'	1-29997112-3
 SELECT meaning FROM wikisql_data WHERE transliteration = 'semërka'	1-29997112-3
 SELECT meaning FROM wikisql_data WHERE transliteration = 'semërka'	1-29997112-3
@@ -2400,9 +2400,9 @@ SELECT coefficient FROM wikisql_data WHERE player = 'agustín marchesín (1)'	1-
 SELECT tournament FROM wikisql_data WHERE tournament = '2010 clausura'	1-30083499-1
 SELECT nationality FROM wikisql_data WHERE tournament = '2012 clausura'	1-30083499-1
 SELECT high_points FROM wikisql_data WHERE game = 1	1-30087032-5
-SELECT COUNT(DISTINCT game) FROM wikisql_data WHERE high_rebounds = 'Oliver Miller (7)'	1-30087032-5
+SELECT COUNT(game) FROM wikisql_data WHERE high_rebounds = 'Oliver Miller (7)'	1-30087032-5
 SELECT high_assists FROM wikisql_data WHERE high_points = 'Charles Barkley (21)'	1-30087032-5
-SELECT COUNT(DISTINCT high_points) FROM wikisql_data WHERE date = 'may 15'	1-30087032-5
+SELECT COUNT(high_points) FROM wikisql_data WHERE date = 'may 15'	1-30087032-5
 SELECT series FROM wikisql_data WHERE high_points = 34	1-30087032-5
 SELECT barony FROM wikisql_data WHERE townland = 'mountcotton'	1-30120605-1
 SELECT area_acres FROM wikisql_data WHERE townland = 'Gortnaskehy'	1-30120605-1
@@ -3964,7 +3964,7 @@ SELECT nationality FROM wikisql_data WHERE name = 'HMS Cheshire'	2-15472215-1
 SELECT score_in_the_final FROM wikisql_data WHERE opponent_in_the_final = 'Guillermo Vilas' AND date > 1972	2-15428560-1
 SELECT points FROM wikisql_data WHERE driver = 'Paul Tracy'	2-15323340-2
 SELECT grid FROM wikisql_data WHERE laps = 78 AND driver = 'Ronnie Bremer'	2-15323340-2
-SELECT driver FROM wikisql_data WHERE grid = 10 ORDER BY laps DESC LIMIT 1	2-15565520-2
+SELECT MAX(driver) FROM wikisql_data WHERE grid = 10	2-15565520-2
 SELECT fourth FROM wikisql_data WHERE event = '2008 Telstra Men''s Pro'	2-16067721-1
 SELECT winner FROM wikisql_data WHERE fourth = 'Selby Riddle'	2-16067721-1
 SELECT second FROM wikisql_data WHERE fourth = 'Isabelle Brayley'	2-16067721-1
@@ -3985,7 +3985,7 @@ SELECT SUM(cuts_made) FROM wikisql_data WHERE events = 2	2-1608306-4
 SELECT bleeding_time FROM wikisql_data WHERE condition = 'congenital afibrinogenemia'	2-1557752-1
 SELECT partial_thromboplastin_time FROM wikisql_data WHERE condition = 'Liver failure , early'	2-1557752-1
 SELECT Condition FROM wikisql_data WHERE Partial_thromboplastin_time = 'unaffected' AND Platelet_count = 'unaffected'	2-1557752-1
-SELECT Condition FROM wikisql_data WHERE Prothrombin_time = 'unaffected' AND Bleeding_time IS NOT NULL AND Partial_thromboplastin_time = 'prolonged'	2-1557752-1
+SELECT Condition FROM wikisql_data WHERE Prothrombin_time = 'unaffected' AND Partial_thromboplastin_time = 'prolonged'	2-1557752-1
 SELECT margin FROM wikisql_data WHERE year > '1981' AND runner_s_up = 'roberto de vicenzo'	2-1552405-6
 SELECT championship FROM wikisql_data WHERE year = 1985	2-1552405-6
 SELECT bronze FROM wikisql_data WHERE total = 78 AND gold < 12	2-15428689-2

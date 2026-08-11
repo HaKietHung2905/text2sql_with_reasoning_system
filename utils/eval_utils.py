@@ -213,10 +213,7 @@ def normalize_sql_for_evaluation(sql: Optional[str]) -> Optional[str]:
     sql = re.sub(r'\s*,\s*',  ' , ', sql)
     sql = re.sub(r'\s*\(\s*', ' ( ', sql)
     sql = re.sub(r'\s*\)\s*', ' ) ', sql)
-    sql = re.sub(r'\s*=\s*',  ' = ', sql)
-    sql = re.sub(r'\s*<\s*',  ' < ', sql)
-    sql = re.sub(r'\s*>\s*',  ' > ', sql)
-    sql = re.sub(r'\s*!=\s*', ' != ', sql)
+    sql = re.sub(r'\s*(>=|<=|!=|<>|=|<|>)\s*', r' \1 ', sql)
 
     # Step 7: Remove trailing semicolon
     sql = sql.rstrip(';').strip()

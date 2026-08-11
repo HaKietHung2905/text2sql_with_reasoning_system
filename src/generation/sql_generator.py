@@ -134,13 +134,149 @@ class SQLGenerator:
                 lines.append(f"SQL: {sql}")
         if len(lines) == 1:
             return ""
+        lines.append(
+            "\nNote: the examples above are for SQL STRUCTURE only. "
+            "For WHERE string values, always copy the EXACT capitalisation "
+            "from the CURRENT question below, ignoring how examples wrote theirs."
+        )
         lines.append("")
         return "\n".join(lines) + "\n"
+
+    def _ground_literal_casing(self, sql: str, db_path: str) -> str:
+
+        literal_re = re.compile(r"=\s*'([^']*)'")
+        matches = list(literal_re.finditer(sql))
+        if not matches:
+            return sql
+
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
+            tables = [r[0] for r in cur.fetchall()]
+
+            text_columns = []
+            for t in tables:
+                cur.execute(f"PRAGMA table_info('{t}')")
+                for col in cur.fetchall():
+                    col_name, col_type = col[1], (col[2] or "").upper()
+                    if "CHAR" in col_type or "TEXT" in col_type or "CLOB" in col_type:
+                        text_columns.append((t, col_name))
+
+            corrected = sql
+            for m in matches:
+                value = m.group(1)
+
+                found_values = set()
+                for table, col in text_columns:
+                    try:
+                        cur.execute(
+                            f"SELECT DISTINCT trim(\"{col}\") FROM \"{table}\" "
+                            f"WHERE trim(lower(\"{col}\")) = trim(lower(?)) LIMIT 2",
+                            (value,)
+                        )
+                        for row in cur.fetchall():
+                            if row[0] is not None:
+                                found_values.add(str(row[0]))
+                    except Exception:
+                        continue
+                    if len(found_values) > 1:
+                        break
+
+                if len(found_values) == 1:
+                    canonical = found_values.pop().strip()
+                    if canonical and canonical != value:
+                        corrected = corrected.replace(f"'{value}'", f"'{canonical}'", 1)
+
+            conn.close()
+            return corrected
+        except Exception as e:
+            logger.debug(f"Value grounding skipped: {e}")
+            return sql
+    def _normalize_count_star(self, sql: str) -> str:
+        def repl(m):
+            inner = m.group(1).strip()
+            if inner.upper().startswith('DISTINCT'):
+                return m.group(0)
+            return 'COUNT(*)'
+        return re.sub(r'COUNT\s*\(\s*([^)]+?)\s*\)', repl, sql, flags=re.IGNORECASE)
+
+    def _qualify_ambiguous_select_columns(self, sql: str, db_path: str) -> str:
+    
+        m_select = re.search(r'^SELECT\s+(?:DISTINCT\s+)?(.*?)\s+FROM\s', sql, re.IGNORECASE)
+        if not m_select:
+            return sql
+        select_clause = m_select.group(1)
+
+        alias_order = re.findall(r'(\w+)\s+AS\s+(t\d+)', sql, re.IGNORECASE)
+        if len(alias_order) < 2:
+            return sql
+
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            alias_cols = {}
+            for table, alias in alias_order:
+                cur.execute(f"PRAGMA table_info(\"{table}\")")
+                alias_cols[alias] = {r[1].lower() for r in cur.fetchall()}
+            conn.close()
+        except Exception:
+            return sql
+
+        parts = [p.strip() for p in select_clause.split(',')]
+        new_parts = []
+        changed = False
+        for part in parts:
+            m = re.match(r'^(\w+)$', part)  # cột trần, không hàm, không đã qualify
+            if not m:
+                new_parts.append(part)
+                continue
+            col = m.group(1)
+            if col.lower() == '*':
+                new_parts.append(part)
+                continue
+            owners = [a for a, cols in alias_cols.items() if col.lower() in cols]
+            if len(owners) >= 2:
+                new_parts.append(f"{owners[0]}.{col}")
+                changed = True
+            else:
+                new_parts.append(part)
+
+        if not changed:
+            return sql
+
+        new_select = ', '.join(new_parts)
+        return sql[:m_select.start(1)] + new_select + sql[m_select.end(1):]
 
     # ──────────────────────────────────────────────────────────────────────────
     # Public API
     # ──────────────────────────────────────────────────────────────────────────
+    def _validate_alias_columns(self, sql: str, db_path: str) -> Optional[str]:
+        alias_map = {}
+        for m in re.finditer(r'(\w+)\s+AS\s+(t\d+)', sql, re.IGNORECASE):
+            alias_map[m.group(2).lower()] = m.group(1)
 
+        if not alias_map:
+            return None
+
+        try:
+            conn = sqlite3.connect(db_path)
+            cur = conn.cursor()
+            table_cols = {}
+            for table in set(alias_map.values()):
+                cur.execute(f"PRAGMA table_info(\"{table}\")")
+                table_cols[table] = {r[1].lower() for r in cur.fetchall()}
+            conn.close()
+        except Exception:
+            return None
+
+        for m in re.finditer(r'\b(t\d+)\.(\w+)\b', sql, re.IGNORECASE):
+            alias, col = m.group(1).lower(), m.group(2).lower()
+            table = alias_map.get(alias)
+            if table and col not in table_cols.get(table, set()):
+                return (f"Column '{col}' does not exist in table '{table}' "
+                        f"(aliased as {alias}). Check which table actually has this column.")
+        return None
     def generate(
         self,
         question: str,
@@ -149,6 +285,7 @@ class SQLGenerator:
         few_shot_examples: Optional[List[Dict]] = None,
         semantic_hints: Optional[str] = None,
         strategy_hints: Optional[str] = None,
+        temperature: float = 0.0,
     ) -> str:
         """
         Generate SQL.
@@ -177,7 +314,7 @@ class SQLGenerator:
             strategy_hints=strategy_hints,
         )
         try:
-            sql = self._clean_sql(self.model.generate(prompt, prefill="SELECT "))
+            sql = self._clean_sql(self.model.generate(prompt, prefill="SELECT ", temperature=temperature))
         except Exception as e:
             if _is_server_error(e): raise
             logger.error(f"Generation attempt 1 failed: {e}")
@@ -220,7 +357,29 @@ class SQLGenerator:
             logger.error(f"All generation attempts failed for: {question!r} → SELECT 1")
             return "SELECT 1"
 
-        return self._normalize_for_spider(sql)
+        sql = self._normalize_for_spider(sql)
+        sql = self._qualify_ambiguous_select_columns(sql, db_path)
+        sql = self._normalize_count_star(sql)
+        sql = self._ground_literal_casing(sql, db_path)
+        alias_error = self._validate_alias_columns(sql, db_path)
+        if alias_error:
+            logger.warning(f"Alias-column mismatch detected: {alias_error}")
+            fix_prompt = (
+                "The following SQL has a column error. Fix ONLY the wrong column "
+                "reference, keep everything else identical.\n\n"
+                f"Schema:\n{schema_str}\n\n"
+                f"Question: {question}\n\n"
+                f"SQL with error: {sql}\n"
+                f"Error: {alias_error}\n\n"
+                "Corrected SQL:"
+            )
+            try:
+                fixed = self._clean_sql(self.model.generate(fix_prompt, prefill="SELECT "))
+                if fixed and not self._validate_alias_columns(fixed, db_path):
+                    sql = self._ground_literal_casing(self._normalize_for_spider(fixed), db_path)
+            except Exception as e:
+                logger.debug(f"Self-correction retry failed: {e}")
+        return sql
 
     def _format_strategy_block(self, strategy_hints: Optional[str]) -> str:
         """Format ReasoningBank strategies as their OWN prompt block —
@@ -283,7 +442,16 @@ class SQLGenerator:
             "5. TABLE ALIASES — STRICT: ONLY t1, t2, t3, t4 (ALWAYS with AS).\n"
             "   Spider parser ONLY resolves tN-style aliases — anything else causes parse errors.\n"
             "   GOOD: FROM pets AS t1 JOIN student AS t2 ON t1.petid = t2.stuid\n"
-            "6. COLUMN QUALIFICATION: SELECT/GROUP BY/ORDER BY use bare column names (no tN.).\n"
+            "6. COLUMN QUALIFICATION: SELECT/GROUP BY/ORDER BY use bare column names "
+            "(no tN.) — EXCEPT when the same column name exists in more than one "
+            "joined table (e.g. both tables have 'id', 'name', or the JOIN key "
+            "itself like 'document_id'). In that case you MUST qualify with tN. "
+            "in SELECT/GROUP BY/ORDER BY too, or SQLite will reject the query with "
+            "'ambiguous column name'.\n"
+            "   BAD:  SELECT document_id FROM documents AS t1 JOIN paragraphs AS t2 "
+            "ON t1.document_id = t2.document_id\n"
+            "   GOOD: SELECT t1.document_id FROM documents AS t1 JOIN paragraphs AS t2 "
+            "ON t1.document_id = t2.document_id\n"
             "   tN. prefixes ONLY in FROM/JOIN/ON/WHERE.\n"
             "7. MIN/MAX ROW: ORDER BY col ASC/DESC LIMIT 1 — NEVER WHERE col=(SELECT MIN...)\n"
             "8. OR vs UNION: WHERE col=v1 OR col=v2 — NEVER split into UNION\n"
@@ -293,6 +461,9 @@ class SQLGenerator:
             "12. SET OPERATORS: INTERSECT='both/shared', EXCEPT='but not/excluding', "
             "UNION='either...or' — NEVER replace with self-JOIN\n"
             "13. DISTINCT only when question says 'unique'/'distinct' — NEVER COUNT(DISTINCT col)\n"
+            "14. ALIAS-COLUMN CHECK: before writing tN.column, verify that column "
+            "literally belongs to the table aliased as tN in THIS query's FROM/JOIN — "
+            "never borrow a column name from a different joined table.\n"
             "\nEXAMPLES:\n"
             "Q: Which model has the smallest horsepower?\n"
             "A: SELECT t1.model FROM car_names AS t1 JOIN cars_data AS t2 ON t1.makeid = t2.id "

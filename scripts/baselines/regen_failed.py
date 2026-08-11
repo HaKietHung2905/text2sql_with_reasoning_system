@@ -64,10 +64,9 @@ def find_failed_lines(rows, marker="SELECT 1"):
 
 
 # ─── Mode : Standard regeneration (pipeline-based) ───────────────────────
-
 def init_pipelines(args):
     from utils.sql_schema import load_full_db_context  # noqa
-    semantic_pipeline = reasoning_pipeline = None
+    semantic_pipeline = reasoning_pipeline = retriever = None
 
     if args.use_semantic:
         try:
@@ -91,6 +90,18 @@ def init_pipelines(args):
         except Exception as e:
             print(f"⚠ ReasoningBank failed: {e}")
 
+    # ── Semantic RAG retriever (was completely missing before) ──────────────
+    if args.use_chromadb:
+        try:
+            from src.retrieval.retriever import SpiderRetriever
+            prefix = "wikisql" if ("wikisql" in args.questions.lower()
+                                    or "wikisql" in args.db.lower()) else "spider"
+            retriever = SpiderRetriever(
+                persist_dir=args.chromadb_persist_dir, collection_prefix=prefix)
+            print(f"✓ Semantic RAG retriever ready (prefix={prefix}, top_k={args.top_k})")
+        except Exception as e:
+            print(f"⚠ Semantic RAG retriever failed: {e}")
+
     try:
         from src.generation.sql_generator import SQLGenerator
         sql_generator = SQLGenerator()
@@ -99,17 +110,17 @@ def init_pipelines(args):
         print(f"✗ SQLGenerator failed: {e}")
         sys.exit(1)
 
-    return semantic_pipeline, reasoning_pipeline, sql_generator
-
+    return semantic_pipeline, reasoning_pipeline, sql_generator, retriever
 
 def regen_one(line_no, questions_data, db_dir,
               semantic_pipeline, reasoning_pipeline, sql_generator,
-              max_retries=3):
+              retriever=None, top_k=3, max_retries=3, current_row=None):
     from utils.sql_schema import load_full_db_context
     idx = line_no - 1
     if idx < 0 or idx >= len(questions_data):
-        return {"line": line_no, "db_id": "", "question": "",
-                "sql": "SELECT 1", "tsv_row": "SELECT 1\t",
+        fallback_db_id = current_row.split("\t", 1)[1] if current_row and "\t" in current_row else ""
+        return {"line": line_no, "db_id": fallback_db_id, "question": "",
+                "sql": "SELECT 1", "tsv_row": f"SELECT 1\t{fallback_db_id}",
                 "ok": False, "error": f"Line {line_no} out of range"}
 
     item     = questions_data[idx]
@@ -126,12 +137,22 @@ def regen_one(line_no, questions_data, db_dir,
     for attempt in range(1, max_retries + 1):
         try:
             enhanced = question
+            semantic_hints = None
             if semantic_pipeline:
                 try:
                     res = semantic_pipeline.enhance_question(question, db_id, None)
                     enhanced = res.get("enhanced_question", question)
+                    semantic_hints = res.get("semantic_hints") or None
                 except Exception:
                     pass
+
+            few_shot_examples = None
+            if retriever:
+                try:
+                    rag_result = retriever.retrieve_similar_questions(enhanced, n_results=top_k)
+                    few_shot_examples = rag_result.get("results")
+                except Exception:
+                    few_shot_examples = None
 
             sql = ""
             if reasoning_pipeline:
@@ -141,14 +162,21 @@ def regen_one(line_no, questions_data, db_dir,
                         question=enhanced, db_id=db_id,
                         schema=ctx.get("schema", {}),
                         gold_sql=item.get("query", item.get("sql")),
-                        db_path = db_path,
-                        sql_generator=lambda q: sql_generator.generate(q, db_path))
+                        db_path=db_path,
+                        sql_generator=lambda q, strategy_hints=None: sql_generator.generate(
+                            q, db_path,
+                            few_shot_examples=few_shot_examples,
+                            semantic_hints=semantic_hints,
+                            strategy_hints=strategy_hints))
                     sql = rb.get("sql", "") or ""
                 except Exception as e:
                     last_error = str(e)
 
             if not sql or sql.strip().upper() == "SELECT 1":
-                sql = sql_generator.generate(enhanced, db_path)
+                sql = sql_generator.generate(
+                    enhanced, db_path,
+                    few_shot_examples=few_shot_examples,
+                    semantic_hints=semantic_hints)
 
             sql = (sql or "SELECT 1").replace("\n", " ").strip()
             if sql.upper() != "SELECT 1":
@@ -166,7 +194,6 @@ def regen_one(line_no, questions_data, db_dir,
     return {"line": line_no, "db_id": db_id, "question": question,
             "sql": "SELECT 1", "tsv_row": f"SELECT 1\t{db_id}",
             "ok": False, "error": f"All {max_retries} retries failed. {last_error}"}
-
 
 # ─── Printer ──────────────────────────────────────────────────────────────────
 
@@ -204,6 +231,8 @@ def main():
     # Pipeline flags
     parser.add_argument("--use_reasoning_bank", action="store_true")
     parser.add_argument("--use_chromadb",       action="store_true")
+    parser.add_argument("--chromadb_persist_dir", default="./data/embeddings/chroma_db")
+    parser.add_argument("--top_k", type=int, default=3)
     parser.add_argument("--use_semantic",       action="store_true")
     parser.add_argument("--reasoning_config",   default="configs/reasoning_config.yaml")
     parser.add_argument("--semantic_config",    default=None)
@@ -247,7 +276,7 @@ def main():
         print(f"✓ Backup → {bak}")
 
     print("\nInitialising pipelines…")
-    sem, rb, sg = init_pipelines(args)
+    sem, rb, sg, retriever = init_pipelines(args)
     print()
 
     fixed = still_failed = 0
@@ -255,7 +284,8 @@ def main():
         if ln > len(rows):
             print(f"⚠ Line {ln} beyond TSV — skipping"); continue
         r = regen_one(ln, questions_data, args.db, sem, rb, sg,
-                      max_retries=args.max_retries)
+                    retriever=retriever, top_k=args.top_k,
+                    max_retries=args.max_retries, current_row=rows[ln-1])
         _print_result(r)
         rows[ln-1] = r["tsv_row"]
         if r["ok"]: fixed += 1

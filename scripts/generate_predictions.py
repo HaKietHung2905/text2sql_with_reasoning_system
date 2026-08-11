@@ -96,7 +96,7 @@ def _stop_on_server_error(exc: Exception, out_f, already_done: int, i: int,
     is_403 = any(c in str(exc) or c in repr(exc)
                  for c in ("403", "Forbidden", "BILLING_DISABLED", "billing to be enabled"))
     wait_seconds = 30 if is_403 else 60
-
+    print(f"\n❗ Real error: {type(exc).__name__}: {exc}", flush=True)
     print(f"\n⏸  Checkpoint at q{done_so_far}, retrying in {wait_seconds}s...", flush=True)
     time.sleep(wait_seconds)
 

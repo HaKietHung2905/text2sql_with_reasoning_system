@@ -328,30 +328,30 @@ SELECT first_elected FROM wikisql_data WHERE incumbent = 'Phil Crane'	1-1341672-
 SELECT party FROM wikisql_data WHERE incumbent = 'Tim Lee Hall'	1-1341672-14
 SELECT candidates FROM wikisql_data WHERE district = 'Illinois 15'	1-1341672-14
 SELECT first_elected FROM wikisql_data WHERE incumbent = 'Abner J. Mikva'	1-1341672-14
-SELECT COUNT(incumbent) FROM wikisql_data WHERE first_elected = 1944	1-1341672-14
-SELECT COUNT(incumbent) FROM wikisql_data WHERE district = 'Alvin Bush'	1-1341930-38
-SELECT Candidates FROM wikisql_data WHERE District = 'Kentucky 4'	1-1342218-17
-SELECT COUNT(District) FROM wikisql_data WHERE Incumbent = 'Noble Jones Gregory'	1-1342218-17
-SELECT result FROM wikisql_data WHERE district = 'Kentucky 2'	1-1342218-17
-SELECT result FROM wikisql_data WHERE incumbent = 'Brent Spence'	1-1342218-17
-SELECT party FROM wikisql_data WHERE district = 'Kentucky 5'	1-1342218-17
-SELECT candidates FROM wikisql_data WHERE party = 'Democratic' AND incumbent = 'Frank Chelf'	1-1342218-17
-SELECT district FROM wikisql_data WHERE incumbent = 'Jamie L. Whitten'	1-1342233-24
-SELECT candidates FROM wikisql_data WHERE district = 'Mississippi 6'	1-1342233-24
-SELECT incumbent FROM wikisql_data WHERE first_elected = 1941	1-1342233-24
-SELECT result FROM wikisql_data WHERE incumbent = 'W. Arthur Winstead'	1-1342233-24
-SELECT COUNT(first_elected) FROM wikisql_data WHERE district = 'Arkansas 4'	1-1342233-5
-SELECT COUNT(district) FROM wikisql_data WHERE incumbent = 'William F. Norrell'	1-1342233-5
-SELECT party FROM wikisql_data WHERE first_elected > 1939.0	1-1342233-5
-SELECT COUNT(incumbent) FROM wikisql_data WHERE district = 'Arkansas 3'	1-1342233-5
-SELECT party FROM wikisql_data WHERE district = 'Arkansas 5'	1-1342249-5
-SELECT party FROM wikisql_data WHERE district = 'Arkansas 6'	1-1342249-5
-SELECT MIN(first_elected) FROM wikisql_data	1-1342249-5
-SELECT Party FROM wikisql_data WHERE Incumbent = 'Brooks Hays'	1-1342249-5
-SELECT Party FROM wikisql_data WHERE District = 'Alabama 1'	1-1342338-3
-SELECT COUNT(first_elected) FROM wikisql_data WHERE result = 'Lost renomination'	1-1342338-3
-SELECT COUNT(first_elected) FROM wikisql_data WHERE result = 'Lost renomination'	1-1342338-3
-SELECT district FROM wikisql_data WHERE incumbent = 'John E. Miller'	1-1342338-5
+SELECT 1	1-1341672-14
+SELECT 1	1-1341930-38
+SELECT 1	1-1342218-17
+SELECT 1	1-1342218-17
+SELECT 1	1-1342218-17
+SELECT 1	1-1342218-17
+SELECT 1	1-1342218-17
+SELECT 1	1-1342218-17
+SELECT 1	1-1342233-24
+SELECT 1	1-1342233-24
+SELECT 1	1-1342233-24
+SELECT 1	1-1342233-24
+SELECT 1	1-1342233-5
+SELECT 1	1-1342233-5
+SELECT 1	1-1342233-5
+SELECT 1	1-1342233-5
+SELECT 1	1-1342249-5
+SELECT 1	1-1342249-5
+SELECT 1	1-1342249-5
+SELECT 1	1-1342249-5
+SELECT 1	1-1342338-3
+SELECT 1	1-1342338-3
+SELECT 1	1-1342338-3
+SELECT 1	1-1342338-5
 SELECT 1	1-1342338-5
 SELECT 1	1-1342338-5
 SELECT 1	1-1342338-5

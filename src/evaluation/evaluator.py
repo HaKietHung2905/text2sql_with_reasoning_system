@@ -188,8 +188,9 @@ def load_predictions(predict_path: str) -> List[List]:
 
 
 def evaluate_turn(
-    p_turn, g_turn, db_dir, etype, kmaps,
-    evaluator, plug_value, keep_distinct, progress_bar
+    p_turn, g_turn, db_dir: str, etype: str, kmaps: Dict,
+    evaluator, plug_value: bool, keep_distinct: bool,
+    progress_bar: bool, idx: int = -1
 ) -> Optional[Dict]:
     """
     Evaluate a single turn with SQL normalization

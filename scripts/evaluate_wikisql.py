@@ -216,6 +216,8 @@ def _normalize_empty_string_literals(sql: str) -> str:
 def _normalize_not_operators(sql: str) -> str:
     if not sql:
         return sql
+
+    sql = sql.replace('<>', '!=')
     for pat, rep in [
         (r'\bAND\s+\w+\s+is\s+not\s+null\b',      ''),
         (r'\bAND\s+\w+\s+is\s+null\b',            ''),
