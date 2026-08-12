@@ -1363,7 +1363,7 @@ def main():
         print("WIKISQL EVALUATION SUMMARY")
         print("=" * 80)
         if _sem is not None:
-            print(f"Structural EM (official) : {_em * 100:.2f}%   ← use this in Table II")
+            print(f"Structural EM (official) : {_em * 100:.2f}%")
             print(f"String EM (legacy)       : {_sem * 100:.2f}%")
         else:
             print(f"Exact Match Accuracy     : {_em * 100:.2f}%")
@@ -1386,7 +1386,8 @@ def main():
 
     except Exception as e:
         logger.error(f"Evaluation failed: {e}")
-        import traceback; traceback.print_exc()
+        import traceback; 
+        # traceback.print_exc()
         return 1
 
 

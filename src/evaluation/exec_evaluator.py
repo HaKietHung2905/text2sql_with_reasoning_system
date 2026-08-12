@@ -540,7 +540,7 @@ def eval_exec_match(
             p_flag, p_denotation = asyncio.run(exec_on_db(db_path, pred))
 
             if g_flag == 'exception':
-                logger.warning(f"Gold query failed on {db_path}")
+                # logger.warning(f"Gold query failed on {db_path}")
                 return 0
 
             if p_flag == 'exception':

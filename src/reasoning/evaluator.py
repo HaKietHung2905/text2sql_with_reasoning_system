@@ -614,7 +614,8 @@ def evaluate(
             logger.info(f"  Trajectories processed:   {len(trajectory_map)}")
         except Exception as e:
             logger.error(f"Failed to distill strategies: {e}")
-            import traceback; traceback.print_exc()
+            import traceback;
+            # traceback.print_exc()
             distillation_result = {'error': str(e)}
 
         try:
@@ -874,8 +875,8 @@ def evaluate_turn(
         g_sql = get_sql(g_str_normalized, schema)
     except Exception as e:
         error_msg = str(e) if str(e) else "Unknown parse error"
-        logger.warning(f"Gold query parse failed on {db_path}: {error_msg}")
-        logger.debug(f"Gold SQL: {g_str}")
+        # logger.warning(f"Gold query parse failed on {db_path}: {error_msg}")
+        # logger.debug(f"Gold SQL: {g_str}")
         return {
             'exact_score': 0,
             'exec_score':  0,
@@ -899,10 +900,11 @@ def evaluate_turn(
             p_sql = get_sql(p_str_normalized, schema)
         except Exception as e:
             error_msg = str(e) if str(e) else "Unknown parse error"
-            print(f"\n❗ Real error [TSV line {idx+1}] db={db_name}")
-            print(f"   Predicted (normalized): {p_str_normalized}")
-            print(f"   Predicted (raw)       : {p_str}")
-            import traceback; traceback.print_exc()
+            # print(f"\n Error [TSV line {idx+1}] db={db_name}")
+            # print(f"   Predicted (normalized): {p_str_normalized}")
+            # print(f"   Predicted (raw)       : {p_str}")
+            import traceback; 
+            # traceback.print_exc()
             p_sql         = None
             p_parse_error = f"Predicted SQL parse error: {error_msg}"
 

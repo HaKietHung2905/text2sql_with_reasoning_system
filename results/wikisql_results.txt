@@ -1,39 +1,39 @@
 ================================================================================
 WIKISQL EVALUATION SUMMARY REPORT
-Generated : 2026-08-10 09:38:07
+Generated : 2026-08-11 09:54:05
 Results   : results/wikisql_results.json
 ================================================================================
 
 MAIN METRICS
 ----------------------------------------
-  Structural EM (official)      : 85.57%  (85.6%)
-  String EM (legacy)            : 76.52%  (76.5%)
-  Execution Accuracy            : 87.55%  (87.6%)
+  Structural EM (official)      : 85.01%  (85.0%)
+  String EM (legacy)            : 76.03%  (76.0%)
+  Execution Accuracy            : 86.73%  (86.7%)
   Total Evaluated               : 0
 
   Structural EM Components:
-    AGG  accuracy   : 91.36%
-    SEL  accuracy   : 96.96%
-    COND accuracy   : 96.79%
-    Parse rate      : 99.62%
-    Parse failures  : 32
+    AGG  accuracy   : 91.40%
+    SEL  accuracy   : 96.87%
+    COND accuracy   : 96.13%
+    Parse rate      : 99.67%
+    Parse failures  : 28
   Failure breakdown:
-    agg                   : 675
-    cond                  : 231
-    sel                   : 214
-    parse_fail_pred       : 32
+    agg                   : 669
+    cond                  : 281
+    sel                   : 215
+    parse_fail_pred       : 28
     agg+sel               : 25
-    agg+cond              : 22
-    sel+cond              : 13
-    agg+sel+cond          : 3
+    agg+cond              : 21
+    sel+cond              : 16
+    agg+sel+cond          : 7
 
 PER-DIFFICULTY BREAKDOWN
 ----------------------------------------
-  easy     | count=64    | EM=92.19% | EX=93.75%
-  medium   | count=8352  | EM=76.42% | EX=87.54%
+  easy     | count=64    | EM=73.44% | EX=76.56%
+  medium   | count=8355  | EM=76.05% | EX=86.81%
   hard     | count=0     | EM=0.00% | EX=0.00%
   extra    | count=0     | EM=0.00% | EX=0.00%
-  all      | count=8419  | EM=76.52% | EX=87.55%
+  all      | count=8419  | EM=76.03% | EX=86.73%
 
 ================================================================================
 END OF REPORT
