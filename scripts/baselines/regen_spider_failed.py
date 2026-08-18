@@ -157,7 +157,8 @@ def generate_one(item, db_dir, sem, rb_pipe, sg, max_retries=3):
                         question=enhanced, db_id=db_id,
                         schema=ctx.get("schema", {}),
                         gold_sql=item.get("query", item.get("sql")),
-                        sql_generator=lambda q: sg.generate(q, db_path),
+                        sql_generator=lambda q, strategy_hints=None, temperature=0.0: sg.generate(
+                            q, db_path, temperature=temperature),
                     )
                     sql = res.get("sql", "") or ""
                 except Exception as e:

@@ -300,11 +300,12 @@ def main():
                                     schema=db_context.get('schema', {}),
                                     gold_sql=item.get('query', item.get('sql')),
                                     db_path=db_path,
-                                    sql_generator=lambda q, strategy_hints=None: sql_generator.generate(
+                                    sql_generator=lambda q, strategy_hints=None, temperature=0.0: sql_generator.generate(
                                         q, db_path,
                                         few_shot_examples=few_shot_examples,
                                         semantic_hints=semantic_hints,
-                                        strategy_hints=strategy_hints),
+                                        strategy_hints=strategy_hints,
+                                        temperature=temperature),
                                 )
                                 sql = rb_result.get('sql', '') or ''
                             except Exception as e:

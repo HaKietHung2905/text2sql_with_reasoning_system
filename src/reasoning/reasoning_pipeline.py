@@ -264,7 +264,6 @@ class ReasoningBankPipeline:
             self.stats['trajectories_collected'] += 1
 
             if (
-                # gold_sql is None and 
                 db_path
                 and self.config.get('enable_self_consistency_judging', True)
                 and sql_generator is not None

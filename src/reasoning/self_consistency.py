@@ -141,22 +141,43 @@ class ExecutionSelfConsistency:
             start = time.time()
             try:
                 sql = candidate_generator_fn(temp)
-                candidates.append(ConsistencyCandidate(
-                    sql=sql or "SELECT 1",
-                    temperature=temp,
-                    generation_time=time.time() - start,
-                ))
+                if not sql or not sql.strip():
+                    # Empty generation result — treat as a generation failure,
+                    # NOT as a valid "SELECT 1" candidate that can win a vote.
+                    candidates.append(ConsistencyCandidate(
+                        sql="",
+                        temperature=temp,
+                        generation_time=time.time() - start,
+                        error="empty generation result",
+                        executed_ok=False,
+                    ))
+                else:
+                    candidates.append(ConsistencyCandidate(
+                        sql=sql,
+                        temperature=temp,
+                        generation_time=time.time() - start,
+                    ))
             except Exception as e:
                 logger.debug(f"Self-consistency candidate generation failed at temp={temp}: {e}")
+                # Generation itself failed (timeout / rate-limit / API error).
+                # Mark executed_ok=False directly so this candidate is EXCLUDED
+                # from execution + voting below, instead of silently competing
+                # as a fake "SELECT 1" candidate that could win the majority
+                # vote purely due to correlated infrastructure failures.
                 candidates.append(ConsistencyCandidate(
-                    sql="SELECT 1",
+                    sql="",
                     temperature=temp,
                     generation_time=time.time() - start,
                     error=str(e),
+                    executed_ok=False,
                 ))
 
         # ── Execute every candidate on the real database ─────────────────────
+        # Skip candidates that already failed at the generation stage — they
+        # never produced real SQL, so they must not enter the voting pool.
         for cand in candidates:
+            if cand.error is not None:
+                continue
             try:
                 flag, denotation = asyncio.run(exec_on_db(db_path, postprocess(cand.sql)))
                 cand.executed_ok = (flag != "exception")
